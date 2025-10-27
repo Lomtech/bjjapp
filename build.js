@@ -1,6 +1,4 @@
 const fs = require('fs');
-const path = require('path');
-const fs = require('fs');
 
 // Erstelle dist Ordner
 if (!fs.existsSync('dist')) {
