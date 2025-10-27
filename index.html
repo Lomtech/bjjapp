@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BJJ Community Platform</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="header-top">
+          <h1>🥋 BJJ Community</h1>
+          <div class="auth-section" id="auth-section"></div>
+        </div>
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('setup')">
+            Setup
+          </button>
+          <button class="tab-btn" onclick="switchTab('dashboard')">
+            Dashboard
+          </button>
+          <button class="tab-btn" onclick="switchTab('athletes')">
+            Athleten
+          </button>
+          <button class="tab-btn" onclick="switchTab('gyms')">Gyms</button>
+          <button class="tab-btn" onclick="switchTab('openmats')">
+            Open Mats
+          </button>
+          <button class="tab-btn" onclick="switchTab('map')">Karte</button>
+        </div>
+      </header>
+
+      <div id="setup-tab" class="tab-content active">
+        <div class="config-section">
+          <h2>✅ Setup Status</h2>
+          <p id="setup-status" style="margin: 10px 0">
+            <span id="connection-status"
+              >🔄 Verbindung wird hergestellt...</span
+            >
+          </p>
+        </div>
+        <div
+          style="
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #2196f3;
+          "
+        >
+          <h3>📋 Datenbank Setup</h3>
+          <p>
+            Stelle sicher, dass du folgende Tabellen in Supabase erstellt hast:
+          </p>
+          <ul style="margin: 10px 0 10px 20px">
+            <li>athletes (mit user_id, bio)</li>
+            <li>
+              gyms (mit user_id, description, phone, website, street,
+              postal_code, city)
+            </li>
+            <li>open_mats</li>
+            <li>gym_ratings</li>
+            <li>Storage Bucket: profile-images (public)</li>
+          </ul>
+          <p style="margin-top: 15px">
+            <strong>Hinweis:</strong> Die SQL-Befehle findest du in der
+            README.md
+          </p>
+        </div>
+      </div>
+
+      <div id="dashboard-tab" class="tab-content">
+        <h2>📊 Dashboard</h2>
+        <div class="stats-grid" id="stats-grid"></div>
+        <h3>Neueste Aktivitäten</h3>
+        <div id="recent-activities"></div>
+      </div>
+
+      <div id="athletes-tab" class="tab-content">
+        <div class="search-filter">
+          <h3>🔍 Athleten suchen</h3>
+          <div class="search-row">
+            <div class="form-group">
+              <input
+                type="text"
+                id="search-athlete"
+                placeholder="Name suchen..."
+              />
+            </div>
+            <div class="form-group">
+              <select id="filter-belt">
+                <option value="">Alle Gürtelgrade</option>
+                <option value="weiß">Weiß</option>
+                <option value="blau">Blau</option>
+                <option value="lila">Lila</option>
+                <option value="braun">Braun</option>
+                <option value="schwarz">Schwarz</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <input
+                type="number"
+                id="filter-weight"
+                placeholder="Max. Gewicht (kg)"
+              />
+            </div>
+            <button onclick="filterAthletes()" class="btn btn-small">
+              Filtern
+            </button>
+          </div>
+        </div>
+
+        <h2>Athleten-Profil anlegen</h2>
+        <form id="athlete-form">
+          <div class="form-group">
+            <label>Name *</label>
+            <input type="text" name="name" required />
+          </div>
+          <div class="form-group">
+            <label>Bio</label>
+            <textarea
+              name="bio"
+              rows="3"
+              placeholder="Erzähle etwas über dich..."
+            ></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Alter</label>
+              <input type="number" name="age" min="1" max="120" />
+            </div>
+            <div class="form-group">
+              <label>Gewicht (kg)</label>
+              <input type="number" name="weight" step="0.1" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Gürtelgrad *</label>
+            <select name="belt_rank" required>
+              <option value="">Bitte wählen</option>
+              <option value="weiß">Weiß</option>
+              <option value="blau">Blau</option>
+              <option value="lila">Lila</option>
+              <option value="braun">Braun</option>
+              <option value="schwarz">Schwarz</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Profilbild</label>
+            <input type="file" name="image" accept="image/*" />
+          </div>
+          <button type="submit">Profil anlegen</button>
+        </form>
+
+        <h3 style="margin-top: 40px">Athleten</h3>
+        <div id="athletes-list" class="profiles-grid"></div>
+      </div>
+
+      <div id="gyms-tab" class="tab-content">
+        <div class="search-filter">
+          <h3>🔍 Gyms suchen</h3>
+          <div class="search-row">
+            <div class="form-group">
+              <input
+                type="text"
+                id="search-gym"
+                placeholder="Gym Name oder Stadt..."
+              />
+            </div>
+            <div class="form-group">
+              <select id="filter-rating">
+                <option value="">Alle Bewertungen</option>
+                <option value="4">4+ Sterne</option>
+                <option value="3">3+ Sterne</option>
+              </select>
+            </div>
+            <div></div>
+            <button onclick="filterGyms()" class="btn btn-small">
+              Filtern
+            </button>
+          </div>
+        </div>
+
+        <h2>Gym-Profil anlegen</h2>
+        <form id="gym-form">
+          <div class="form-group">
+            <label>Gym Name *</label>
+            <input type="text" name="name" required />
+          </div>
+          <div class="form-group">
+            <label>Beschreibung</label>
+            <textarea
+              name="description"
+              rows="3"
+              placeholder="Beschreibe dein Gym..."
+            ></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>E-Mail</label>
+              <input type="email" name="email" />
+            </div>
+            <div class="form-group">
+              <label>Telefon</label>
+              <input type="tel" name="phone" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Website</label>
+            <input type="url" name="website" placeholder="https://..." />
+          </div>
+          <div class="form-group">
+            <label>Straße & Hausnummer *</label>
+            <input
+              type="text"
+              name="street"
+              required
+              placeholder="z.B. Hauptstraße 123"
+            />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Postleitzahl *</label>
+              <input
+                type="text"
+                name="postal_code"
+                required
+                placeholder="z.B. 80331"
+              />
+            </div>
+            <div class="form-group">
+              <label>Stadt *</label>
+              <input
+                type="text"
+                name="city"
+                required
+                placeholder="z.B. München"
+              />
+            </div>
+          </div>
+          <div id="geocoding-status" class="geocoding-status"></div>
+          <div class="form-group">
+            <label>Gym Bild</label>
+            <input type="file" name="image" accept="image/*" />
+          </div>
+          <button type="submit" id="gym-submit-btn">Gym anlegen</button>
+        </form>
+
+        <h3 style="margin-top: 40px">Gyms</h3>
+        <div id="gyms-list" class="profiles-grid"></div>
+      </div>
+
+      <div id="openmats-tab" class="tab-content">
+        <h2>Open Mat Event erstellen</h2>
+        <form id="openmat-form">
+          <div class="form-group">
+            <label>Gym auswählen *</label>
+            <select name="gym_id" id="gym-select" required>
+              <option value="">Bitte wählen</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Event Titel *</label>
+            <input
+              type="text"
+              name="title"
+              required
+              placeholder="z.B. Samstag Open Mat"
+            />
+          </div>
+          <div class="form-group">
+            <label>Beschreibung</label>
+            <textarea
+              name="description"
+              rows="3"
+              placeholder="Details zum Event..."
+            ></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Datum & Uhrzeit *</label>
+              <input type="datetime-local" name="event_date" required />
+            </div>
+            <div class="form-group">
+              <label>Dauer (Minuten)</label>
+              <input type="number" name="duration_minutes" value="120" />
+            </div>
+          </div>
+          <button type="submit">Event erstellen</button>
+        </form>
+
+        <h3 style="margin-top: 40px">Kommende Open Mats</h3>
+        <div id="openmats-list" class="calendar"></div>
+      </div>
+
+      <div id="map-tab" class="tab-content">
+        <h2>Gyms & Open Mats auf der Karte</h2>
+        <div id="map"></div>
+      </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <!-- Auth Modal -->
+    <div class="modal" id="auth-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modal-title">Login</h2>
+          <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <form id="auth-form">
+          <div class="form-group">
+            <label>E-Mail</label>
+            <input type="email" name="email" required />
+          </div>
+          <div class="form-group">
+            <label>Passwort</label>
+            <input type="password" name="password" required minlength="6" />
+          </div>
+          <button type="submit" id="auth-submit-btn">Anmelden</button>
+          <p style="margin-top: 15px; text-align: center">
+            <a href="#" id="toggle-auth" onclick="toggleAuthMode(event)"
+              >Noch kein Konto? Registrieren</a
+            >
+          </p>
+        </form>
+      </div>
+    </div>
+
+    <!-- Rating Modal -->
+    <div class="modal" id="rating-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Gym bewerten</h2>
+          <button class="modal-close" onclick="closeRatingModal()">
+            &times;
+          </button>
+        </div>
+        <form id="rating-form">
+          <input type="hidden" name="gym_id" id="rating-gym-id" />
+          <div class="form-group">
+            <label>Bewertung</label>
+            <div class="star-input" id="star-rating">
+              <span onclick="setRating(1)">★</span>
+              <span onclick="setRating(2)">★</span>
+              <span onclick="setRating(3)">★</span>
+              <span onclick="setRating(4)">★</span>
+              <span onclick="setRating(5)">★</span>
+            </div>
+            <input type="hidden" name="rating" id="rating-value" required />
+          </div>
+          <div class="form-group">
+            <label>Kommentar (optional)</label>
+            <textarea name="comment" rows="3"></textarea>
+          </div>
+          <button type="submit">Bewertung abgeben</button>
+        </form>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
