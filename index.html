@@ -18,10 +18,8 @@
           <div class="auth-section" id="auth-section"></div>
         </div>
         <div class="tabs">
-          <button class="tab-btn active" onclick="switchTab('setup')">
-            Setup
-          </button>
-          <button class="tab-btn" onclick="switchTab('dashboard')">
+          <button class="tab-btn" onclick="switchTab('setup')">Setup</button>
+          <button class="tab-btn active" onclick="switchTab('dashboard')">
             Dashboard
           </button>
           <button class="tab-btn" onclick="switchTab('athletes')">
@@ -35,7 +33,43 @@
         </div>
       </header>
 
-      <div id="setup-tab" class="tab-content active">
+      <!-- Welcome Screen für nicht-angemeldete User -->
+      <div id="welcome-screen" class="tab-content">
+        <div style="text-align: center; padding: 60px 20px">
+          <h2 style="font-size: 3em; margin-bottom: 20px">
+            Willkommen bei der BJJ Community! 🥋
+          </h2>
+          <p style="font-size: 1.3em; margin-bottom: 30px; color: #666">
+            Entdecke Gyms, vernetze dich mit Athleten und finde Open Mats in
+            deiner Nähe.
+          </p>
+          <div
+            style="
+              display: flex;
+              gap: 20px;
+              justify-content: center;
+              flex-wrap: wrap;
+            "
+          >
+            <button
+              class="btn"
+              onclick="openAuthModal('signup')"
+              style="font-size: 1.2em; padding: 15px 40px"
+            >
+              Jetzt registrieren
+            </button>
+            <button
+              class="btn btn-secondary"
+              onclick="openAuthModal('login')"
+              style="font-size: 1.2em; padding: 15px 40px"
+            >
+              Anmelden
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="setup-tab" class="tab-content">
         <div class="config-section">
           <h2>✅ Setup Status</h2>
           <p id="setup-status" style="margin: 10px 0">
