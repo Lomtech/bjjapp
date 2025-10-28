@@ -90,9 +90,6 @@ async function initSupabase(url, key) {
 }
 
 async function initializeData() {
-  console.log("initializeData gestartet");
-
-  // Lade alle Daten parallel
   await Promise.all([
     loadGymsForAthleteSelect(),
     loadGymsForFilter(),
@@ -103,12 +100,12 @@ async function initializeData() {
   ]);
 
   if (myProfile && myProfile.type === "athlete") {
-    loadFriendRequests();
-    loadFriends();
-    loadChats();
+    await Promise.all([loadFriendRequests(), loadFriends(), loadChats()]);
     updateNotificationBadges();
 
-    // Polling für neue Nachrichten (alle 5 Sekunden)
+    if (messagePollingInterval) {
+      clearInterval(messagePollingInterval);
+    }
     messagePollingInterval = setInterval(() => {
       updateNotificationBadges();
       if (currentChatPartner) {
