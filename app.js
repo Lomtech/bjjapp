@@ -163,8 +163,59 @@ function toggleAuthMode(e) {
 }
 
 async function logout() {
-  await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    showNotification("Fehler beim Abmelden: " + error.message, "error");
+    console.error("Logout error:", error);
+    return;
+  }
+
   showNotification("Erfolgreich abgemeldet", "info");
+
+  // Explizite Navigation in den Login-Modus
+  switchToAuthMode(); // Definiert weiter unten
+}
+
+// Auth-State-Listener (wird bei Login, Logout, Session-Refresh aufgerufen)
+supabase.auth.onAuthStateChange((event, session) => {
+  currentUser = session?.user ?? null;
+
+  if (event === "SIGNED_OUT" || !currentUser) {
+    switchToAuthMode(); // Zeige Login/Registrierung
+  } else if (event === "SIGNED_IN") {
+    switchToAppMode(); // Zeige Haupt-App (Profile, Karte, etc.)
+  }
+});
+
+function switchToAuthMode() {
+  // Verstecke alle app-spezifischen Bereiche
+  document
+    .querySelectorAll(".app-only")
+    .forEach((el) => (el.style.display = "none"));
+  document
+    .querySelectorAll(".auth-only")
+    .forEach((el) => (el.style.display = "block"));
+
+  // Optional: Zur Login-Seite scrollen oder URL ändern
+  history.pushState({}, "", "/login");
+  document.title = "Login | BJJ Open Mat Finder";
+}
+
+function switchToAppMode() {
+  document
+    .querySelectorAll(".auth-only")
+    .forEach((el) => (el.style.display = "none"));
+  document
+    .querySelectorAll(".app-only")
+    .forEach((el) => (el.style.display = "block"));
+
+  // Optional: Lade Benutzerprofil, Karte, etc.
+  loadUserProfile();
+  loadMapWithOpenMats();
+
+  history.pushState({}, "", "/dashboard");
+  document.title = "Dashboard | BJJ Open Mat Finder";
 }
 
 document.getElementById("auth-form").addEventListener("submit", async (e) => {
