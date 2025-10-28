@@ -421,11 +421,7 @@ document
 
       const { error: uploadError } = await supabase.storage
         .from("profile-images")
-        .upload(fileName, imageFile, {
-          cacheControl: "3600",
-          contentType: imageFile.type,
-          upsert: false,
-        });
+        .upload(fileName, imageFile, { upsert: true });
 
       if (uploadError) {
         showNotification(
