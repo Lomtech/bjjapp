@@ -36,24 +36,51 @@ async function initSupabase(url, key) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
+
   if (session) {
     currentUser = session.user;
     await loadUserProfile();
     updateAuthUI();
     await initializeData();
   } else {
+    currentUser = null;
     updateAuthUI();
   }
 
-  supabase.auth.onAuthStateChange((event, session) => {
+  supabase.auth.onAuthStateChange(async (event, session) => {
     console.log("Auth Event:", event, !!session?.user);
 
-    if (event === "SIGNED_OUT" || (event === "INITIAL_SESSION" && !session)) {
+    if (event === "SIGNED_OUT") {
+      // Cleanup bei Logout
+      currentUser = null;
+      myProfile = null;
+      allAthletes = [];
+      allGyms = [];
+      currentChatPartner = null;
+      currentOpenMatChat = null;
+
+      if (messagePollingInterval) {
+        clearInterval(messagePollingInterval);
+        messagePollingInterval = null;
+      }
+
+      if (map) {
+        map.remove();
+        map = null;
+      }
+
+      updateAuthUI();
       switchToAuthMode();
-    } else if (event === "SIGNED_IN") {
-      switchToAppMode(); // Hier: getSession() erlaubt
+    } else if (event === "SIGNED_IN" && session) {
+      // Vollständige Initialisierung bei Login
+      currentUser = session.user;
+      await loadUserProfile();
+      updateAuthUI();
+      await initializeData();
+    } else if (event === "INITIAL_SESSION" && !session) {
+      currentUser = null;
+      updateAuthUI();
     }
-    // KEIN getSession() außerhalb von SIGNED_IN!
   });
 }
 
@@ -72,6 +99,9 @@ async function initializeData() {
     updateNotificationBadges();
 
     // Polling für neue Nachrichten (alle 5 Sekunden)
+    if (messagePollingInterval) {
+      clearInterval(messagePollingInterval);
+    }
     messagePollingInterval = setInterval(() => {
       updateNotificationBadges();
       if (currentChatPartner) {
@@ -160,11 +190,9 @@ function toggleAuthMode(e) {
 
 async function logout() {
   try {
-    // signOut() ist idempotent – funktioniert auch ohne Session
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      // Nur echte Fehler (z. B. Netzwerk) melden
       console.error("Supabase signOut error:", error);
       showNotification("Abmeldung fehlgeschlagen: " + error.message, "error");
       return;
@@ -172,9 +200,8 @@ async function logout() {
 
     showNotification("Erfolgreich abgemeldet", "info");
 
-    // KEIN getSession() mehr!
-    // Direkt in Auth-Modus wechseln
-    switchToAuthMode();
+    // Auth State Change Handler wird automatisch aufgerufen
+    // Kein manueller Reload mehr nötig
   } catch (err) {
     console.error("Unerwarteter Fehler beim Logout:", err);
     showNotification("Abmeldung fehlgeschlagen.", "error");
@@ -194,21 +221,14 @@ function switchToAuthMode() {
   history.pushState({ mode: "auth" }, "", "/login");
   document.title = "Anmelden | BJJ Open Mat Finder";
 
-  // Realtime & Karte stoppen
+  // Realtime stoppen
   if (window.realtimeChannel) {
     window.realtimeChannel.unsubscribe();
     window.realtimeChannel = null;
   }
-  if (window.mapInstance) {
-    window.mapInstance.remove();
-    window.mapInstance = null;
-  }
-
-  // KEIN: supabase.auth.getSession() hier!
 }
 
 async function switchToAppMode() {
-  // Nur hier: Session prüfen (weil Event garantiert)
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -230,10 +250,8 @@ async function switchToAppMode() {
   history.pushState({ mode: "app" }, "", "/dashboard");
   document.title = "Dashboard | BJJ Open Mat Finder";
 
-  // Erst jetzt: Daten laden
   await Promise.all([loadUserProfile(), loadMapWithOpenMats()]);
 
-  // Realtime aktivieren
   setupRealtimeSubscriptions();
 }
 
@@ -246,6 +264,11 @@ document.getElementById("auth-form").addEventListener("submit", async (e) => {
   const email = formData.get("email");
   const password = formData.get("password");
 
+  const submitBtn = document.getElementById("auth-submit-btn");
+  submitBtn.disabled = true;
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = "Lädt...";
+
   try {
     if (isLogin) {
       const { error } = await supabase.auth.signInWithPassword({
@@ -255,6 +278,7 @@ document.getElementById("auth-form").addEventListener("submit", async (e) => {
       if (error) throw error;
       showNotification("Erfolgreich angemeldet!");
       closeModalForce();
+      // Auth State Change Handler wird automatisch aufgerufen
     } else {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
@@ -266,6 +290,9 @@ document.getElementById("auth-form").addEventListener("submit", async (e) => {
     }
   } catch (error) {
     showNotification("Fehler: " + error.message, "error");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
   }
 });
 
