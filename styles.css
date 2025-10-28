@@ -680,20 +680,23 @@ button:disabled {
     font-size: 0.9em;
   }
   header {
-    padding: 10px 15px; /* weniger Innenabstand */
-    width: 100%; /* volle Breite */
-    overflow-wrap: break-word; /* sorgt für Umbrechen bei langen Wörtern */
+    padding: 10px;
+    width: 100%;
+    box-sizing: border-box;
   }
   .header-top {
-    flex-direction: column; /* Elemente untereinander */
-    align-items: center; /* zentrieren */
-    gap: 8px; /* etwas Abstand */
+    flex-direction: column; /* alles untereinander */
+    align-items: center;
+    gap: 10px;
+    width: 100%;
   }
   h1 {
-    font-size: 1.8em; /* Titel kleiner */
-    text-align: center; /* zentrieren */
-    white-space: normal; /* umbrechen erlauben */
-    word-break: break-word; /* lange Wörter umbrechen */
+    font-size: 1.4em;
+    line-height: 1.3em;
+    text-align: center;
+    max-width: 90%; /* verhindert Überlauf */
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
   .messages-container {
     grid-template-columns: 1fr;
