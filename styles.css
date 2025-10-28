@@ -143,6 +143,7 @@ label {
   margin-bottom: 5px;
   font-weight: 600;
   color: #1e3c72;
+  word-wrap: break-word;
 }
 
 input,
@@ -667,6 +668,16 @@ button:disabled {
   .form-row,
   .search-row {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  input,
+  select,
+  textarea {
+    padding: 10px;
+    font-size: 0.9em;
+  }
+  label {
+    font-size: 0.9em;
   }
   .header-top {
     flex-direction: column;
@@ -681,5 +692,12 @@ button:disabled {
   }
   .chat-list {
     height: 300px;
+  }
+  button[type="submit"],
+  .btn {
+    width: 100%;
+  }
+  .container {
+    padding: 10px;
   }
 }
