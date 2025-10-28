@@ -367,7 +367,7 @@ function editMyProfile() {
     document.getElementById("athlete-form-title").textContent =
       "Profil bearbeiten";
     document.getElementById("athlete-submit-btn").textContent =
-      "Profil aktualisieren";
+      "Änderungen speichern";
     showProfileForm("athlete");
   } else {
     const g = myProfile.data;
@@ -392,7 +392,7 @@ function editMyProfile() {
 
     document.getElementById("gym-form-title").textContent = "Profil bearbeiten";
     document.getElementById("gym-submit-btn").textContent =
-      "Profil aktualisieren";
+      "Änderungen speichern";
     showProfileForm("gym");
   }
 }
@@ -540,6 +540,7 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
 
   const submitBtn = document.getElementById("gym-submit-btn");
   submitBtn.disabled = true;
+  const originalText = submitBtn.textContent;
   submitBtn.textContent = "Wird gespeichert...";
 
   const formData = new FormData(e.target);
@@ -558,7 +559,7 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
       "error"
     );
     submitBtn.disabled = false;
-    submitBtn.textContent = isEditing ? "Profil aktualisieren" : "Gym anlegen";
+    submitBtn.textContent = originalText;
     return;
   }
 
@@ -641,7 +642,7 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
   }
 
   submitBtn.disabled = false;
-  submitBtn.textContent = isEditing ? "Profil aktualisieren" : "Gym anlegen";
+  submitBtn.textContent = originalText;
   statusDiv.textContent = "";
 });
 
