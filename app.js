@@ -384,31 +384,35 @@ function displayMyProfile() {
                 ${
                   a.image_url
                     ? `<img src="${a.image_url}" class="profile-image" alt="${a.name}">`
-                    : '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
+                    : '<div class="profile-image" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
                 }
-                <h2>${a.name}</h2>
-                ${
-                  a.bio
-                    ? `<p style="color: #666; margin: 10px 0;">${a.bio}</p>`
-                    : ""
-                }
-                ${a.age ? `<p>📅 ${a.age} Jahre</p>` : ""}
-                ${a.weight ? `<p>⚖️ ${a.weight} kg</p>` : ""}
-                ${
-                  a.belt_rank
-                    ? `<span class="belt-badge belt-${
-                        a.belt_rank
-                      }">${a.belt_rank.toUpperCase()}</span>`
-                    : ""
-                }
-                ${
-                  a.gyms
-                    ? `<p style="margin-top: 10px;">🏋️ <strong>${
-                        a.gyms.name
-                      }</strong>${a.gyms.city ? ` (${a.gyms.city})` : ""}</p>`
-                    : ""
-                }
-                <button class="btn" style="width: 100%; margin-top: 20px;" onclick="editMyProfile()">Profil bearbeiten</button>
+                <div class="profile-card-content">
+                    <h2>${a.name}</h2>
+                    ${
+                      a.bio
+                        ? `<p style="color: #666; margin: 10px 0;">${a.bio}</p>`
+                        : ""
+                    }
+                    ${a.age ? `<p>📅 ${a.age} Jahre</p>` : ""}
+                    ${a.weight ? `<p>⚖️ ${a.weight} kg</p>` : ""}
+                    ${
+                      a.belt_rank
+                        ? `<span class="belt-badge belt-${
+                            a.belt_rank
+                          }">${a.belt_rank.toUpperCase()}</span>`
+                        : ""
+                    }
+                    ${
+                      a.gyms
+                        ? `<p style="margin-top: 10px;">🏋️ <strong>${
+                            a.gyms.name
+                          }</strong>${
+                            a.gyms.city ? ` (${a.gyms.city})` : ""
+                          }</p>`
+                        : ""
+                    }
+                    <button class="btn" style="width: 100%; margin-top: 20px;" onclick="editMyProfile()">Profil bearbeiten</button>
+                </div>
             </div>
         `;
   } else {
@@ -420,22 +424,24 @@ function displayMyProfile() {
                     ? `<img src="${g.image_url}" class="profile-image" alt="${g.name}">`
                     : ""
                 }
-                <h2>${g.name}</h2>
-                ${
-                  g.description
-                    ? `<p style="color: #666;">${g.description}</p>`
-                    : ""
-                }
-                <p>📍 ${g.street || ""}</p>
-                <p>🏙️ ${g.postal_code || ""} ${g.city || ""}</p>
-                ${g.phone ? `<p>📞 ${g.phone}</p>` : ""}
-                ${g.email ? `<p>📧 ${g.email}</p>` : ""}
-                ${
-                  g.website
-                    ? `<p><a href="${g.website}" target="_blank">🌐 Website</a></p>`
-                    : ""
-                }
-                <button class="btn" style="width: 100%; margin-top: 20px;" onclick="editMyProfile()">Profil bearbeiten</button>
+                <div class="profile-card-content">
+                    <h2>${g.name}</h2>
+                    ${
+                      g.description
+                        ? `<p style="color: #666;">${g.description}</p>`
+                        : ""
+                    }
+                    <p>📍 ${g.street || ""}</p>
+                    <p>🏙️ ${g.postal_code || ""} ${g.city || ""}</p>
+                    ${g.phone ? `<p>📞 ${g.phone}</p>` : ""}
+                    ${g.email ? `<p>📧 ${g.email}</p>` : ""}
+                    ${
+                      g.website
+                        ? `<p><a href="${g.website}" target="_blank">🌐 Website</a></p>`
+                        : ""
+                    }
+                    <button class="btn" style="width: 100%; margin-top: 20px;" onclick="editMyProfile()">Profil bearbeiten</button>
+                </div>
             </div>
         `;
   }
@@ -808,46 +814,49 @@ function displayAthletes(athletes) {
     .map((a) => {
       const isMyProfile =
         myProfile && myProfile.type === "athlete" && myProfile.id === a.id;
-      const isFriend = false; // Wird später implementiert mit loadFriendships
 
       return `
             <div class="profile-card">
                 ${
                   a.image_url
                     ? `<img src="${a.image_url}" class="profile-image" alt="${a.name}">`
-                    : '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
+                    : '<div class="profile-image" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
                 }
-                <h3>${a.name}</h3>
-                ${
-                  a.bio
-                    ? `<p style="font-size: 0.9em; color: #666; margin: 10px 0;">${a.bio}</p>`
-                    : ""
-                }
-                ${a.age ? `<p>📅 ${a.age} Jahre</p>` : ""}
-                ${a.weight ? `<p>⚖️ ${a.weight} kg</p>` : ""}
-                ${
-                  a.belt_rank
-                    ? `<span class="belt-badge belt-${
-                        a.belt_rank
-                      }">${a.belt_rank.toUpperCase()}</span>`
-                    : ""
-                }
-                ${
-                  a.gyms
-                    ? `<p style="margin-top: 10px;">🏋️ <strong>${
-                        a.gyms.name
-                      }</strong>${a.gyms.city ? ` (${a.gyms.city})` : ""}</p>`
-                    : ""
-                }
-                ${
-                  !isMyProfile && myProfile?.type === "athlete"
-                    ? `
-                    <button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="sendFriendRequest('${a.id}')">
-                        👥 Freundschaftsanfrage senden
-                    </button>
-                `
-                    : ""
-                }
+                <div class="profile-card-content">
+                    <h3>${a.name}</h3>
+                    ${
+                      a.bio
+                        ? `<p style="font-size: 0.9em; color: #666; margin: 10px 0;">${a.bio}</p>`
+                        : ""
+                    }
+                    ${a.age ? `<p>📅 ${a.age} Jahre</p>` : ""}
+                    ${a.weight ? `<p>⚖️ ${a.weight} kg</p>` : ""}
+                    ${
+                      a.belt_rank
+                        ? `<span class="belt-badge belt-${
+                            a.belt_rank
+                          }">${a.belt_rank.toUpperCase()}</span>`
+                        : ""
+                    }
+                    ${
+                      a.gyms
+                        ? `<p style="margin-top: 10px;">🏋️ <strong>${
+                            a.gyms.name
+                          }</strong>${
+                            a.gyms.city ? ` (${a.gyms.city})` : ""
+                          }</p>`
+                        : ""
+                    }
+                    ${
+                      !isMyProfile && myProfile?.type === "athlete"
+                        ? `
+                        <button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="sendFriendRequest('${a.id}')">
+                            👥 Freundschaftsanfrage senden
+                        </button>
+                    `
+                        : ""
+                    }
+                </div>
             </div>
         `;
     })
@@ -903,20 +912,22 @@ function displayGyms(gyms) {
                 ? `<img src="${g.image_url}" class="profile-image" alt="${g.name}">`
                 : ""
             }
-            <h3>${g.name}</h3>
-            ${
-              g.description
-                ? `<p style="font-size: 0.9em; color: #666;">${g.description}</p>`
-                : ""
-            }
-            <p>📍 ${g.street || ""}</p>
-            <p>🏙️ ${g.postal_code || ""} ${g.city || ""}</p>
-            ${g.phone ? `<p>📞 ${g.phone}</p>` : ""}
-            ${
-              g.website
-                ? `<p><a href="${g.website}" target="_blank">🌐 Website</a></p>`
-                : ""
-            }
+            <div class="profile-card-content">
+                <h3>${g.name}</h3>
+                ${
+                  g.description
+                    ? `<p style="font-size: 0.9em; color: #666;">${g.description}</p>`
+                    : ""
+                }
+                <p>📍 ${g.street || ""}</p>
+                <p>🏙️ ${g.postal_code || ""} ${g.city || ""}</p>
+                ${g.phone ? `<p>📞 ${g.phone}</p>` : ""}
+                ${
+                  g.website
+                    ? `<p><a href="${g.website}" target="_blank">🌐 Website</a></p>`
+                    : ""
+                }
+            </div>
         </div>
     `
     )
@@ -1133,26 +1144,28 @@ async function loadFriends() {
                     ${
                       friend.image_url
                         ? `<img src="${friend.image_url}" class="profile-image" alt="${friend.name}">`
-                        : '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
+                        : '<div class="profile-image" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
                     }
-                    <h3>${friend.name}</h3>
-                    ${
-                      friend.belt_rank
-                        ? `<span class="belt-badge belt-${
-                            friend.belt_rank
-                          }">${friend.belt_rank.toUpperCase()}</span>`
-                        : ""
-                    }
-                    <button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="openChat('${
-                      friend.id
-                    }')">
-                        💬 Chat öffnen
-                    </button>
-                    <button class="btn btn-small btn-danger" style="margin-top: 5px; width: 100%;" onclick="endFriendship('${
-                      f.id
-                    }')">
-                        Freundschaft beenden
-                    </button>
+                    <div class="profile-card-content">
+                        <h3>${friend.name}</h3>
+                        ${
+                          friend.belt_rank
+                            ? `<span class="belt-badge belt-${
+                                friend.belt_rank
+                              }">${friend.belt_rank.toUpperCase()}</span>`
+                            : ""
+                        }
+                        <button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="openChat('${
+                          friend.id
+                        }')">
+                            💬 Chat öffnen
+                        </button>
+                        <button class="btn btn-small btn-danger" style="margin-top: 5px; width: 100%;" onclick="endFriendship('${
+                          f.id
+                        }')">
+                            Freundschaft beenden
+                        </button>
+                    </div>
                 </div>
             `;
       })
@@ -1248,7 +1261,7 @@ async function endFriendship(friendshipId) {
 }
 
 // ================================================
-// PRIVATE CHATS
+// PRIVATE CHATS MIT BILD/GIF UPLOAD
 // ================================================
 
 async function loadChats() {
@@ -1279,7 +1292,7 @@ async function loadChats() {
         // Lade letzte Nachricht
         const { data: lastMsg } = await supabase
           .from("private_messages")
-          .select("message, created_at")
+          .select("message, media_url, media_type, created_at")
           .or(
             `and(sender_id.eq.${myProfile.id},receiver_id.eq.${friend.id}),and(sender_id.eq.${friend.id},receiver_id.eq.${myProfile.id})`
           )
@@ -1319,7 +1332,13 @@ async function loadChats() {
                 </div>
                 ${
                   item.lastMsg
-                    ? `<div class="last-message">${item.lastMsg.message}</div>`
+                    ? `<div class="last-message">${
+                        item.lastMsg.media_url
+                          ? item.lastMsg.media_type === "image"
+                            ? "📷 Bild"
+                            : "🎬 GIF"
+                          : item.lastMsg.message
+                      }</div>`
                     : ""
                 }
             </div>
@@ -1350,13 +1369,42 @@ async function openChat(friendId) {
         </div>
         <div class="chat-messages" id="current-chat-messages"></div>
         <form class="chat-input-form" onsubmit="sendPrivateMessage(event, '${friendId}')">
-            <input type="text" name="message" placeholder="Nachricht schreiben..." required />
+            <input type="file" id="chat-media-input-${friendId}" accept="image/*,.gif" style="display: none" onchange="previewChatMedia(event, '${friendId}')">
+            <button type="button" class="media-btn" onclick="document.getElementById('chat-media-input-${friendId}').click()">
+                📎
+            </button>
+            <div id="chat-media-preview-${friendId}" class="media-preview"></div>
+            <input type="text" name="message" placeholder="Nachricht schreiben..." />
             <button type="submit">Senden</button>
         </form>
     `;
 
   await loadMessages(friendId);
   loadChats(); // Aktualisiere Chat-Liste
+}
+
+function previewChatMedia(event, friendId) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const preview = document.getElementById(`chat-media-preview-${friendId}`);
+  const reader = new FileReader();
+
+  reader.onload = (e) => {
+    preview.innerHTML = `
+            <div class="media-preview-item">
+                <img src="${e.target.result}" alt="Preview">
+                <button type="button" class="remove-media" onclick="removeChatMedia('${friendId}')">✕</button>
+            </div>
+        `;
+  };
+
+  reader.readAsDataURL(file);
+}
+
+function removeChatMedia(friendId) {
+  document.getElementById(`chat-media-input-${friendId}`).value = "";
+  document.getElementById(`chat-media-preview-${friendId}`).innerHTML = "";
 }
 
 async function loadMessages(friendId) {
@@ -1376,6 +1424,17 @@ async function loadMessages(friendId) {
       .map((m) => {
         const isOwn = m.sender_id === myProfile.id;
         const date = new Date(m.created_at);
+
+        let content = "";
+        if (m.media_url) {
+          if (m.media_type === "image" || m.media_type === "gif") {
+            content = `<img src="${m.media_url}" class="chat-media-image" alt="Bild" onclick="openImageModal('${m.media_url}')">`;
+          }
+        }
+        if (m.message) {
+          content += `<div class="message-text">${m.message}</div>`;
+        }
+
         return `
                 <div class="message ${isOwn ? "own" : "other"}">
                     ${
@@ -1383,7 +1442,9 @@ async function loadMessages(friendId) {
                         ? `<div class="message-sender">${m.sender.name}</div>`
                         : ""
                     }
-                    <div class="message-content">${m.message}</div>
+                    <div class="message-content">
+                        ${content}
+                    </div>
                     <div class="message-time">${date.toLocaleTimeString(
                       "de-DE",
                       { hour: "2-digit", minute: "2-digit" }
@@ -1414,12 +1475,50 @@ async function sendPrivateMessage(event, receiverId) {
 
   const formData = new FormData(event.target);
   const message = formData.get("message");
+  const mediaInput = document.getElementById(`chat-media-input-${receiverId}`);
+  const mediaFile = mediaInput?.files[0];
+
+  let mediaUrl = null;
+  let mediaType = null;
+
+  // Upload Media falls vorhanden
+  if (mediaFile) {
+    const fileExt = mediaFile.name.split(".").pop().toLowerCase();
+    const fileName = `chat_${myProfile.id}_${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("chat-media")
+      .upload(fileName, mediaFile, { upsert: true });
+
+    if (uploadError) {
+      showNotification(
+        "Fehler beim Media-Upload: " + uploadError.message,
+        "error"
+      );
+      return;
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("chat-media").getPublicUrl(fileName);
+
+    mediaUrl = publicUrl;
+    mediaType = fileExt === "gif" ? "gif" : "image";
+  }
+
+  // Mindestens Text oder Media muss vorhanden sein
+  if (!message && !mediaUrl) {
+    showNotification("Bitte Nachricht oder Bild eingeben", "warning");
+    return;
+  }
 
   const { error } = await supabase.from("private_messages").insert([
     {
       sender_id: myProfile.id,
       receiver_id: receiverId,
-      message: message,
+      message: message || null,
+      media_url: mediaUrl,
+      media_type: mediaType,
     },
   ]);
 
@@ -1427,9 +1526,28 @@ async function sendPrivateMessage(event, receiverId) {
     showNotification("Fehler: " + error.message, "error");
   } else {
     event.target.reset();
+    removeChatMedia(receiverId);
     await loadMessages(receiverId);
     loadChats();
   }
+}
+
+function openImageModal(imageUrl) {
+  const modal = document.createElement("div");
+  modal.className = "image-modal";
+  modal.innerHTML = `
+        <div class="image-modal-content">
+            <button class="image-modal-close" onclick="this.parentElement.parentElement.remove()">✕</button>
+            <img src="${imageUrl}" alt="Vollbild">
+        </div>
+    `;
+  document.body.appendChild(modal);
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      modal.remove();
+    }
+  });
 }
 
 async function updateNotificationBadges() {
@@ -1452,7 +1570,7 @@ async function updateNotificationBadges() {
 }
 
 // ================================================
-// OPEN MAT GRUPPENCHATS
+// OPEN MAT GRUPPENCHATS MIT MEDIA
 // ================================================
 
 function openOpenMatChat(openmatId, title) {
@@ -1498,6 +1616,17 @@ async function loadOpenMatMessages(openmatId) {
           myProfile.type === "athlete" &&
           m.athlete_id === myProfile.id;
         const date = new Date(m.created_at);
+
+        let content = "";
+        if (m.media_url) {
+          if (m.media_type === "image" || m.media_type === "gif") {
+            content = `<img src="${m.media_url}" class="chat-media-image" alt="Bild" onclick="openImageModal('${m.media_url}')">`;
+          }
+        }
+        if (m.message) {
+          content += `<div class="message-text">${m.message}</div>`;
+        }
+
         return `
                 <div class="message ${isOwn ? "own" : "other"}">
                     ${
@@ -1505,7 +1634,9 @@ async function loadOpenMatMessages(openmatId) {
                         ? `<div class="message-sender">${m.athlete.name}</div>`
                         : ""
                     }
-                    <div class="message-content">${m.message}</div>
+                    <div class="message-content">
+                        ${content}
+                    </div>
                     <div class="message-time">${date.toLocaleTimeString(
                       "de-DE",
                       { hour: "2-digit", minute: "2-digit" }
@@ -1517,6 +1648,30 @@ async function loadOpenMatMessages(openmatId) {
 
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
+}
+
+function previewOpenMatMedia(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const preview = document.getElementById("openmat-media-preview");
+  const reader = new FileReader();
+
+  reader.onload = (e) => {
+    preview.innerHTML = `
+            <div class="media-preview-item">
+                <img src="${e.target.result}" alt="Preview">
+                <button type="button" class="remove-media" onclick="removeOpenMatMedia()">✕</button>
+            </div>
+        `;
+  };
+
+  reader.readAsDataURL(file);
+}
+
+function removeOpenMatMedia() {
+  document.getElementById("openmat-media-input").value = "";
+  document.getElementById("openmat-media-preview").innerHTML = "";
 }
 
 document
@@ -1533,12 +1688,50 @@ document
 
     const formData = new FormData(e.target);
     const message = formData.get("message");
+    const mediaInput = document.getElementById("openmat-media-input");
+    const mediaFile = mediaInput?.files[0];
+
+    let mediaUrl = null;
+    let mediaType = null;
+
+    // Upload Media falls vorhanden
+    if (mediaFile) {
+      const fileExt = mediaFile.name.split(".").pop().toLowerCase();
+      const fileName = `openmat_${myProfile.id}_${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("chat-media")
+        .upload(fileName, mediaFile, { upsert: true });
+
+      if (uploadError) {
+        showNotification(
+          "Fehler beim Media-Upload: " + uploadError.message,
+          "error"
+        );
+        return;
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("chat-media").getPublicUrl(fileName);
+
+      mediaUrl = publicUrl;
+      mediaType = fileExt === "gif" ? "gif" : "image";
+    }
+
+    // Mindestens Text oder Media muss vorhanden sein
+    if (!message && !mediaUrl) {
+      showNotification("Bitte Nachricht oder Bild eingeben", "warning");
+      return;
+    }
 
     const { error } = await supabase.from("openmat_messages").insert([
       {
         openmat_id: currentOpenMatChat,
         athlete_id: myProfile.id,
-        message: message,
+        message: message || null,
+        media_url: mediaUrl,
+        media_type: mediaType,
       },
     ]);
 
@@ -1546,6 +1739,7 @@ document
       showNotification("Fehler: " + error.message, "error");
     } else {
       e.target.reset();
+      removeOpenMatMedia();
       loadOpenMatMessages(currentOpenMatChat);
     }
   });
@@ -1570,15 +1764,15 @@ async function loadDashboard() {
   const statsGrid = document.getElementById("stats-grid");
   statsGrid.innerHTML = `
         <div class="stat-card">
-            <div>👥 Athleten</div>
+            <h3>Athleten</h3>
             <div class="stat-number">${athletes?.length || 0}</div>
         </div>
         <div class="stat-card">
-            <div>🏋️ Gyms</div>
+            <h3>Gyms</h3>
             <div class="stat-number">${gyms?.length || 0}</div>
         </div>
         <div class="stat-card">
-            <div>📅 Open Mats</div>
+            <h3>Open Mats</h3>
             <div class="stat-number">${openMats?.length || 0}</div>
         </div>
     `;
@@ -1590,9 +1784,9 @@ async function loadDashboard() {
       ? recentAthletes
           .map(
             (a) => `
-            <div style="padding: 15px; background: #f8f9fa; margin: 10px 0; border-radius: 8px;">
+            <div style="padding: 15px; background: var(--gray-lightest); margin: 10px 0; border-radius: 8px; border: 1px solid var(--gray-lighter);">
                 <strong>${a.name}</strong> hat sich registriert
-                <span style="float: right; color: #666; font-size: 0.9em;">
+                <span style="float: right; color: var(--gray); font-size: 0.9em;">
                     ${new Date(a.created_at).toLocaleDateString("de-DE")}
                 </span>
             </div>

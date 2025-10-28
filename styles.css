@@ -1388,3 +1388,148 @@ img {
   background: var(--black);
   color: var(--white);
 }
+
+/* Chat Media Styles */
+.media-btn {
+  background: transparent;
+  border: 2px solid var(--gray-light);
+  color: var(--black);
+  padding: 12px 16px;
+  border-radius: 28px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  font-size: 1.25rem;
+  width: auto;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.media-btn:hover {
+  background: var(--gray-lightest);
+  border-color: var(--black);
+}
+
+.media-preview {
+  width: 100%;
+  margin: 10px 0;
+}
+
+.media-preview-item {
+  position: relative;
+  display: inline-block;
+  max-width: 200px;
+}
+
+.media-preview-item img {
+  width: 100%;
+  border-radius: 10px;
+  border: 2px solid var(--gray-lighter);
+}
+
+.remove-media {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--black);
+  color: var(--white);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+}
+
+.remove-media:hover {
+  background: var(--gray-dark);
+  transform: scale(1.1);
+}
+
+.chat-media-image {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 10px;
+  margin: 4px 0;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: block;
+}
+
+.chat-media-image:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.message-text {
+  margin-top: 6px;
+}
+
+/* Image Modal für Vollbild-Ansicht */
+.image-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.image-modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-modal-content img {
+  max-width: 100%;
+  max-height: 90vh;
+  border-radius: 8px;
+  box-shadow: var(--shadow-xl);
+}
+
+.image-modal-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: var(--white);
+  color: var(--black);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+  font-weight: 700;
+}
+
+.image-modal-close:hover {
+  background: var(--gray-lightest);
+  transform: scale(1.1);
+}
+
+/* OpenMat Media Upload */
+#openmat-media-input {
+  display: none;
+}
+
+#openmat-media-preview {
+  width: 100%;
+  margin: 10px 0;
+}
