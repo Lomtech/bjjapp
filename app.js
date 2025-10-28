@@ -26,7 +26,7 @@ let messagePollingInterval = null;
   ) {
     initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
   } else {
-    showNotification("⚠️ Umgebungsvariablen nicht gefunden", "warning");
+    showNotification("Umgebungsvariablen nicht gefunden", "warning");
   }
 })();
 
@@ -115,7 +115,7 @@ function updateAuthUI() {
   if (currentUser) {
     authSection.innerHTML = `
             <div class="user-info">
-                <span>👤 ${currentUser.email}</span>
+                <span>${currentUser.email}</span>
             </div>
             <button class="auth-btn logout" onclick="logout()">Logout</button>
         `;
@@ -344,7 +344,7 @@ function displayMyProfile() {
                 ${
                   a.image_url
                     ? `<img src="${a.image_url}" class="profile-image" alt="${a.name}">`
-                    : '<div class="profile-image" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
+                    : '<div class="profile-image" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;"></div>'
                 }
                 <div class="profile-card-content">
                     <h2>${a.name}</h2>
@@ -353,8 +353,8 @@ function displayMyProfile() {
                         ? `<p style="color: #666; margin: 10px 0;">${a.bio}</p>`
                         : ""
                     }
-                    ${a.age ? `<p>📅 ${a.age} Jahre</p>` : ""}
-                    ${a.weight ? `<p>⚖️ ${a.weight} kg</p>` : ""}
+                    ${a.age ? `<p>${a.age} Jahre</p>` : ""}
+                    ${a.weight ? `<p>${a.weight} kg</p>` : ""}
                     ${
                       a.belt_rank
                         ? `<span class="belt-badge belt-${
@@ -364,7 +364,7 @@ function displayMyProfile() {
                     }
                     ${
                       a.gyms
-                        ? `<p style="margin-top: 10px;">🏋️ <strong>${
+                        ? `<p style="margin-top: 10px;"><strong>${
                             a.gyms.name
                           }</strong>${
                             a.gyms.city ? ` (${a.gyms.city})` : ""
@@ -391,13 +391,13 @@ function displayMyProfile() {
                         ? `<p style="color: #666;">${g.description}</p>`
                         : ""
                     }
-                    <p>📍 ${g.street || ""}</p>
-                    <p>🏙️ ${g.postal_code || ""} ${g.city || ""}</p>
-                    ${g.phone ? `<p>📞 ${g.phone}</p>` : ""}
-                    ${g.email ? `<p>📧 ${g.email}</p>` : ""}
+                    <p>${g.street || ""}</p>
+                    <p>${g.postal_code || ""} ${g.city || ""}</p>
+                    ${g.phone ? `<p>${g.phone}</p>` : ""}
+                    ${g.email ? `<p>${g.email}</p>` : ""}
                     ${
                       g.website
-                        ? `<p><a href="${g.website}" target="_blank">🌐 Website</a></p>`
+                        ? `<p><a href="${g.website}" target="_blank">Website</a></p>`
                         : ""
                     }
                     <button class="btn" style="width: 100%; margin-top: 20px;" onclick="editMyProfile()">Profil bearbeiten</button>
@@ -625,16 +625,16 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
   }
 
   const statusDiv = document.getElementById("geocoding-status");
-  statusDiv.textContent = "🔄 Geocodiere Adresse...";
+  statusDiv.textContent = "Geocodiere Adresse...";
   statusDiv.className = "geocoding-status";
 
   const geoResult = await geocodeAddress(street, postalCode, city);
 
   if (geoResult.fallback) {
-    statusDiv.textContent = "⚠️ Adresse approximiert (München als Fallback)";
+    statusDiv.textContent = "Adresse approximiert (München als Fallback)";
     statusDiv.className = "geocoding-status warning";
   } else {
-    statusDiv.textContent = "✅ Adresse erfolgreich gefunden";
+    statusDiv.textContent = "Adresse erfolgreich gefunden";
     statusDiv.className = "geocoding-status success";
   }
 
@@ -778,7 +778,7 @@ function displayAthletes(athletes) {
                 ${
                   a.image_url
                     ? `<img src="${a.image_url}" class="profile-image" alt="${a.name}">`
-                    : '<div class="profile-image" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
+                    : '<div class="profile-image" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;"></div>'
                 }
                 <div class="profile-card-content">
                     <h3>${a.name}</h3>
@@ -787,8 +787,8 @@ function displayAthletes(athletes) {
                         ? `<p style="font-size: 0.9em; color: #666; margin: 10px 0;">${a.bio}</p>`
                         : ""
                     }
-                    ${a.age ? `<p>📅 ${a.age} Jahre</p>` : ""}
-                    ${a.weight ? `<p>⚖️ ${a.weight} kg</p>` : ""}
+                    ${a.age ? `<p>${a.age} Jahre</p>` : ""}
+                    ${a.weight ? `<p>${a.weight} kg</p>` : ""}
                     ${
                       a.belt_rank
                         ? `<span class="belt-badge belt-${
@@ -798,7 +798,7 @@ function displayAthletes(athletes) {
                     }
                     ${
                       a.gyms
-                        ? `<p style="margin-top: 10px;">🏋️ <strong>${
+                        ? `<p style="margin-top: 10px;"><strong>${
                             a.gyms.name
                           }</strong>${
                             a.gyms.city ? ` (${a.gyms.city})` : ""
@@ -809,7 +809,7 @@ function displayAthletes(athletes) {
                       !isMyProfile && myProfile?.type === "athlete"
                         ? `
                         <button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="sendFriendRequest('${a.id}')">
-                            👥 Freundschaftsanfrage senden
+                            Freundschaftsanfrage senden
                         </button>
                     `
                         : ""
@@ -877,12 +877,12 @@ function displayGyms(gyms) {
                     ? `<p style="font-size: 0.9em; color: #666;">${g.description}</p>`
                     : ""
                 }
-                <p>📍 ${g.street || ""}</p>
-                <p>🏙️ ${g.postal_code || ""} ${g.city || ""}</p>
-                ${g.phone ? `<p>📞 ${g.phone}</p>` : ""}
+                <p>${g.street || ""}</p>
+                <p>${g.postal_code || ""} ${g.city || ""}</p>
+                ${g.phone ? `<p>${g.phone}</p>` : ""}
                 ${
                   g.website
-                    ? `<p><a href="${g.website}" target="_blank">🌐 Website</a></p>`
+                    ? `<p><a href="${g.website}" target="_blank">Website</a></p>`
                     : ""
                 }
             </div>
@@ -934,7 +934,7 @@ async function loadOpenMats() {
                       isOwner
                         ? `
                         <div class="event-actions">
-                            <button class="btn btn-small btn-danger" onclick="deleteOpenMat('${om.id}')">🗑️</button>
+                            <button class="btn btn-small btn-danger" onclick="deleteOpenMat('${om.id}')"></button>
                         </div>
                     `
                         : ""
@@ -949,21 +949,19 @@ async function loadOpenMats() {
                     })}</div>
                     <h3>${om.title}</h3>
                     <p><strong>${om.gyms?.name || ""}</strong></p>
-                    ${om.gyms?.street ? `<p>📍 ${om.gyms.street}</p>` : ""}
+                    ${om.gyms?.street ? `<p>${om.gyms.street}</p>` : ""}
                     ${
                       om.gyms?.city
-                        ? `<p>🏙️ ${om.gyms.postal_code || ""} ${
-                            om.gyms.city
-                          }</p>`
+                        ? `<p>${om.gyms.postal_code || ""} ${om.gyms.city}</p>`
                         : ""
                     }
                     ${om.description ? `<p>${om.description}</p>` : ""}
-                    <p>⏱️ Dauer: ${om.duration_minutes} Minuten</p>
+                    <p>Dauer: ${om.duration_minutes} Minuten</p>
                     ${
                       myProfile?.type === "athlete"
                         ? `
                         <button class="btn event-chat-btn" onclick="openOpenMatChat('${om.id}', '${om.title}')">
-                            💬 Chat beitreten
+                            Chat beitreten
                         </button>
                     `
                         : ""
@@ -1053,8 +1051,8 @@ async function loadFriendRequests() {
             <div class="friend-request">
                 <p><strong>${fr.requester.name}</strong> möchte mit dir befreundet sein</p>
                 <div class="actions">
-                    <button class="btn btn-small" onclick="acceptFriendRequest('${fr.id}')">✅ Annehmen</button>
-                    <button class="btn btn-small btn-danger" onclick="rejectFriendRequest('${fr.id}')">❌ Ablehnen</button>
+                    <button class="btn btn-small" onclick="acceptFriendRequest('${fr.id}')">Annehmen</button>
+                    <button class="btn btn-small btn-danger" onclick="rejectFriendRequest('${fr.id}')">Ablehnen</button>
                 </div>
             </div>
         `
@@ -1095,7 +1093,7 @@ async function loadFriends() {
                     ${
                       friend.image_url
                         ? `<img src="${friend.image_url}" class="profile-image" alt="${friend.name}">`
-                        : '<div class="profile-image" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
+                        : '<div class="profile-image" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;"></div>'
                     }
                     <div class="profile-card-content">
                         <h3>${friend.name}</h3>
@@ -1109,7 +1107,7 @@ async function loadFriends() {
                         <button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="openChat('${
                           friend.id
                         }')">
-                            💬 Chat öffnen
+                            Chat öffnen
                         </button>
                         <button class="btn btn-small btn-danger" style="margin-top: 5px; width: 100%;" onclick="endFriendship('${
                           f.id
@@ -1311,8 +1309,8 @@ async function loadChats() {
                         ? `<div class="last-message">${
                             item.lastMsg.media_url
                               ? item.lastMsg.media_type === "image"
-                                ? "📷 Foto"
-                                : "🎬 GIF"
+                                ? "Foto"
+                                : "GIF"
                               : item.lastMsg.message
                           }</div>`
                         : '<div class="last-message">Keine Nachrichten</div>'
@@ -1325,7 +1323,7 @@ async function loadChats() {
   } else {
     list.innerHTML = `
             <div class="chat-empty-state" style="padding: 40px 24px;">
-                <div class="chat-empty-icon">👥</div>
+                <div class="chat-empty-icon"></div>
                 <div class="chat-empty-text">Noch keine Chats</div>
                 <div class="chat-empty-subtext">Füge Freunde hinzu, um zu chatten</div>
             </div>
@@ -1359,17 +1357,37 @@ async function openChat(friendId) {
         </div>
         <div class="chat-messages" id="current-chat-messages"></div>
         <div class="chat-input-container">
-            <form class="chat-input-form" onsubmit="sendPrivateMessage(event, '${friendId}')">
+            <form id="chat-form-${friendId}" class="chat-input-form" onsubmit="sendPrivateMessage(event, '${friendId}')">
                 <input type="file" id="chat-media-input-${friendId}" accept="image/*,.gif" style="display: none" onchange="previewChatMedia(event, '${friendId}')">
                 <button type="button" class="media-btn" onclick="document.getElementById('chat-media-input-${friendId}').click()">
-                    📎
+                    
                 </button>
                 <div id="chat-media-preview-${friendId}" class="media-preview"></div>
-                <input type="text" name="message" placeholder="Nachricht..." />
-                <button type="submit">Senden</button>
+                <input 
+                    type="text" 
+                    id="chat-message-input-${friendId}"
+                    name="message" 
+                    placeholder="Nachricht schreiben..." 
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="sentences"
+                    spellcheck="true"
+                    style="font-size: 16px; min-height: 44px;"
+                    required 
+                />
+                <button type="submit" id="chat-send-btn-${friendId}">Senden</button>
             </form>
         </div>
     `;
+
+  // Fokus setzen und Tastatur öffnen (besonders wichtig auf Mobilgeräten)
+  setTimeout(() => {
+    const input = document.getElementById(`chat-message-input-${friendId}`);
+    if (input) {
+      input.focus();
+      input.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, 100);
 
   await loadMessages(friendId);
   loadChats();
@@ -1395,8 +1413,10 @@ function previewChatMedia(event, friendId) {
 }
 
 function removeChatMedia(friendId) {
-  document.getElementById(`chat-media-input-${friendId}`).value = "";
-  document.getElementById(`chat-media-preview-${friendId}`).innerHTML = "";
+  const input = document.getElementById(`chat-media-input-${friendId}`);
+  const preview = document.getElementById(`chat-media-preview-${friendId}`);
+  if (input) input.value = "";
+  if (preview) preview.innerHTML = "";
 }
 
 async function loadMessages(friendId) {
@@ -1458,10 +1478,15 @@ async function sendPrivateMessage(event, receiverId) {
   event.preventDefault();
   if (!supabase || !myProfile || myProfile.type !== "athlete") return;
 
-  const formData = new FormData(event.target);
-  const message = formData.get("message");
+  const input = document.getElementById(`chat-message-input-${receiverId}`);
+  const message = input?.value.trim();
   const mediaInput = document.getElementById(`chat-media-input-${receiverId}`);
   const mediaFile = mediaInput?.files[0];
+
+  if (!message && !mediaFile) {
+    showNotification("Bitte Nachricht oder Bild eingeben", "warning");
+    return;
+  }
 
   let mediaUrl = null;
   let mediaType = null;
@@ -1490,11 +1515,6 @@ async function sendPrivateMessage(event, receiverId) {
     mediaType = fileExt === "gif" ? "gif" : "image";
   }
 
-  if (!message && !mediaUrl) {
-    showNotification("Bitte Nachricht oder Bild eingeben", "warning");
-    return;
-  }
-
   const { error } = await supabase.from("private_messages").insert([
     {
       sender_id: myProfile.id,
@@ -1508,7 +1528,7 @@ async function sendPrivateMessage(event, receiverId) {
   if (error) {
     showNotification("Fehler: " + error.message, "error");
   } else {
-    event.target.reset();
+    input.value = "";
     removeChatMedia(receiverId);
     await loadMessages(receiverId);
     loadChats();
@@ -1825,7 +1845,7 @@ async function initMap() {
         L.marker([om.gyms.latitude, om.gyms.longitude], {
           icon: L.divIcon({
             className: "custom-icon",
-            html: "📅",
+            html: "",
             iconSize: [30, 30],
           }),
         })
@@ -1833,9 +1853,7 @@ async function initMap() {
           .bindPopup(
             `<strong>${om.title}</strong><br>${om.gyms.name}<br>${
               om.gyms.street || ""
-            }<br>${om.gyms.postal_code || ""} ${
-              om.gyms.city || ""
-            }<br>📅 ${date}`
+            }<br>${om.gyms.postal_code || ""} ${om.gyms.city || ""}<br> ${date}`
           );
         bounds.push([om.gyms.latitude, om.gyms.longitude]);
       }
