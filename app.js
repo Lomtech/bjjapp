@@ -315,65 +315,9 @@ function cancelProfileEdit() {
   // Reset forms
   document.getElementById("athlete-form").reset();
   document.getElementById("gym-form").reset();
-  document.getElementById("athlete-id").value = "";
-  document.getElementById("gym-id").value = "";
+  document.getElementById("current-image-preview").innerHTML = "";
+  document.getElementById("gym-image-preview").innerHTML = "";
 }
-
-// ================================================
-// TAB SWITCHING
-// ================================================
-
-function switchTab(tabName, button) {
-  // Alle Tabs deaktivieren
-  document.querySelectorAll(".tab-content").forEach((content) => {
-    content.classList.remove("active");
-    content.style.display = "none";
-  });
-
-  // Alle Tab-Buttons deaktivieren
-  document.querySelectorAll(".tab-btn").forEach((btn) => {
-    btn.classList.remove("active");
-  });
-
-  // Gewählten Tab aktivieren
-  const selectedTab = document.getElementById(tabName + "-tab");
-  if (selectedTab) {
-    selectedTab.classList.add("active");
-    selectedTab.style.display = "block";
-  }
-
-  // Button aktivieren (falls vorhanden)
-  if (button) {
-    button.classList.add("active");
-  } else {
-    // Falls kein Button übergeben wurde, ersten Tab-Button mit passendem onclick aktivieren
-    document.querySelectorAll(".tab-btn").forEach((btn) => {
-      if (btn.onclick && btn.onclick.toString().includes(tabName)) {
-        btn.classList.add("active");
-      }
-    });
-  }
-}
-
-// ================================================
-// NOTIFICATION SYSTEM
-// ================================================
-
-function showNotification(message, type = "success") {
-  const notification = document.getElementById("notification");
-  notification.textContent = message;
-  notification.className = `notification ${type} show`;
-
-  setTimeout(() => {
-    notification.classList.remove("show");
-  }, 3000);
-}
-
-// ================================================
-// REST DER APP.JS BLEIBT UNVERÄNDERT
-// ================================================
-// Füge hier den Rest deiner ursprünglichen app.js ein
-// (displayMyProfile, loadAthletes, loadGyms, etc.)
 
 function displayMyProfile() {
   document.getElementById("profile-type-selector").style.display = "none";
@@ -480,7 +424,7 @@ function editMyProfile() {
     document.getElementById("gym-email").value = g.email || "";
     document.getElementById("gym-phone").value = g.phone || "";
     document.getElementById("gym-website").value = g.website || "";
-    document.getElementById("gym-street").value = g.street || "";
+    document.getElementById("gym-address").value = g.street || "";
     document.getElementById("gym-postal").value = g.postal_code || "";
     document.getElementById("gym-city").value = g.city || "";
 
@@ -650,7 +594,7 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
   const gymId = formData.get("gym_id");
   const isEditing = !!gymId;
   const name = formData.get("name");
-  const street = formData.get("street");
+  const street = formData.get("address");
   const postalCode = formData.get("postal_code");
   const city = formData.get("city");
 
