@@ -15,12 +15,7 @@
       <header>
         <div class="header-top">
           <h1>🥋 BJJ Community</h1>
-          <!-- Auth-section nur für angemeldete User (Logout-Button) -->
-          <div
-            class="auth-section"
-            id="auth-section"
-            style="display: none"
-          ></div>
+          <div class="auth-section" id="auth-section"></div>
         </div>
         <div class="tabs">
           <button class="tab-btn active" onclick="switchTab('dashboard', this)">
@@ -247,13 +242,13 @@
               />
             </div>
             <div class="form-group">
-              <label>Adresse *</label>
+              <label>Straße & Hausnummer *</label>
               <input
                 type="text"
-                name="address"
-                id="gym-address"
+                name="street"
+                id="gym-street"
                 required
-                placeholder="Straße und Hausnummer"
+                placeholder="z.B. Hauptstraße 123"
               />
             </div>
             <div class="form-row">
