@@ -472,6 +472,21 @@
         <div class="openmat-chat-container">
           <div id="openmat-messages" class="chat-messages"></div>
           <form id="openmat-message-form" class="chat-input-form">
+            <!-- NEU: Media Upload Button und Preview -->
+            <input
+              type="file"
+              id="openmat-media-input"
+              accept="image/*,.gif"
+              onchange="previewOpenMatMedia(event)"
+            />
+            <button
+              type="button"
+              class="media-btn"
+              onclick="document.getElementById('openmat-media-input').click()"
+            >
+              📎
+            </button>
+            <div id="openmat-media-preview" class="media-preview"></div>
             <input
               type="text"
               name="message"
