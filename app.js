@@ -45,19 +45,15 @@ async function initSupabase(url, key) {
     updateAuthUI();
   }
 
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    currentUser = session?.user || null;
-    if (event === "SIGNED_IN") {
-      await loadUserProfile();
-      updateAuthUI();
-      await initializeData();
-    } else if (event === "SIGNED_OUT") {
-      myProfile = null;
-      updateAuthUI();
-      if (messagePollingInterval) {
-        clearInterval(messagePollingInterval);
-      }
+  supabase.auth.onAuthStateChange((event, session) => {
+    console.log("Auth Event:", event, !!session?.user);
+
+    if (event === "SIGNED_OUT" || (event === "INITIAL_SESSION" && !session)) {
+      switchToAuthMode();
+    } else if (event === "SIGNED_IN") {
+      switchToAppMode(); // Hier: getSession() erlaubt
     }
+    // KEIN getSession() außerhalb von SIGNED_IN!
   });
 }
 
@@ -186,7 +182,7 @@ async function logout() {
 }
 
 function switchToAuthMode() {
-  // 1. UI wechseln
+  // UI wechseln
   document
     .querySelectorAll(".app-only")
     .forEach((el) => (el.style.display = "none"));
@@ -194,39 +190,31 @@ function switchToAuthMode() {
     .querySelectorAll(".auth-only")
     .forEach((el) => (el.style.display = "block"));
 
-  // 2. URL & Titel
+  // URL & Titel
   history.pushState({ mode: "auth" }, "", "/login");
   document.title = "Anmelden | BJJ Open Mat Finder";
 
-  // 3. **Alle laufenden Supabase-Operationen abbrechen**
-  if (window.supabaseRealtimeChannel) {
-    window.supabaseRealtimeChannel.unsubscribe();
-    window.supabaseRealtimeChannel = null;
+  // Realtime & Karte stoppen
+  if (window.realtimeChannel) {
+    window.realtimeChannel.unsubscribe();
+    window.realtimeChannel = null;
   }
-
-  // 4. Karte zerstören
   if (window.mapInstance) {
     window.mapInstance.remove();
     window.mapInstance = null;
   }
 
-  // 5. Globale Benutzerdaten löschen
-  window.currentUser = null;
-
-  // 6. Eventuelle Timer/Intervals stoppen
-  if (window.refreshInterval) {
-    clearInterval(window.refreshInterval);
-    window.refreshInterval = null;
-  }
+  // KEIN: supabase.auth.getSession() hier!
 }
 
 async function switchToAppMode() {
-  // Prüfe nochmal: Ist Session wirklich da?
+  // Nur hier: Session prüfen (weil Event garantiert)
   const {
     data: { session },
   } = await supabase.auth.getSession();
+
   if (!session?.user) {
-    switchToAuthMode(); // Fallback
+    switchToAuthMode();
     return;
   }
 
@@ -248,6 +236,24 @@ async function switchToAppMode() {
   // Realtime aktivieren
   setupRealtimeSubscriptions();
 }
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (session?.user) {
+    switchToAppMode();
+  } else {
+    switchToAuthMode();
+  }
+
+  // Listener übernimmt ab jetzt
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_OUT" || !session) switchToAuthMode();
+    if (event === "SIGNED_IN") switchToAppMode();
+  });
+});
 
 document.getElementById("auth-form").addEventListener("submit", async (e) => {
   e.preventDefault();
