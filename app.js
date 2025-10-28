@@ -90,12 +90,17 @@ async function initSupabase(url, key) {
 }
 
 async function initializeData() {
-  loadGymsForAthleteSelect();
-  loadGymsForFilter();
-  loadAthletes();
-  loadGyms();
-  loadOpenMats();
-  loadDashboard();
+  console.log("initializeData gestartet");
+
+  // Lade alle Daten parallel
+  await Promise.all([
+    loadGymsForAthleteSelect(),
+    loadGymsForFilter(),
+    loadAthletes(),
+    loadGyms(),
+    loadOpenMats(),
+    loadDashboard(),
+  ]);
 
   if (myProfile && myProfile.type === "athlete") {
     loadFriendRequests();
