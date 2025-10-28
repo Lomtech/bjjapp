@@ -679,10 +679,15 @@ button:disabled {
   label {
     font-size: 0.9em;
   }
+  header {
+    padding: 10px 15px; /* weniger Innenabstand */
+    width: 100%; /* volle Breite */
+    overflow-wrap: break-word; /* sorgt für Umbrechen bei langen Wörtern */
+  }
   .header-top {
     flex-direction: column; /* Elemente untereinander */
     align-items: center; /* zentrieren */
-    gap: 10px; /* etwas Abstand */
+    gap: 8px; /* etwas Abstand */
   }
   h1 {
     font-size: 1.8em; /* Titel kleiner */
