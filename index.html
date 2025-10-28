@@ -97,7 +97,7 @@
             Stelle sicher, dass du folgende Tabellen in Supabase erstellt hast:
           </p>
           <ul style="margin: 10px 0 10px 20px">
-            <li>athletes (mit user_id, bio)</li>
+            <li>athletes (mit user_id, bio, gym_id)</li>
             <li>
               gyms (mit user_id, description, phone, website, street,
               postal_code, city)
@@ -154,16 +154,18 @@
           </div>
         </div>
 
-        <h2>Athleten-Profil anlegen</h2>
+        <h2 id="athlete-form-title">Athleten-Profil anlegen</h2>
         <form id="athlete-form">
+          <input type="hidden" name="athlete_id" id="athlete-id" />
           <div class="form-group">
             <label>Name *</label>
-            <input type="text" name="name" required />
+            <input type="text" name="name" id="athlete-name" required />
           </div>
           <div class="form-group">
             <label>Bio</label>
             <textarea
               name="bio"
+              id="athlete-bio"
               rows="3"
               placeholder="Erzähle etwas über dich..."
             ></textarea>
@@ -171,16 +173,16 @@
           <div class="form-row">
             <div class="form-group">
               <label>Alter</label>
-              <input type="number" name="age" min="1" max="120" />
+              <input type="number" name="age" id="athlete-age" min="1" max="120" />
             </div>
             <div class="form-group">
               <label>Gewicht (kg)</label>
-              <input type="number" name="weight" step="0.1" />
+              <input type="number" name="weight" id="athlete-weight" step="0.1" />
             </div>
           </div>
           <div class="form-group">
             <label>Gürtelgrad *</label>
-            <select name="belt_rank" required>
+            <select name="belt_rank" id="athlete-belt" required>
               <option value="">Bitte wählen</option>
               <option value="weiß">Weiß</option>
               <option value="blau">Blau</option>
@@ -190,10 +192,20 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Profilbild</label>
-            <input type="file" name="image" accept="image/*" />
+            <label>Gym Zugehörigkeit</label>
+            <select name="gym_id" id="athlete-gym-select">
+              <option value="">Kein Gym zugeordnet</option>
+            </select>
           </div>
-          <button type="submit">Profil anlegen</button>
+          <div class="form-group">
+            <label>Profilbild</label>
+            <input type="file" name="image" id="athlete-image" accept="image/*" />
+            <div id="current-image-preview"></div>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button type="submit" id="athlete-submit-btn">Profil anlegen</button>
+            <button type="button" class="btn btn-secondary" id="cancel-edit-btn" style="display: none;" onclick="cancelAthleteEdit()">Abbrechen</button>
+          </div>
         </form>
 
         <h3 style="margin-top: 40px">Athleten</h3>

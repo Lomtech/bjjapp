@@ -8,6 +8,8 @@ let currentUser = null;
 let isLogin = true;
 let allAthletes = [];
 let allGyms = [];
+let editingAthleteId = null;
+let currentAthleteImageUrl = null;
 
 // Geocoding Funktion
 async function geocodeAddress(street, postalCode, city) {
@@ -51,6 +53,7 @@ async function initSupabase(url, key) {
     if (session) {
         currentUser = session.user;
         updateAuthUI();
+        loadGymsForAthleteSelect();
         loadGymsForSelect();
         loadAthletes();
         loadGyms();
@@ -65,6 +68,7 @@ async function initSupabase(url, key) {
         updateAuthUI();
         if (event === 'SIGNED_IN') {
             loadDashboard();
+            loadGymsForAthleteSelect();
             loadGymsForSelect();
             loadAthletes();
             loadGyms();
@@ -227,199 +231,140 @@ function showNotification(message, type = 'success') {
     notif.textContent = message;
     notif.className = 'notification show';
     if (type) notif.classList.add(type);
-    setTimeout(() => notif.classList.remove('show'), 4000);
+    setTimeout(() => notif.classList.remove('show'), 3000);
 }
 
 async function loadDashboard() {
     if (!supabase) return;
-
-    const { data: athletes } = await supabase.from('athletes').select('*');
-    const { data: gyms } = await supabase.from('gyms').select('*');
-    const { data: openMats } = await supabase.from('open_mats').select('*').gte('event_date', new Date().toISOString());
+    
+    const [
+        { data: athletes },
+        { data: gyms },
+        { data: openMats }
+    ] = await Promise.all([
+        supabase.from('athletes').select('*'),
+        supabase.from('gyms').select('*'),
+        supabase.from('open_mats').select('*').gte('event_date', new Date().toISOString())
+    ]);
 
     const statsGrid = document.getElementById('stats-grid');
     statsGrid.innerHTML = `
         <div class="stat-card">
-            <div>Athleten</div>
+            <div>👥 Athleten</div>
             <div class="stat-number">${athletes?.length || 0}</div>
         </div>
         <div class="stat-card">
-            <div>Gyms</div>
+            <div>🏋️ Gyms</div>
             <div class="stat-number">${gyms?.length || 0}</div>
         </div>
         <div class="stat-card">
-            <div>Kommende Events</div>
+            <div>📅 Open Mats</div>
             <div class="stat-number">${openMats?.length || 0}</div>
         </div>
     `;
 
-    const recent = document.getElementById('recent-activities');
-    const activities = [];
-    
-    if (athletes?.length > 0) {
-        const latestAthlete = athletes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-        activities.push(`🥋 Neuer Athlet: ${latestAthlete.name}`);
-    }
-    if (gyms?.length > 0) {
-        const latestGym = gyms.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-        activities.push(`🏠 Neues Gym: ${latestGym.name}`);
-    }
+    const activities = document.getElementById('recent-activities');
+    const recentAthletes = athletes?.slice(-3).reverse() || [];
+    activities.innerHTML = recentAthletes.length > 0 ? 
+        recentAthletes.map(a => `
+            <div style="padding: 15px; background: #f8f9fa; margin: 10px 0; border-radius: 8px;">
+                <strong>${a.name}</strong> hat sich registriert
+                <span style="float: right; color: #666; font-size: 0.9em;">
+                    ${new Date(a.created_at).toLocaleDateString('de-DE')}
+                </span>
+            </div>
+        `).join('') : '<p>Noch keine Aktivitäten</p>';
+}
 
-    recent.innerHTML = activities.length > 0 ? 
-        activities.map(a => `<p style="padding: 10px; background: #f8f9fa; margin: 5px 0; border-radius: 5px;">${a}</p>`).join('') :
-        '<p>Noch keine Aktivitäten</p>';
+// Lade alle Gyms für das Athleten-Dropdown
+async function loadGymsForAthleteSelect() {
+    if (!supabase) return;
+    const { data: gyms } = await supabase.from('gyms').select('id, name, city').order('name');
+    const select = document.getElementById('athlete-gym-select');
+    if (gyms && select) {
+        select.innerHTML = '<option value="">Kein Gym zugeordnet</option>' + 
+            gyms.map(g => `<option value="${g.id}">${g.name}${g.city ? ` (${g.city})` : ''}</option>`).join('');
+    }
 }
 
 document.getElementById('athlete-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!supabase) return showNotification('Bitte zuerst Supabase konfigurieren!', 'warning');
-    if (!currentUser) return showNotification('Bitte zuerst anmelden!', 'warning');
+    if (!supabase) return;
 
     const formData = new FormData(e.target);
+    const imageFile = formData.get('image');
+    const athleteId = formData.get('athlete_id');
+    const isEditing = !!athleteId;
+
+    let imageUrl = currentAthleteImageUrl;
+
+    // Bild hochladen wenn vorhanden
+    if (imageFile && imageFile.size > 0) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+            .from('profile-images')
+            .upload(fileName, imageFile, { upsert: true });
+
+        if (uploadError) {
+            showNotification('Fehler beim Bild-Upload: ' + uploadError.message, 'error');
+            return;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('profile-images')
+            .getPublicUrl(fileName);
+        imageUrl = publicUrl;
+    }
+
     const data = {
         name: formData.get('name'),
-        bio: formData.get('bio') || null,
-        age: parseInt(formData.get('age')) || null,
-        weight: parseFloat(formData.get('weight')) || null,
+        age: formData.get('age') ? parseInt(formData.get('age')) : null,
+        weight: formData.get('weight') ? parseFloat(formData.get('weight')) : null,
         belt_rank: formData.get('belt_rank'),
+        bio: formData.get('bio') || null,
+        gym_id: formData.get('gym_id') || null,
+        image_url: imageUrl,
         user_id: currentUser.id
     };
 
-    const imageFile = formData.get('image');
-    if (imageFile && imageFile.size > 0) {
-        const fileName = `${Date.now()}-${imageFile.name}`;
-        const { error: uploadError } = await supabase.storage
-            .from('profile-images')
-            .upload(fileName, imageFile);
-        
-        if (!uploadError) {
-            const { data: urlData } = supabase.storage
-                .from('profile-images')
-                .getPublicUrl(fileName);
-            data.image_url = urlData.publicUrl;
+    if (isEditing) {
+        // Update bestehenden Athleten
+        const { error } = await supabase
+            .from('athletes')
+            .update(data)
+            .eq('id', athleteId);
+
+        if (error) {
+            showNotification('Fehler beim Aktualisieren: ' + error.message, 'error');
+        } else {
+            showNotification('Profil erfolgreich aktualisiert!');
+            cancelAthleteEdit();
+            loadAthletes();
         }
-    }
-
-    const { error } = await supabase.from('athletes').insert([data]);
-    if (error) {
-        showNotification('Fehler: ' + error.message, 'error');
     } else {
-        showNotification('Athlet erfolgreich angelegt!');
-        e.target.reset();
-        loadAthletes();
-        loadDashboard();
-    }
-});
+        // Neuen Athleten erstellen
+        const { error } = await supabase.from('athletes').insert([data]);
 
-document.getElementById('gym-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!supabase) return showNotification('Bitte zuerst Supabase konfigurieren!', 'warning');
-    if (!currentUser) return showNotification('Bitte zuerst anmelden!', 'warning');
-
-    const submitBtn = document.getElementById('gym-submit-btn');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Adresse wird geprüft...';
-
-    const formData = new FormData(e.target);
-    const street = formData.get('street');
-    const postalCode = formData.get('postal_code');
-    const city = formData.get('city');
-
-    const statusDiv = document.getElementById('geocoding-status');
-    statusDiv.textContent = '🔍 Adresse wird auf der Karte gesucht...';
-    statusDiv.className = 'geocoding-status';
-
-    const geoResult = await geocodeAddress(street, postalCode, city);
-
-    if (!geoResult.success) {
-        statusDiv.textContent = '⚠️ Adresse konnte nicht gefunden werden.';
-        statusDiv.className = 'geocoding-status error';
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Gym anlegen';
-        showNotification('Adresse konnte nicht gefunden werden', 'error');
-        return;
-    }
-
-    statusDiv.textContent = '✓ Adresse gefunden!';
-    statusDiv.className = 'geocoding-status success';
-
-    const data = {
-        name: formData.get('name'),
-        description: formData.get('description') || null,
-        email: formData.get('email') || null,
-        phone: formData.get('phone') || null,
-        website: formData.get('website') || null,
-        street: street,
-        postal_code: postalCode,
-        city: city,
-        address: `${street}, ${postalCode} ${city}`,
-        latitude: geoResult.latitude,
-        longitude: geoResult.longitude,
-        user_id: currentUser.id
-    };
-
-    const imageFile = formData.get('image');
-    if (imageFile && imageFile.size > 0) {
-        const fileName = `${Date.now()}-${imageFile.name}`;
-        const { error: uploadError } = await supabase.storage
-            .from('profile-images')
-            .upload(fileName, imageFile);
-        
-        if (!uploadError) {
-            const { data: urlData } = supabase.storage
-                .from('profile-images')
-                .getPublicUrl(fileName);
-            data.image_url = urlData.publicUrl;
+        if (error) {
+            showNotification('Fehler: ' + error.message, 'error');
+        } else {
+            showNotification('Profil erfolgreich angelegt!');
+            e.target.reset();
+            loadAthletes();
+            loadDashboard();
         }
-    }
-
-    const { error } = await supabase.from('gyms').insert([data]);
-    
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Gym anlegen';
-    
-    if (error) {
-        showNotification('Fehler: ' + error.message, 'error');
-    } else {
-        showNotification('Gym erfolgreich angelegt!');
-        e.target.reset();
-        statusDiv.textContent = '';
-        loadGyms();
-        loadGymsForSelect();
-        loadDashboard();
-        if (map) initMap();
-    }
-});
-
-document.getElementById('openmat-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!supabase) return showNotification('Bitte zuerst Supabase konfigurieren!', 'warning');
-    if (!currentUser) return showNotification('Bitte zuerst anmelden!', 'warning');
-
-    const formData = new FormData(e.target);
-    const data = {
-        gym_id: formData.get('gym_id'),
-        title: formData.get('title'),
-        description: formData.get('description') || null,
-        event_date: formData.get('event_date'),
-        duration_minutes: parseInt(formData.get('duration_minutes')) || 120
-    };
-
-    const { error } = await supabase.from('open_mats').insert([data]);
-    if (error) {
-        showNotification('Fehler: ' + error.message, 'error');
-    } else {
-        showNotification('Open Mat Event erstellt!');
-        e.target.reset();
-        loadOpenMats();
-        loadDashboard();
-        if (map) initMap();
     }
 });
 
 async function loadAthletes() {
     if (!supabase) return;
-    const { data, error } = await supabase.from('athletes').select('*').order('created_at', { ascending: false });
+    const { data } = await supabase
+        .from('athletes')
+        .select('*, gyms(name, city)')
+        .order('created_at', { ascending: false });
+    
     if (data) {
         allAthletes = data;
         displayAthletes(data);
@@ -432,17 +377,77 @@ function displayAthletes(athletes) {
         <div class="profile-card">
             ${currentUser && currentUser.id === a.user_id ? `
                 <div class="profile-actions">
+                    <button class="btn btn-small" onclick="editAthlete('${a.id}')">✏️</button>
                     <button class="btn btn-small btn-danger" onclick="deleteAthlete('${a.id}')">🗑️</button>
                 </div>
             ` : ''}
-            ${a.image_url ? `<img src="${a.image_url}" class="profile-image" alt="${a.name}">` : ''}
+            ${a.image_url ? `<img src="${a.image_url}" class="profile-image" alt="${a.name}">` : 
+              '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'}
             <h3>${a.name}</h3>
-            ${a.bio ? `<p style="font-size: 0.9em; color: #666;">${a.bio}</p>` : ''}
-            ${a.age ? `<p>Alter: ${a.age}</p>` : ''}
-            ${a.weight ? `<p>Gewicht: ${a.weight} kg</p>` : ''}
-            <span class="belt-badge belt-${a.belt_rank}">${a.belt_rank ? a.belt_rank.charAt(0).toUpperCase() + a.belt_rank.slice(1) : ''}</span>
+            ${a.bio ? `<p style="font-size: 0.9em; color: #666; margin: 10px 0;">${a.bio}</p>` : ''}
+            ${a.age ? `<p>📅 ${a.age} Jahre</p>` : ''}
+            ${a.weight ? `<p>⚖️ ${a.weight} kg</p>` : ''}
+            ${a.belt_rank ? `<span class="belt-badge belt-${a.belt_rank}">${a.belt_rank.toUpperCase()}</span>` : ''}
+            ${a.gyms ? `<p style="margin-top: 10px;">🏋️ <strong>${a.gyms.name}</strong>${a.gyms.city ? ` (${a.gyms.city})` : ''}</p>` : ''}
         </div>
     `).join('');
+}
+
+async function editAthlete(athleteId) {
+    if (!supabase) return;
+    
+    const { data: athlete } = await supabase
+        .from('athletes')
+        .select('*')
+        .eq('id', athleteId)
+        .single();
+    
+    if (!athlete) return;
+
+    editingAthleteId = athleteId;
+    currentAthleteImageUrl = athlete.image_url;
+
+    // Formular mit Daten füllen
+    document.getElementById('athlete-id').value = athlete.id;
+    document.getElementById('athlete-name').value = athlete.name || '';
+    document.getElementById('athlete-bio').value = athlete.bio || '';
+    document.getElementById('athlete-age').value = athlete.age || '';
+    document.getElementById('athlete-weight').value = athlete.weight || '';
+    document.getElementById('athlete-belt').value = athlete.belt_rank || '';
+    document.getElementById('athlete-gym-select').value = athlete.gym_id || '';
+
+    // Bild-Vorschau anzeigen
+    const preview = document.getElementById('current-image-preview');
+    if (athlete.image_url) {
+        preview.innerHTML = `
+            <div style="margin-top: 10px;">
+                <img src="${athlete.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
+                <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
+            </div>
+        `;
+    } else {
+        preview.innerHTML = '';
+    }
+
+    // UI anpassen
+    document.getElementById('athlete-form-title').textContent = 'Athleten-Profil bearbeiten';
+    document.getElementById('athlete-submit-btn').textContent = 'Profil aktualisieren';
+    document.getElementById('cancel-edit-btn').style.display = 'block';
+
+    // Zum Formular scrollen
+    document.getElementById('athlete-form').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelAthleteEdit() {
+    editingAthleteId = null;
+    currentAthleteImageUrl = null;
+    
+    document.getElementById('athlete-form').reset();
+    document.getElementById('athlete-id').value = '';
+    document.getElementById('current-image-preview').innerHTML = '';
+    document.getElementById('athlete-form-title').textContent = 'Athleten-Profil anlegen';
+    document.getElementById('athlete-submit-btn').textContent = 'Profil anlegen';
+    document.getElementById('cancel-edit-btn').style.display = 'none';
 }
 
 function filterAthletes() {
@@ -466,20 +471,129 @@ function filterAthletes() {
 }
 
 async function deleteAthlete(id) {
-    if (!confirm('Athlet wirklich löschen?')) return;
+    if (!confirm('Profil wirklich löschen?')) return;
     const { error } = await supabase.from('athletes').delete().eq('id', id);
     if (error) {
         showNotification('Fehler beim Löschen', 'error');
     } else {
-        showNotification('Athlet gelöscht');
+        showNotification('Profil gelöscht');
         loadAthletes();
         loadDashboard();
     }
 }
 
+document.getElementById('gym-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!supabase) return;
+
+    const submitBtn = document.getElementById('gym-submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Erstelle Gym...';
+
+    const formData = new FormData(e.target);
+    const street = formData.get('street');
+    const postalCode = formData.get('postal_code');
+    const city = formData.get('city');
+
+    const statusDiv = document.getElementById('geocoding-status');
+    statusDiv.textContent = '🔄 Geocodiere Adresse...';
+    statusDiv.className = 'geocoding-status';
+
+    const geoResult = await geocodeAddress(street, postalCode, city);
+
+    if (!geoResult.success) {
+        statusDiv.textContent = '⚠️ Adresse konnte nicht gefunden werden';
+        statusDiv.className = 'geocoding-status error';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Gym anlegen';
+        return;
+    }
+
+    statusDiv.textContent = '✅ Adresse erfolgreich gefunden';
+    statusDiv.className = 'geocoding-status success';
+
+    const imageFile = formData.get('image');
+    let imageUrl = null;
+
+    if (imageFile && imageFile.size > 0) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `gym_${currentUser.id}_${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+            .from('profile-images')
+            .upload(fileName, imageFile, { upsert: true });
+
+        if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage
+                .from('profile-images')
+                .getPublicUrl(fileName);
+            imageUrl = publicUrl;
+        }
+    }
+
+    const data = {
+        name: formData.get('name'),
+        description: formData.get('description') || null,
+        email: formData.get('email') || null,
+        phone: formData.get('phone') || null,
+        website: formData.get('website') || null,
+        street: street,
+        postal_code: postalCode,
+        city: city,
+        address: `${street}, ${postalCode} ${city}`,
+        latitude: geoResult.latitude,
+        longitude: geoResult.longitude,
+        image_url: imageUrl,
+        user_id: currentUser.id
+    };
+
+    const { error } = await supabase.from('gyms').insert([data]);
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Gym anlegen';
+
+    if (error) {
+        showNotification('Fehler: ' + error.message, 'error');
+    } else {
+        showNotification('Gym erfolgreich angelegt!');
+        e.target.reset();
+        statusDiv.textContent = '';
+        loadGyms();
+        loadGymsForAthleteSelect();
+        loadGymsForSelect();
+        loadDashboard();
+        if (map) initMap();
+    }
+});
+
+document.getElementById('openmat-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!supabase) return;
+
+    const formData = new FormData(e.target);
+    const data = {
+        gym_id: formData.get('gym_id'),
+        title: formData.get('title'),
+        description: formData.get('description') || null,
+        event_date: formData.get('event_date'),
+        duration_minutes: parseInt(formData.get('duration_minutes'))
+    };
+
+    const { error } = await supabase.from('open_mats').insert([data]);
+    if (error) {
+        showNotification('Fehler: ' + error.message, 'error');
+    } else {
+        showNotification('Event erstellt!');
+        e.target.reset();
+        loadOpenMats();
+        loadDashboard();
+        if (map) initMap();
+    }
+});
+
 async function loadGyms() {
     if (!supabase) return;
-    const { data: gyms } = await supabase.from('gyms').select('*').order('created_at', { ascending: false });
+    const { data: gyms } = await supabase.from('gyms').select('*');
     const { data: ratings } = await supabase.from('gym_ratings').select('*');
     
     if (gyms) {
@@ -549,6 +663,7 @@ async function deleteGym(id) {
     } else {
         showNotification('Gym gelöscht');
         loadGyms();
+        loadGymsForAthleteSelect();
         loadDashboard();
         if (map) initMap();
     }
