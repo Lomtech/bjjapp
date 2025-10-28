@@ -206,33 +206,28 @@ document.getElementById("auth-form").addEventListener("submit", async (e) => {
 async function loadUserProfile() {
   if (!supabase || !currentUser) return;
 
-  // Prüfe ob Athlet
-  const { data: athlete } = await supabase
+  const { data: athletes } = await supabase
     .from("athletes")
     .select("*, gyms(name, city)")
-    .eq("user_id", currentUser.id)
-    .single();
+    .eq("user_id", currentUser.id);
 
-  if (athlete) {
-    myProfile = { type: "athlete", id: athlete.id, data: athlete };
+  if (athletes && athletes.length > 0) {
+    myProfile = { type: "athlete", id: athletes[0].id, data: athletes[0] };
     displayMyProfile();
     return;
   }
 
-  // Prüfe ob Gym
-  const { data: gym } = await supabase
+  const { data: gyms } = await supabase
     .from("gyms")
     .select("*")
-    .eq("user_id", currentUser.id)
-    .single();
+    .eq("user_id", currentUser.id);
 
-  if (gym) {
-    myProfile = { type: "gym", id: gym.id, data: gym };
+  if (gyms && gyms.length > 0) {
+    myProfile = { type: "gym", id: gyms[0].id, data: gyms[0] };
     displayMyProfile();
     return;
   }
 
-  // Kein Profil vorhanden
   myProfile = null;
   displayProfileSelector();
 }
