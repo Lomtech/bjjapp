@@ -8,7 +8,7 @@ let currentUser = null;
 let isLogin = true;
 let allAthletes = [];
 let allGyms = [];
-let myProfile = null; // { type: 'athlete'|'gym', id: uuid, data: {...} }
+let myProfile = null;
 let currentChatPartner = null;
 let currentOpenMatChat = null;
 let messagePollingInterval = null;
@@ -48,10 +48,7 @@ async function initSupabase(url, key) {
   }
 
   supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log("Auth Event:", event, !!session?.user);
-
     if (event === "SIGNED_OUT") {
-      // Cleanup bei Logout
       currentUser = null;
       myProfile = null;
       allAthletes = [];
@@ -72,7 +69,6 @@ async function initSupabase(url, key) {
       updateAuthUI();
       switchToAuthMode();
     } else if (event === "SIGNED_IN" && session) {
-      // Vollständige Initialisierung bei Login
       currentUser = session.user;
       await loadUserProfile();
       updateAuthUI();
@@ -98,7 +94,6 @@ async function initializeData() {
     loadChats();
     updateNotificationBadges();
 
-    // Polling für neue Nachrichten (alle 5 Sekunden)
     if (messagePollingInterval) {
       clearInterval(messagePollingInterval);
     }
@@ -199,9 +194,6 @@ async function logout() {
     }
 
     showNotification("Erfolgreich abgemeldet", "info");
-
-    // Auth State Change Handler wird automatisch aufgerufen
-    // Kein manueller Reload mehr nötig
   } catch (err) {
     console.error("Unerwarteter Fehler beim Logout:", err);
     showNotification("Abmeldung fehlgeschlagen.", "error");
@@ -209,7 +201,6 @@ async function logout() {
 }
 
 function switchToAuthMode() {
-  // UI wechseln
   document
     .querySelectorAll(".app-only")
     .forEach((el) => (el.style.display = "none"));
@@ -217,42 +208,13 @@ function switchToAuthMode() {
     .querySelectorAll(".auth-only")
     .forEach((el) => (el.style.display = "block"));
 
-  // URL & Titel
   history.pushState({ mode: "auth" }, "", "/login");
   document.title = "Anmelden | BJJ Open Mat Finder";
 
-  // Realtime stoppen
   if (window.realtimeChannel) {
     window.realtimeChannel.unsubscribe();
     window.realtimeChannel = null;
   }
-}
-
-async function switchToAppMode() {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session?.user) {
-    switchToAuthMode();
-    return;
-  }
-
-  window.currentUser = session.user;
-
-  document
-    .querySelectorAll(".auth-only")
-    .forEach((el) => (el.style.display = "none"));
-  document
-    .querySelectorAll(".app-only")
-    .forEach((el) => (el.style.display = "block"));
-
-  history.pushState({ mode: "app" }, "", "/dashboard");
-  document.title = "Dashboard | BJJ Open Mat Finder";
-
-  await Promise.all([loadUserProfile(), loadMapWithOpenMats()]);
-
-  setupRealtimeSubscriptions();
 }
 
 document.getElementById("auth-form").addEventListener("submit", async (e) => {
@@ -278,7 +240,6 @@ document.getElementById("auth-form").addEventListener("submit", async (e) => {
       if (error) throw error;
       showNotification("Erfolgreich angemeldet!");
       closeModalForce();
-      // Auth State Change Handler wird automatisch aufgerufen
     } else {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
@@ -362,7 +323,6 @@ function cancelProfileEdit() {
     displayProfileSelector();
   }
 
-  // Reset forms
   document.getElementById("athlete-form").reset();
   document.getElementById("gym-form").reset();
   document.getElementById("current-image-preview").innerHTML = "";
@@ -517,7 +477,6 @@ document
 
     let imageUrl = myProfile?.data?.image_url || null;
 
-    // Bild hochladen wenn vorhanden
     if (imageFile && imageFile.size > 0) {
       const fileExt = imageFile.name.split(".").pop();
       const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
@@ -654,7 +613,6 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
   const postalCode = formData.get("postal_code");
   const city = formData.get("city");
 
-  // Duplikat-Check
   const isDuplicate = await checkGymDuplicate(name, street, gymId);
   if (isDuplicate) {
     showNotification(
@@ -1016,7 +974,6 @@ async function loadOpenMats() {
       .join("");
   }
 
-  // Zeige/Verstecke Event-Erstellungs-Formular
   const createSection = document.getElementById("create-openmat-section");
   if (createSection) {
     createSection.style.display =
@@ -1028,9 +985,6 @@ document
   .getElementById("openmat-form")
   .addEventListener("submit", async (e) => {
     e.preventDefault();
-    console.log("OpenMat Form Submit");
-    console.log("supabase:", !!supabase);
-    console.log("myProfile:", myProfile);
 
     if (!supabase || !myProfile || myProfile.type !== "gym") {
       showNotification("Nur Gym-Besitzer können Open Mats erstellen!", "error");
@@ -1046,11 +1000,8 @@ document
       duration_minutes: parseInt(formData.get("duration_minutes")),
     };
 
-    console.log("Creating OpenMat:", data);
-
     const { error } = await supabase.from("open_mats").insert([data]);
     if (error) {
-      console.error("OpenMat Error:", error);
       showNotification("Fehler: " + error.message, "error");
     } else {
       showNotification("Event erstellt!");
@@ -1185,7 +1136,6 @@ async function sendFriendRequest(athleteId) {
     return;
   }
 
-  // Prüfe ob bereits Anfrage existiert
   const { data: existing } = await supabase
     .from("friendships")
     .select("id")
@@ -1261,8 +1211,22 @@ async function endFriendship(friendshipId) {
 }
 
 // ================================================
-// PRIVATE CHATS MIT BILD/GIF UPLOAD
+// INSTAGRAM-STYLE CHATS MIT MEDIA
 // ================================================
+
+function formatTimeAgo(date) {
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "Gerade";
+  if (diffMins < 60) return `${diffMins}min`;
+  if (diffHours < 24) return `${diffHours}h`;
+  if (diffDays < 7) return `${diffDays}T`;
+  return date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+}
 
 async function loadChats() {
   if (!supabase || !myProfile || myProfile.type !== "athlete") return;
@@ -1289,7 +1253,6 @@ async function loadChats() {
         const friend =
           f.requester_id === myProfile.id ? f.addressee : f.requester;
 
-        // Lade letzte Nachricht
         const { data: lastMsg } = await supabase
           .from("private_messages")
           .select("message, media_url, media_type, created_at")
@@ -1300,7 +1263,6 @@ async function loadChats() {
           .limit(1)
           .single();
 
-        // Zähle ungelesene
         const { count: unreadCount } = await supabase
           .from("private_messages")
           .select("id", { count: "exact", head: true })
@@ -1317,45 +1279,63 @@ async function loadChats() {
     );
 
     list.innerHTML = chatItems
-      .map(
-        (item) => `
-            <div class="chat-item ${
-              currentChatPartner === item.friend.id ? "active" : ""
-            }" onclick="openChat('${item.friend.id}')">
-                <div class="name">
-                    ${item.friend.name}
+      .map((item) => {
+        const isActive = currentChatPartner === item.friend.id;
+        const hasUnread = item.unreadCount > 0;
+        const timeAgo = item.lastMsg
+          ? formatTimeAgo(new Date(item.lastMsg.created_at))
+          : "";
+
+        return `
+            <div class="chat-item ${isActive ? "active" : ""} ${
+          hasUnread ? "unread" : ""
+        }" onclick="openChat('${item.friend.id}')">
+                <div class="chat-item-avatar">
                     ${
-                      item.unreadCount > 0
-                        ? `<span class="unread-badge">${item.unreadCount}</span>`
-                        : ""
+                      item.friend.image_url
+                        ? `<img src="${item.friend.image_url}" alt="${item.friend.name}">`
+                        : item.friend.name.charAt(0).toUpperCase()
                     }
                 </div>
-                ${
-                  item.lastMsg
-                    ? `<div class="last-message">${
-                        item.lastMsg.media_url
-                          ? item.lastMsg.media_type === "image"
-                            ? "📷 Bild"
-                            : "🎬 GIF"
-                          : item.lastMsg.message
-                      }</div>`
-                    : ""
-                }
+                <div class="chat-item-content">
+                    <div class="chat-item-header">
+                        <div class="name">${item.friend.name}</div>
+                        ${
+                          hasUnread
+                            ? `<div class="unread-badge">${item.unreadCount}</div>`
+                            : `<div class="chat-item-time">${timeAgo}</div>`
+                        }
+                    </div>
+                    ${
+                      item.lastMsg
+                        ? `<div class="last-message">${
+                            item.lastMsg.media_url
+                              ? item.lastMsg.media_type === "image"
+                                ? "📷 Foto"
+                                : "🎬 GIF"
+                              : item.lastMsg.message
+                          }</div>`
+                        : '<div class="last-message">Keine Nachrichten</div>'
+                    }
+                </div>
             </div>
-        `
-      )
+        `;
+      })
       .join("");
   } else {
-    list.innerHTML =
-      '<p style="color: #666; padding: 10px;">Noch keine Chats</p>';
+    list.innerHTML = `
+            <div class="chat-empty-state" style="padding: 40px 24px;">
+                <div class="chat-empty-icon">👥</div>
+                <div class="chat-empty-text">Noch keine Chats</div>
+                <div class="chat-empty-subtext">Füge Freunde hinzu, um zu chatten</div>
+            </div>
+        `;
   }
 }
 
 async function openChat(friendId) {
   currentChatPartner = friendId;
-  switchTab("messages");
 
-  // Lade Friend-Info
   const { data: friend } = await supabase
     .from("athletes")
     .select("id, name, image_url")
@@ -1365,22 +1345,34 @@ async function openChat(friendId) {
   const chatWindow = document.getElementById("chat-window");
   chatWindow.innerHTML = `
         <div class="chat-header">
-            <h3>${friend.name}</h3>
+            <div class="chat-header-avatar">
+                ${
+                  friend.image_url
+                    ? `<img src="${friend.image_url}" alt="${friend.name}">`
+                    : friend.name.charAt(0).toUpperCase()
+                }
+            </div>
+            <div class="chat-header-info">
+                <h3>${friend.name}</h3>
+                <div class="chat-header-status">Aktiv</div>
+            </div>
         </div>
         <div class="chat-messages" id="current-chat-messages"></div>
-        <form class="chat-input-form" onsubmit="sendPrivateMessage(event, '${friendId}')">
-            <input type="file" id="chat-media-input-${friendId}" accept="image/*,.gif" style="display: none" onchange="previewChatMedia(event, '${friendId}')">
-            <button type="button" class="media-btn" onclick="document.getElementById('chat-media-input-${friendId}').click()">
-                📎
-            </button>
-            <div id="chat-media-preview-${friendId}" class="media-preview"></div>
-            <input type="text" name="message" placeholder="Nachricht schreiben..." />
-            <button type="submit">Senden</button>
-        </form>
+        <div class="chat-input-container">
+            <form class="chat-input-form" onsubmit="sendPrivateMessage(event, '${friendId}')">
+                <input type="file" id="chat-media-input-${friendId}" accept="image/*,.gif" style="display: none" onchange="previewChatMedia(event, '${friendId}')">
+                <button type="button" class="media-btn" onclick="document.getElementById('chat-media-input-${friendId}').click()">
+                    📎
+                </button>
+                <div id="chat-media-preview-${friendId}" class="media-preview"></div>
+                <input type="text" name="message" placeholder="Nachricht..." />
+                <button type="submit">Senden</button>
+            </form>
+        </div>
     `;
 
   await loadMessages(friendId);
-  loadChats(); // Aktualisiere Chat-Liste
+  loadChats();
 }
 
 function previewChatMedia(event, friendId) {
@@ -1437,11 +1429,6 @@ async function loadMessages(friendId) {
 
         return `
                 <div class="message ${isOwn ? "own" : "other"}">
-                    ${
-                      !isOwn
-                        ? `<div class="message-sender">${m.sender.name}</div>`
-                        : ""
-                    }
                     <div class="message-content">
                         ${content}
                     </div>
@@ -1454,10 +1441,8 @@ async function loadMessages(friendId) {
       })
       .join("");
 
-    // Scroll to bottom
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-    // Markiere als gelesen
     await supabase
       .from("private_messages")
       .update({ read: true })
@@ -1481,7 +1466,6 @@ async function sendPrivateMessage(event, receiverId) {
   let mediaUrl = null;
   let mediaType = null;
 
-  // Upload Media falls vorhanden
   if (mediaFile) {
     const fileExt = mediaFile.name.split(".").pop().toLowerCase();
     const fileName = `chat_${myProfile.id}_${Date.now()}.${fileExt}`;
@@ -1506,7 +1490,6 @@ async function sendPrivateMessage(event, receiverId) {
     mediaType = fileExt === "gif" ? "gif" : "image";
   }
 
-  // Mindestens Text oder Media muss vorhanden sein
   if (!message && !mediaUrl) {
     showNotification("Bitte Nachricht oder Bild eingeben", "warning");
     return;
@@ -1553,7 +1536,6 @@ function openImageModal(imageUrl) {
 async function updateNotificationBadges() {
   if (!supabase || !myProfile || myProfile.type !== "athlete") return;
 
-  // Ungelesene Nachrichten
   const { count: unreadCount } = await supabase
     .from("private_messages")
     .select("id", { count: "exact", head: true })
@@ -1570,7 +1552,7 @@ async function updateNotificationBadges() {
 }
 
 // ================================================
-// OPEN MAT GRUPPENCHATS MIT MEDIA
+// OPEN MAT GRUPPENCHATS
 // ================================================
 
 function openOpenMatChat(openmatId, title) {
@@ -1579,7 +1561,6 @@ function openOpenMatChat(openmatId, title) {
   document.getElementById("openmat-chat-modal").classList.add("show");
   loadOpenMatMessages(openmatId);
 
-  // Auto-refresh alle 3 Sekunden
   if (window.openmatChatInterval) {
     clearInterval(window.openmatChatInterval);
   }
@@ -1694,7 +1675,6 @@ document
     let mediaUrl = null;
     let mediaType = null;
 
-    // Upload Media falls vorhanden
     if (mediaFile) {
       const fileExt = mediaFile.name.split(".").pop().toLowerCase();
       const fileName = `openmat_${myProfile.id}_${Date.now()}.${fileExt}`;
@@ -1719,7 +1699,6 @@ document
       mediaType = fileExt === "gif" ? "gif" : "image";
     }
 
-    // Mindestens Text oder Media muss vorhanden sein
     if (!message && !mediaUrl) {
       showNotification("Bitte Nachricht oder Bild eingeben", "warning");
       return;
