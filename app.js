@@ -31,7 +31,14 @@ let messagePollingInterval = null;
 })();
 
 async function initSupabase(url, key) {
-  supabase = window.supabase.createClient(url, key);
+  // Erstelle Supabase Client mit besseren Auth-Einstellungen
+  supabase = window.supabase.createClient(url, key, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
 
   const {
     data: { session },
@@ -71,6 +78,7 @@ async function initSupabase(url, key) {
       // Stoppe Polling
       if (messagePollingInterval) {
         clearInterval(messagePollingInterval);
+        messagePollingInterval = null;
       }
 
       // Aktualisiere UI sofort
@@ -218,25 +226,39 @@ async function logout() {
   }
 
   try {
-    const { error } = await supabase.auth.signOut();
+    // Verwende scope: 'local' um Session-Probleme zu vermeiden
+    const { error } = await supabase.auth.signOut({ scope: "local" });
 
     if (error) {
       console.error("Logout Fehler:", error);
-      showNotification("Fehler beim Ausloggen", "error");
-      return;
+      // Selbst bei Fehler: Lokale Daten löschen und UI zurücksetzen
     }
 
-    console.log("Logout erfolgreich - warte auf onAuthStateChange");
+    console.log("Logout durchgeführt - setze lokale Daten zurück");
 
-    // User-Daten zurücksetzen
+    // Lokale Daten IMMER zurücksetzen
     currentUser = null;
     myProfile = null;
 
-    // UI wird durch onAuthStateChange aktualisiert
+    // Stoppe Polling
+    if (messagePollingInterval) {
+      clearInterval(messagePollingInterval);
+      messagePollingInterval = null;
+    }
+
+    // UI manuell zurücksetzen (falls onAuthStateChange nicht feuert)
+    updateAuthUI();
+
     showNotification("Erfolgreich abgemeldet", "success");
   } catch (error) {
     console.error("Unerwarteter Fehler beim Logout:", error);
-    showNotification("Fehler beim Ausloggen", "error");
+
+    // Auch bei Fehler: Lokale Session löschen
+    currentUser = null;
+    myProfile = null;
+    updateAuthUI();
+
+    showNotification("Abgemeldet (lokale Session gelöscht)", "info");
   }
 }
 
