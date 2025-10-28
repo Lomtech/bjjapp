@@ -162,10 +162,141 @@ function toggleAuthMode(e) {
   openAuthModal(isLogin ? "login" : "signup");
 }
 
-async function logout() {
-  await supabase.auth.signOut();
-  showNotification("Erfolgreich abgemeldet", "info");
+// Diese Funktion muss in deiner app.js ergänzt/ersetzt werden
+async function handleLogout() {
+  try {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error("Logout Fehler:", error);
+      showNotification("Fehler beim Ausloggen", "error");
+      return;
+    }
+
+    // User-Daten zurücksetzen
+    currentUser = null;
+
+    // Alle Tabs ausblenden
+    document.querySelectorAll(".tab-content").forEach((tab) => {
+      tab.classList.remove("active");
+      tab.style.display = "none";
+    });
+
+    // Welcome Screen anzeigen
+    const welcomeScreen = document.getElementById("welcome-screen");
+    if (welcomeScreen) {
+      welcomeScreen.classList.add("active");
+      welcomeScreen.style.display = "block";
+    }
+
+    // Auth-Section im Header ausblenden (falls vorhanden)
+    const authSection = document.getElementById("auth-section");
+    if (authSection) {
+      authSection.style.display = "none";
+      authSection.innerHTML = "";
+    }
+
+    // Tabs zurücksetzen
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.classList.remove("active");
+    });
+
+    // Dashboard-Tab als aktiv markieren (für nächsten Login)
+    const dashboardBtn = document.querySelector(".tab-btn");
+    if (dashboardBtn) {
+      dashboardBtn.classList.add("active");
+    }
+
+    showNotification("Erfolgreich abgemeldet", "success");
+
+    console.log("Logout erfolgreich - Welcome Screen sollte sichtbar sein");
+  } catch (error) {
+    console.error("Unerwarteter Fehler beim Logout:", error);
+    showNotification("Fehler beim Ausloggen", "error");
+  }
 }
+
+// Auth-Section für angemeldete User aktualisieren
+function updateAuthUI(user) {
+  const authSection = document.getElementById("auth-section");
+
+  if (user) {
+    // User ist angemeldet - Logout-Button anzeigen
+    authSection.style.display = "flex";
+    authSection.innerHTML = `
+      <div class="user-info">
+        <span>👤 ${user.email}</span>
+      </div>
+      <button class="auth-btn logout" onclick="handleLogout()">
+        Abmelden
+      </button>
+    `;
+
+    // Welcome Screen ausblenden
+    const welcomeScreen = document.getElementById("welcome-screen");
+    if (welcomeScreen) {
+      welcomeScreen.style.display = "none";
+      welcomeScreen.classList.remove("active");
+    }
+
+    // Dashboard anzeigen
+    const dashboardTab = document.getElementById("dashboard-tab");
+    if (dashboardTab) {
+      dashboardTab.style.display = "block";
+      dashboardTab.classList.add("active");
+    }
+  } else {
+    // User ist nicht angemeldet - Auth-Section ausblenden
+    authSection.style.display = "none";
+    authSection.innerHTML = "";
+
+    // Alle anderen Tabs ausblenden
+    document.querySelectorAll(".tab-content").forEach((tab) => {
+      if (tab.id !== "welcome-screen") {
+        tab.style.display = "none";
+        tab.classList.remove("active");
+      }
+    });
+
+    // Welcome Screen anzeigen
+    const welcomeScreen = document.getElementById("welcome-screen");
+    if (welcomeScreen) {
+      welcomeScreen.style.display = "block";
+      welcomeScreen.classList.add("active");
+    }
+  }
+}
+
+// Bei Initialisierung und Auth-State-Änderungen aufrufen
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log("Auth State Changed:", event, session);
+
+  if (event === "SIGNED_OUT") {
+    updateAuthUI(null);
+  } else if (event === "SIGNED_IN" && session) {
+    updateAuthUI(session.user);
+    // Lade User-Daten und zeige Dashboard
+    loadUserData();
+  }
+});
+
+// Initial check beim Laden der Seite
+async function initializeAuth() {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (session) {
+    currentUser = session.user;
+    updateAuthUI(session.user);
+    await loadUserData();
+  } else {
+    updateAuthUI(null);
+  }
+}
+
+// Bei Seitenladung aufrufen
+document.addEventListener("DOMContentLoaded", initializeAuth);
 
 document.getElementById("auth-form").addEventListener("submit", async (e) => {
   e.preventDefault();
