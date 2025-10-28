@@ -166,30 +166,19 @@ async function logout() {
   const { error } = await supabase.auth.signOut();
 
   if (error) {
-    showNotification("Fehler beim Abmelden: " + error.message, "error");
-    console.error("Logout error:", error);
+    showNotification("Abmelden fehlgeschlagen: " + error.message, "error");
     return;
   }
 
   showNotification("Erfolgreich abgemeldet", "info");
 
-  // Explizite Navigation in den Login-Modus
-  switchToAuthMode(); // Definiert weiter unten
+  // WICHTIG: Keine DB-Abfragen mehr!
+  // Stattdessen: Sofort UI wechseln
+  switchToAuthMode();
 }
-
-// Auth-State-Listener (wird bei Login, Logout, Session-Refresh aufgerufen)
-supabase.auth.onAuthStateChange((event, session) => {
-  currentUser = session?.user ?? null;
-
-  if (event === "SIGNED_OUT" || !currentUser) {
-    switchToAuthMode(); // Zeige Login/Registrierung
-  } else if (event === "SIGNED_IN") {
-    switchToAppMode(); // Zeige Haupt-App (Profile, Karte, etc.)
-  }
-});
 
 function switchToAuthMode() {
-  // Verstecke alle app-spezifischen Bereiche
+  // 1. UI wechseln
   document
     .querySelectorAll(".app-only")
     .forEach((el) => (el.style.display = "none"));
@@ -197,12 +186,44 @@ function switchToAuthMode() {
     .querySelectorAll(".auth-only")
     .forEach((el) => (el.style.display = "block"));
 
-  // Optional: Zur Login-Seite scrollen oder URL ändern
-  history.pushState({}, "", "/login");
-  document.title = "Login | BJJ Open Mat Finder";
+  // 2. URL & Titel
+  history.pushState({ mode: "auth" }, "", "/login");
+  document.title = "Anmelden | BJJ Open Mat Finder";
+
+  // 3. **Alle laufenden Supabase-Operationen abbrechen**
+  if (window.supabaseRealtimeChannel) {
+    window.supabaseRealtimeChannel.unsubscribe();
+    window.supabaseRealtimeChannel = null;
+  }
+
+  // 4. Karte zerstören
+  if (window.mapInstance) {
+    window.mapInstance.remove();
+    window.mapInstance = null;
+  }
+
+  // 5. Globale Benutzerdaten löschen
+  window.currentUser = null;
+
+  // 6. Eventuelle Timer/Intervals stoppen
+  if (window.refreshInterval) {
+    clearInterval(window.refreshInterval);
+    window.refreshInterval = null;
+  }
 }
 
-function switchToAppMode() {
+async function switchToAppMode() {
+  // Prüfe nochmal: Ist Session wirklich da?
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.user) {
+    switchToAuthMode(); // Fallback
+    return;
+  }
+
+  window.currentUser = session.user;
+
   document
     .querySelectorAll(".auth-only")
     .forEach((el) => (el.style.display = "none"));
@@ -210,12 +231,14 @@ function switchToAppMode() {
     .querySelectorAll(".app-only")
     .forEach((el) => (el.style.display = "block"));
 
-  // Optional: Lade Benutzerprofil, Karte, etc.
-  loadUserProfile();
-  loadMapWithOpenMats();
-
-  history.pushState({}, "", "/dashboard");
+  history.pushState({ mode: "app" }, "", "/dashboard");
   document.title = "Dashboard | BJJ Open Mat Finder";
+
+  // Erst jetzt: Daten laden
+  await Promise.all([loadUserProfile(), loadMapWithOpenMats()]);
+
+  // Realtime aktivieren
+  setupRealtimeSubscriptions();
 }
 
 document.getElementById("auth-form").addEventListener("submit", async (e) => {
