@@ -920,7 +920,14 @@ document
   .getElementById("openmat-form")
   .addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!supabase || !myProfile || myProfile.type !== "gym") return;
+    console.log("OpenMat Form Submit");
+    console.log("supabase:", !!supabase);
+    console.log("myProfile:", myProfile);
+
+    if (!supabase || !myProfile || myProfile.type !== "gym") {
+      showNotification("Nur Gym-Besitzer können Open Mats erstellen!", "error");
+      return;
+    }
 
     const formData = new FormData(e.target);
     const data = {
@@ -931,8 +938,11 @@ document
       duration_minutes: parseInt(formData.get("duration_minutes")),
     };
 
+    console.log("Creating OpenMat:", data);
+
     const { error } = await supabase.from("open_mats").insert([data]);
     if (error) {
+      console.error("OpenMat Error:", error);
       showNotification("Fehler: " + error.message, "error");
     } else {
       showNotification("Event erstellt!");
