@@ -53,6 +53,7 @@ async function initSupabase(url, key) {
     currentUser = session?.user || null;
 
     if (event === "SIGNED_IN") {
+      console.log("User signed in, loading data...");
       // Lade ZUERST alle Daten
       await loadUserProfile();
       await initializeData();
@@ -63,12 +64,19 @@ async function initSupabase(url, key) {
         closeModalForce();
       }, 100);
     } else if (event === "SIGNED_OUT") {
+      console.log("User signed out, resetting UI...");
       myProfile = null;
       currentUser = null;
-      updateAuthUI();
+
+      // Stoppe Polling
       if (messagePollingInterval) {
         clearInterval(messagePollingInterval);
       }
+
+      // Aktualisiere UI sofort
+      updateAuthUI();
+
+      console.log("Logout UI update abgeschlossen");
     }
   });
 }
@@ -102,6 +110,11 @@ async function initializeData() {
 // ================================================
 
 function updateAuthUI() {
+  console.log(
+    "updateAuthUI aufgerufen, currentUser:",
+    currentUser?.email || "null"
+  );
+
   const authSection = document.getElementById("auth-section");
   const welcomeScreen = document.getElementById("welcome-screen");
   const tabs = document.querySelectorAll(".tab-btn");
@@ -109,6 +122,8 @@ function updateAuthUI() {
 
   if (currentUser) {
     // USER IST EINGELOGGT
+    console.log("Zeige eingeloggten Zustand");
+
     // Auth-Section mit Logout-Button anzeigen
     authSection.style.display = "flex";
     authSection.innerHTML = `
@@ -133,6 +148,8 @@ function updateAuthUI() {
     switchTab("dashboard");
   } else {
     // USER IST NICHT EINGELOGGT
+    console.log("Zeige ausgeloggten Zustand - Welcome Screen");
+
     // Auth-Section ausblenden
     authSection.style.display = "none";
     authSection.innerHTML = "";
@@ -152,8 +169,11 @@ function updateAuthUI() {
 
     // Welcome Screen anzeigen
     if (welcomeScreen) {
+      console.log("Welcome Screen wird angezeigt");
       welcomeScreen.style.display = "block";
       welcomeScreen.classList.add("active");
+    } else {
+      console.error("Welcome Screen Element nicht gefunden!");
     }
   }
 }
@@ -190,6 +210,13 @@ function toggleAuthMode(e) {
 }
 
 async function logout() {
+  console.log("Logout-Funktion aufgerufen");
+
+  if (!supabase) {
+    showNotification("Supabase nicht initialisiert", "error");
+    return;
+  }
+
   try {
     const { error } = await supabase.auth.signOut();
 
@@ -198,6 +225,8 @@ async function logout() {
       showNotification("Fehler beim Ausloggen", "error");
       return;
     }
+
+    console.log("Logout erfolgreich - warte auf onAuthStateChange");
 
     // User-Daten zurücksetzen
     currentUser = null;
@@ -210,6 +239,9 @@ async function logout() {
     showNotification("Fehler beim Ausloggen", "error");
   }
 }
+
+// Stelle sicher dass logout global verfügbar ist
+window.logout = logout;
 
 // Auth Form Handler
 document.addEventListener("DOMContentLoaded", () => {
