@@ -163,18 +163,26 @@ function toggleAuthMode(e) {
 }
 
 async function logout() {
-  const { error } = await supabase.auth.signOut();
+  try {
+    // signOut() ist idempotent – funktioniert auch ohne Session
+    const { error } = await supabase.auth.signOut();
 
-  if (error) {
-    showNotification("Abmelden fehlgeschlagen: " + error.message, "error");
-    return;
+    if (error) {
+      // Nur echte Fehler (z. B. Netzwerk) melden
+      console.error("Supabase signOut error:", error);
+      showNotification("Abmeldung fehlgeschlagen: " + error.message, "error");
+      return;
+    }
+
+    showNotification("Erfolgreich abgemeldet", "info");
+
+    // KEIN getSession() mehr!
+    // Direkt in Auth-Modus wechseln
+    switchToAuthMode();
+  } catch (err) {
+    console.error("Unerwarteter Fehler beim Logout:", err);
+    showNotification("Abmeldung fehlgeschlagen.", "error");
   }
-
-  showNotification("Erfolgreich abgemeldet", "info");
-
-  // WICHTIG: Keine DB-Abfragen mehr!
-  // Stattdessen: Sofort UI wechseln
-  switchToAuthMode();
 }
 
 function switchToAuthMode() {
