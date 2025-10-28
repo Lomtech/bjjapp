@@ -40,8 +40,8 @@ async function initSupabase(url, key) {
   if (session) {
     currentUser = session.user;
     await loadUserProfile();
-    updateAuthUI();
     await initializeData();
+    updateAuthUI();
   } else {
     currentUser = null;
     updateAuthUI();
@@ -53,10 +53,15 @@ async function initSupabase(url, key) {
     currentUser = session?.user || null;
 
     if (event === "SIGNED_IN") {
+      // Lade ZUERST alle Daten
       await loadUserProfile();
-      updateAuthUI();
       await initializeData();
-      closeModalForce();
+      // DANN aktualisiere UI
+      updateAuthUI();
+      // ZULETZT schließe Modal
+      setTimeout(() => {
+        closeModalForce();
+      }, 100);
     } else if (event === "SIGNED_OUT") {
       myProfile = null;
       currentUser = null;
@@ -424,7 +429,11 @@ function editMyProfile() {
     document.getElementById("gym-email").value = g.email || "";
     document.getElementById("gym-phone").value = g.phone || "";
     document.getElementById("gym-website").value = g.website || "";
-    document.getElementById("gym-address").value = g.street || "";
+    // FIXED: Verwende gym-address falls vorhanden, sonst street
+    const gymAddressField = document.getElementById("gym-address");
+    if (gymAddressField) {
+      gymAddressField.value = g.street || "";
+    }
     document.getElementById("gym-postal").value = g.postal_code || "";
     document.getElementById("gym-city").value = g.city || "";
 
