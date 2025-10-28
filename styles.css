@@ -5,7 +5,8 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
   background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
   color: #333;
   min-height: 100vh;
@@ -201,16 +202,18 @@ button[type="submit"],
 .btn {
   background: #ff6b35;
   color: white;
-  padding: 12px 24px;
+  padding: 14px 24px;
   border: none;
-  border-radius: 20px;
+  border-radius: 12px;
   font-size: 1em;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
-  margin-top: 8px;
+  margin: 8px 0;
   width: 100%;
   max-width: 100%;
+  display: inline-block;
+  text-align: center;
 }
 
 button[type="submit"]:hover,
@@ -244,10 +247,24 @@ button:disabled {
 }
 
 .btn-small {
-  padding: 8px 16px;
-  font-size: 0.85em;
-  margin: 5px;
-  width: auto;
+  padding: 10px 18px;
+  font-size: 0.9em;
+  margin: 6px 0;
+  width: 100%;
+}
+
+/* Button Groups - für mehrere Buttons nebeneinander */
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.button-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 /* Map */
@@ -286,8 +303,18 @@ button:disabled {
   top: 12px;
   right: 12px;
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  gap: 8px;
   z-index: 10;
+}
+
+.profile-actions .btn-small {
+  width: auto;
+  min-width: 80px;
+  padding: 8px 14px;
+  font-size: 0.85em;
+  margin: 0;
+  white-space: nowrap;
 }
 
 .profile-image {
@@ -348,7 +375,17 @@ button:disabled {
   top: 12px;
   right: 12px;
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.event-actions .btn-small {
+  width: auto;
+  min-width: 80px;
+  padding: 8px 14px;
+  font-size: 0.85em;
+  margin: 0;
+  white-space: nowrap;
 }
 
 .event-date {
@@ -807,12 +844,35 @@ button:disabled {
   button[type="submit"],
   .btn {
     width: auto;
-    min-width: 200px;
+    min-width: 180px;
   }
 
   .notification {
     left: auto;
     max-width: 400px;
+  }
+
+  /* Button Groups auf Tablet nebeneinander */
+  .button-group {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .button-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .button-group .btn,
+  .button-row .btn {
+    flex: 1;
+    min-width: 150px;
+  }
+
+  /* Profile und Event Actions horizontal auf Tablet */
+  .profile-actions,
+  .event-actions {
+    flex-direction: row;
   }
 }
 
