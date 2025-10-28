@@ -36,23 +36,30 @@ async function initSupabase(url, key) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
+
   if (session) {
     currentUser = session.user;
     await loadUserProfile();
     updateAuthUI();
     await initializeData();
   } else {
+    currentUser = null;
     updateAuthUI();
   }
 
   supabase.auth.onAuthStateChange(async (event, session) => {
+    console.log("Auth State Changed:", event, session);
+
     currentUser = session?.user || null;
+
     if (event === "SIGNED_IN") {
       await loadUserProfile();
       updateAuthUI();
       await initializeData();
+      closeModalForce();
     } else if (event === "SIGNED_OUT") {
       myProfile = null;
+      currentUser = null;
       updateAuthUI();
       if (messagePollingInterval) {
         clearInterval(messagePollingInterval);
@@ -86,51 +93,70 @@ async function initializeData() {
 }
 
 // ================================================
-// AUTHENTIFIZIERUNG
+// AUTHENTIFIZIERUNG - BEREINIGT
 // ================================================
 
 function updateAuthUI() {
   const authSection = document.getElementById("auth-section");
-  if (currentUser) {
-    authSection.innerHTML = `
-            <div class="user-info">
-                <span>👤 ${currentUser.email}</span>
-            </div>
-            <button class="auth-btn logout" onclick="logout()">Logout</button>
-        `;
-  } else {
-    authSection.innerHTML = `
-            <button class="auth-btn" onclick="openAuthModal('login')">Login</button>
-            <button class="auth-btn" onclick="openAuthModal('signup')">Registrieren</button>
-        `;
-  }
-  updateVisibility();
-}
-
-function updateVisibility() {
+  const welcomeScreen = document.getElementById("welcome-screen");
   const tabs = document.querySelectorAll(".tab-btn");
   const tabContents = document.querySelectorAll(".tab-content");
-  const welcomeScreen = document.getElementById("welcome-screen");
 
-  if (!currentUser) {
-    tabs.forEach((tab) => (tab.style.display = "none"));
-    tabContents.forEach((content) => content.classList.remove("active"));
+  if (currentUser) {
+    // USER IST EINGELOGGT
+    // Auth-Section mit Logout-Button anzeigen
+    authSection.style.display = "flex";
+    authSection.innerHTML = `
+      <div class="user-info">
+        <span>👤 ${currentUser.email}</span>
+      </div>
+      <button class="auth-btn logout" onclick="logout()">Abmelden</button>
+    `;
+
+    // Tabs im Header anzeigen
+    tabs.forEach((tab) => {
+      tab.style.display = "inline-block";
+    });
+
+    // Welcome Screen ausblenden
     if (welcomeScreen) {
-      welcomeScreen.classList.add("active");
-    }
-  } else {
-    tabs.forEach((tab) => (tab.style.display = "block"));
-    if (welcomeScreen) {
+      welcomeScreen.style.display = "none";
       welcomeScreen.classList.remove("active");
     }
+
+    // Dashboard anzeigen
     switchTab("dashboard");
+  } else {
+    // USER IST NICHT EINGELOGGT
+    // Auth-Section ausblenden
+    authSection.style.display = "none";
+    authSection.innerHTML = "";
+
+    // Alle Tabs im Header ausblenden
+    tabs.forEach((tab) => {
+      tab.style.display = "none";
+    });
+
+    // Alle Tab-Contents ausblenden
+    tabContents.forEach((content) => {
+      if (content.id !== "welcome-screen") {
+        content.style.display = "none";
+        content.classList.remove("active");
+      }
+    });
+
+    // Welcome Screen anzeigen
+    if (welcomeScreen) {
+      welcomeScreen.style.display = "block";
+      welcomeScreen.classList.add("active");
+    }
   }
 }
 
 function openAuthModal(mode) {
   isLogin = mode === "login";
   document.getElementById("modal-title").textContent = isLogin
-    ? "Login"
+    ? "Anmelden"
     : "Registrieren";
   document.getElementById("auth-submit-btn").textContent = isLogin
     ? "Anmelden"
@@ -142,11 +168,7 @@ function openAuthModal(mode) {
 }
 
 function closeModal() {
-  if (!currentUser) {
-    showNotification("Bitte melde dich an, um fortzufahren", "warning");
-    return;
-  }
-  closeModalForce();
+  document.getElementById("auth-modal").classList.remove("show");
 }
 
 function closeModalForce() {
@@ -162,8 +184,7 @@ function toggleAuthMode(e) {
   openAuthModal(isLogin ? "login" : "signup");
 }
 
-// Diese Funktion muss in deiner app.js ergänzt/ersetzt werden
-async function handleLogout() {
+async function logout() {
   try {
     const { error } = await supabase.auth.signOut();
 
@@ -175,158 +196,53 @@ async function handleLogout() {
 
     // User-Daten zurücksetzen
     currentUser = null;
+    myProfile = null;
 
-    // Alle Tabs ausblenden
-    document.querySelectorAll(".tab-content").forEach((tab) => {
-      tab.classList.remove("active");
-      tab.style.display = "none";
-    });
-
-    // Welcome Screen anzeigen
-    const welcomeScreen = document.getElementById("welcome-screen");
-    if (welcomeScreen) {
-      welcomeScreen.classList.add("active");
-      welcomeScreen.style.display = "block";
-    }
-
-    // Auth-Section im Header ausblenden (falls vorhanden)
-    const authSection = document.getElementById("auth-section");
-    if (authSection) {
-      authSection.style.display = "none";
-      authSection.innerHTML = "";
-    }
-
-    // Tabs zurücksetzen
-    document.querySelectorAll(".tab-btn").forEach((btn) => {
-      btn.classList.remove("active");
-    });
-
-    // Dashboard-Tab als aktiv markieren (für nächsten Login)
-    const dashboardBtn = document.querySelector(".tab-btn");
-    if (dashboardBtn) {
-      dashboardBtn.classList.add("active");
-    }
-
+    // UI wird durch onAuthStateChange aktualisiert
     showNotification("Erfolgreich abgemeldet", "success");
-
-    console.log("Logout erfolgreich - Welcome Screen sollte sichtbar sein");
   } catch (error) {
     console.error("Unerwarteter Fehler beim Logout:", error);
     showNotification("Fehler beim Ausloggen", "error");
   }
 }
 
-// Auth-Section für angemeldete User aktualisieren
-function updateAuthUI(user) {
-  const authSection = document.getElementById("auth-section");
+// Auth Form Handler
+document.addEventListener("DOMContentLoaded", () => {
+  const authForm = document.getElementById("auth-form");
+  if (authForm) {
+    authForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!supabase) {
+        return showNotification(
+          "Bitte zuerst Supabase konfigurieren!",
+          "warning"
+        );
+      }
 
-  if (user) {
-    // User ist angemeldet - Logout-Button anzeigen
-    authSection.style.display = "flex";
-    authSection.innerHTML = `
-      <div class="user-info">
-        <span>👤 ${user.email}</span>
-      </div>
-      <button class="auth-btn logout" onclick="handleLogout()">
-        Abmelden
-      </button>
-    `;
+      const formData = new FormData(e.target);
+      const email = formData.get("email");
+      const password = formData.get("password");
 
-    // Welcome Screen ausblenden
-    const welcomeScreen = document.getElementById("welcome-screen");
-    if (welcomeScreen) {
-      welcomeScreen.style.display = "none";
-      welcomeScreen.classList.remove("active");
-    }
-
-    // Dashboard anzeigen
-    const dashboardTab = document.getElementById("dashboard-tab");
-    if (dashboardTab) {
-      dashboardTab.style.display = "block";
-      dashboardTab.classList.add("active");
-    }
-  } else {
-    // User ist nicht angemeldet - Auth-Section ausblenden
-    authSection.style.display = "none";
-    authSection.innerHTML = "";
-
-    // Alle anderen Tabs ausblenden
-    document.querySelectorAll(".tab-content").forEach((tab) => {
-      if (tab.id !== "welcome-screen") {
-        tab.style.display = "none";
-        tab.classList.remove("active");
+      try {
+        if (isLogin) {
+          const { error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          if (error) throw error;
+          showNotification("Erfolgreich angemeldet!", "success");
+        } else {
+          const { error } = await supabase.auth.signUp({ email, password });
+          if (error) throw error;
+          showNotification(
+            "Registrierung erfolgreich! Bitte bestätige deine E-Mail.",
+            "info"
+          );
+        }
+      } catch (error) {
+        showNotification("Fehler: " + error.message, "error");
       }
     });
-
-    // Welcome Screen anzeigen
-    const welcomeScreen = document.getElementById("welcome-screen");
-    if (welcomeScreen) {
-      welcomeScreen.style.display = "block";
-      welcomeScreen.classList.add("active");
-    }
-  }
-}
-
-// Bei Initialisierung und Auth-State-Änderungen aufrufen
-supabase.auth.onAuthStateChange((event, session) => {
-  console.log("Auth State Changed:", event, session);
-
-  if (event === "SIGNED_OUT") {
-    updateAuthUI(null);
-  } else if (event === "SIGNED_IN" && session) {
-    updateAuthUI(session.user);
-    // Lade User-Daten und zeige Dashboard
-    loadUserData();
-  }
-});
-
-// Initial check beim Laden der Seite
-async function initializeAuth() {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (session) {
-    currentUser = session.user;
-    updateAuthUI(session.user);
-    await loadUserData();
-  } else {
-    updateAuthUI(null);
-  }
-}
-
-// Bei Seitenladung aufrufen
-document.addEventListener("DOMContentLoaded", initializeAuth);
-
-document.getElementById("auth-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (!supabase)
-    return showNotification("Bitte zuerst Supabase konfigurieren!", "warning");
-
-  const formData = new FormData(e.target);
-  const email = formData.get("email");
-  const password = formData.get("password");
-
-  try {
-    if (isLogin) {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) throw error;
-      showNotification("Erfolgreich angemeldet!");
-      closeModalForce();
-    } else {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      showNotification(
-        "Registrierung erfolgreich! Bitte bestätige deine E-Mail.",
-        "info"
-      );
-      closeModalForce();
-    }
-  } catch (error) {
-    showNotification("Fehler: " + error.message, "error");
   }
 });
 
@@ -399,9 +315,65 @@ function cancelProfileEdit() {
   // Reset forms
   document.getElementById("athlete-form").reset();
   document.getElementById("gym-form").reset();
-  document.getElementById("current-image-preview").innerHTML = "";
-  document.getElementById("gym-image-preview").innerHTML = "";
+  document.getElementById("athlete-id").value = "";
+  document.getElementById("gym-id").value = "";
 }
+
+// ================================================
+// TAB SWITCHING
+// ================================================
+
+function switchTab(tabName, button) {
+  // Alle Tabs deaktivieren
+  document.querySelectorAll(".tab-content").forEach((content) => {
+    content.classList.remove("active");
+    content.style.display = "none";
+  });
+
+  // Alle Tab-Buttons deaktivieren
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.classList.remove("active");
+  });
+
+  // Gewählten Tab aktivieren
+  const selectedTab = document.getElementById(tabName + "-tab");
+  if (selectedTab) {
+    selectedTab.classList.add("active");
+    selectedTab.style.display = "block";
+  }
+
+  // Button aktivieren (falls vorhanden)
+  if (button) {
+    button.classList.add("active");
+  } else {
+    // Falls kein Button übergeben wurde, ersten Tab-Button mit passendem onclick aktivieren
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      if (btn.onclick && btn.onclick.toString().includes(tabName)) {
+        btn.classList.add("active");
+      }
+    });
+  }
+}
+
+// ================================================
+// NOTIFICATION SYSTEM
+// ================================================
+
+function showNotification(message, type = "success") {
+  const notification = document.getElementById("notification");
+  notification.textContent = message;
+  notification.className = `notification ${type} show`;
+
+  setTimeout(() => {
+    notification.classList.remove("show");
+  }, 3000);
+}
+
+// ================================================
+// REST DER APP.JS BLEIBT UNVERÄNDERT
+// ================================================
+// Füge hier den Rest deiner ursprünglichen app.js ein
+// (displayMyProfile, loadAthletes, loadGyms, etc.)
 
 function displayMyProfile() {
   document.getElementById("profile-type-selector").style.display = "none";
