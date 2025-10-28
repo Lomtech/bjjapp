@@ -1864,3 +1864,8 @@ img {
   width: 100%;
   margin: 10px 0;
 }
+#openmat-media-preview .media-preview-item {
+  position: relative;
+  display: inline-block;
+  max-width: 150px;
+}
