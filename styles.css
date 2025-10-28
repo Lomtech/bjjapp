@@ -680,8 +680,9 @@ button:disabled {
     font-size: 0.9em;
   }
   .header-top {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: column; /* Elemente untereinander */
+    align-items: center; /* zentrieren */
+    gap: 10px; /* etwas Abstand */
   }
   h1 {
     font-size: 1.5em; /* kleiner machen */
