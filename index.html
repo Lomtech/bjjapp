@@ -15,9 +15,11 @@
       <header>
         <div class="header-top">
           <h1>🥋 BJJ Community</h1>
-          <div class="auth-section" id="auth-section"></div>
+          <div class="auth-section" id="auth-section">
+            <!-- Wird dynamisch befüllt: entweder Login/Register Buttons oder User-Info -->
+          </div>
         </div>
-        <div class="tabs">
+        <div class="tabs" id="main-tabs">
           <button class="tab-btn active" onclick="switchTab('dashboard', this)">
             Dashboard
           </button>
@@ -55,38 +57,51 @@
         </div>
       </header>
 
-      <!-- Welcome Screen für nicht-angemeldete User -->
+      <!-- Welcome Screen für nicht-angemeldete User (vereinfacht) -->
       <div id="welcome-screen" class="tab-content">
         <div style="text-align: center; padding: 60px 20px">
-          <h2 style="font-size: 3em; margin-bottom: 20px">
-            Willkommen bei der BJJ Community! 🥋
-          </h2>
-          <p style="font-size: 1.3em; margin-bottom: 30px; color: #666">
-            Entdecke Gyms, vernetze dich mit Athleten und finde Open Mats in
-            deiner Nähe.
-          </p>
-          <div
+          <h2
             style="
-              display: flex;
-              gap: 20px;
-              justify-content: center;
-              flex-wrap: wrap;
+              font-size: 2.5em;
+              margin-bottom: 20px;
+              color: var(--primary-dark);
             "
           >
-            <button
-              class="btn"
-              onclick="openAuthModal('signup')"
-              style="font-size: 1.2em; padding: 15px 40px"
-            >
-              Jetzt registrieren
-            </button>
-            <button
-              class="btn btn-secondary"
-              onclick="openAuthModal('login')"
-              style="font-size: 1.2em; padding: 15px 40px"
-            >
-              Anmelden
-            </button>
+            Willkommen bei der BJJ Community! 🥋
+          </h2>
+          <p
+            style="
+              font-size: 1.2em;
+              margin-bottom: 40px;
+              color: var(--text-medium);
+              max-width: 600px;
+              margin-left: auto;
+              margin-right: auto;
+              line-height: 1.6;
+            "
+          >
+            Entdecke Gyms in deiner Nähe, vernetze dich mit anderen Athleten und
+            finde Open Mats für dein nächstes Training.
+          </p>
+          <div class="stats-grid" style="max-width: 800px; margin: 40px auto">
+            <div class="stat-card">
+              <div class="stat-number" id="welcome-athletes-count">0</div>
+              <h3>Athleten</h3>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="welcome-gyms-count">0</div>
+              <h3>Gyms</h3>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="welcome-events-count">0</div>
+              <h3>Open Mats</h3>
+            </div>
+          </div>
+          <div style="margin-top: 40px">
+            <p style="color: var(--text-medium); margin-bottom: 20px">
+              Melde dich an oder registriere dich, um Teil der Community zu
+              werden
+            </p>
           </div>
         </div>
       </div>
@@ -105,19 +120,11 @@
           <p style="margin-bottom: 20px">
             Du hast noch kein Profil. Was möchtest du erstellen?
           </p>
-          <div style="display: flex; gap: 20px; flex-wrap: wrap">
-            <button
-              class="btn"
-              onclick="showProfileForm('athlete')"
-              style="flex: 1"
-            >
+          <div class="button-group">
+            <button class="btn" onclick="showProfileForm('athlete')">
               🥋 Athleten-Profil
             </button>
-            <button
-              class="btn btn-secondary"
-              onclick="showProfileForm('gym')"
-              style="flex: 1"
-            >
+            <button class="btn btn-secondary" onclick="showProfileForm('gym')">
               🏋️ Gym-Profil
             </button>
           </div>
@@ -189,7 +196,7 @@
               />
               <div id="current-image-preview"></div>
             </div>
-            <div style="display: flex; gap: 10px">
+            <div class="button-group">
               <button type="submit" id="athlete-submit-btn">
                 Profil anlegen
               </button>
@@ -242,13 +249,13 @@
               />
             </div>
             <div class="form-group">
-              <label>Straße & Hausnummer *</label>
+              <label>Adresse *</label>
               <input
                 type="text"
-                name="street"
-                id="gym-street"
+                name="address"
+                id="gym-address"
                 required
-                placeholder="z.B. Hauptstraße 123"
+                placeholder="Straße und Hausnummer"
               />
             </div>
             <div class="form-row">
@@ -279,7 +286,7 @@
               <input type="file" name="image" id="gym-image" accept="image/*" />
               <div id="gym-image-preview"></div>
             </div>
-            <div style="display: flex; gap: 10px">
+            <div class="button-group">
               <button type="submit" id="gym-submit-btn">Gym anlegen</button>
               <button
                 type="button"
@@ -419,9 +426,13 @@
             <div id="chat-list"></div>
           </div>
           <div class="chat-window" id="chat-window">
-            <p style="text-align: center; color: #999; padding: 40px">
-              Wähle einen Chat aus der Liste
-            </p>
+            <div class="empty-state">
+              <div class="empty-state-icon">💬</div>
+              <div class="empty-state-text">Keine Nachricht ausgewählt</div>
+              <div class="empty-state-subtext">
+                Wähle einen Chat aus der Liste
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -434,11 +445,11 @@
 
     <div class="notification" id="notification"></div>
 
-    <!-- Auth Modal -->
+    <!-- Einziges Auth Modal für Login UND Registrierung -->
     <div class="modal" id="auth-modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h2 id="modal-title">Login</h2>
+          <h2 id="modal-title">Anmelden</h2>
           <button class="modal-close" onclick="closeModal()">&times;</button>
         </div>
         <form id="auth-form">
@@ -451,10 +462,25 @@
             <input type="password" name="password" required minlength="6" />
           </div>
           <button type="submit" id="auth-submit-btn">Anmelden</button>
-          <p style="margin-top: 15px; text-align: center">
-            <a href="#" id="toggle-auth" onclick="toggleAuthMode(event)"
-              >Noch kein Konto? Registrieren</a
+          <p
+            style="
+              margin-top: 20px;
+              text-align: center;
+              color: var(--text-medium);
+            "
+          >
+            <a
+              href="#"
+              id="toggle-auth"
+              onclick="toggleAuthMode(event)"
+              style="
+                color: var(--accent-main);
+                text-decoration: none;
+                font-weight: 500;
+              "
             >
+              Noch kein Konto? Jetzt registrieren
+            </a>
           </p>
         </form>
       </div>
