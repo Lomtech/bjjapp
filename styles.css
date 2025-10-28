@@ -1167,6 +1167,10 @@ button:disabled {
   gap: 12px;
   transition: all var(--transition-base);
 }
+.chat-input-form input[type="text"] {
+  font-size: 16px !important;
+  min-height: 44px;
+}
 
 .chat-input-form:focus-within {
   border-color: var(--black);
