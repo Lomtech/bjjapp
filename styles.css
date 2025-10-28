@@ -685,10 +685,10 @@ button:disabled {
     gap: 10px; /* etwas Abstand */
   }
   h1 {
-    font-size: 1.5em; /* kleiner machen */
+    font-size: 1.8em; /* Titel kleiner */
     text-align: center; /* zentrieren */
-    line-height: 1.2em; /* mehr Zeilenhöhe für Umbrechen */
-    word-wrap: break-word; /* zwingt Umbrechen bei langen Texten */
+    white-space: normal; /* umbrechen erlauben */
+    word-break: break-word; /* lange Wörter umbrechen */
   }
   .messages-container {
     grid-template-columns: 1fr;
