@@ -410,18 +410,31 @@
         </div>
       </div>
 
-      <!-- NEUER TAB: Nachrichten -->
+      <!-- NEUER TAB: Nachrichten (Instagram Style) -->
       <div id="messages-tab" class="tab-content">
-        <h2>💬 Nachrichten</h2>
         <div class="messages-container">
-          <div class="chat-list">
-            <h3>Chats</h3>
-            <div id="chat-list"></div>
+          <!-- Sidebar mit Chat-Liste -->
+          <div class="chat-sidebar">
+            <div class="chat-sidebar-header">
+              <h3>Nachrichten</h3>
+            </div>
+            <div id="chat-list" class="chat-list">
+              <!-- Wird dynamisch gefüllt -->
+            </div>
           </div>
-          <div class="chat-window" id="chat-window">
-            <p style="text-align: center; color: #999; padding: 40px">
-              Wähle einen Chat aus der Liste
-            </p>
+
+          <!-- Chat-Hauptbereich -->
+          <div class="chat-main">
+            <div id="chat-window" class="chat-window">
+              <!-- Empty State -->
+              <div class="chat-empty-state">
+                <div class="chat-empty-icon">💬</div>
+                <div class="chat-empty-text">Keine Konversation ausgewählt</div>
+                <div class="chat-empty-subtext">
+                  Wähle einen Chat aus der Liste, um zu beginnen
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -477,6 +490,7 @@
               type="file"
               id="openmat-media-input"
               accept="image/*,.gif"
+              style="display: none"
               onchange="previewOpenMatMedia(event)"
             />
             <button
@@ -491,7 +505,6 @@
               type="text"
               name="message"
               placeholder="Nachricht schreiben..."
-              required
             />
             <button type="submit">Senden</button>
           </form>
