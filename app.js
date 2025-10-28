@@ -237,24 +237,6 @@ async function switchToAppMode() {
   setupRealtimeSubscriptions();
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (session?.user) {
-    switchToAppMode();
-  } else {
-    switchToAuthMode();
-  }
-
-  // Listener übernimmt ab jetzt
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (event === "SIGNED_OUT" || !session) switchToAuthMode();
-    if (event === "SIGNED_IN") switchToAppMode();
-  });
-});
-
 document.getElementById("auth-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!supabase)
