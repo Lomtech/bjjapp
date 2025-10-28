@@ -31,91 +31,51 @@ let messagePollingInterval = null;
 })();
 
 async function initSupabase(url, key) {
-  // Erstelle Supabase Client mit besseren Auth-Einstellungen
-  supabase = window.supabase.createClient(url, key, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
-  });
+  supabase = window.supabase.createClient(url, key);
 
   const {
     data: { session },
   } = await supabase.auth.getSession();
-
   if (session) {
     currentUser = session.user;
     await loadUserProfile();
-    await initializeData();
     updateAuthUI();
+    await initializeData();
   } else {
-    currentUser = null;
     updateAuthUI();
   }
 
   supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log("Auth State Changed:", event, session);
-
     currentUser = session?.user || null;
-
     if (event === "SIGNED_IN") {
-      console.log("User signed in, loading data...");
-      // Lade ZUERST Profil und alle Daten
       await loadUserProfile();
-      await initializeData();
-
-      // Warte kurz damit Daten geladen sind
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // DANN aktualisiere UI
       updateAuthUI();
-
-      // ZULETZT schließe Modal
-      setTimeout(() => {
-        closeModalForce();
-      }, 100);
+      await initializeData();
     } else if (event === "SIGNED_OUT") {
-      console.log("User signed out, resetting UI...");
       myProfile = null;
-      currentUser = null;
-
-      // Stoppe Polling
+      updateAuthUI();
       if (messagePollingInterval) {
         clearInterval(messagePollingInterval);
-        messagePollingInterval = null;
       }
-
-      // Aktualisiere UI sofort
-      updateAuthUI();
-
-      console.log("Logout UI update abgeschlossen");
     }
   });
 }
 
 async function initializeData() {
-  console.log("initializeData gestartet");
-
-  // Lade alle Daten parallel
-  await Promise.all([
-    loadGymsForAthleteSelect(),
-    loadGymsForFilter(),
-    loadAthletes(),
-    loadGyms(),
-    loadOpenMats(),
-    loadDashboard(),
-  ]);
+  loadGymsForAthleteSelect();
+  loadGymsForFilter();
+  loadAthletes();
+  loadGyms();
+  loadOpenMats();
+  loadDashboard();
 
   if (myProfile && myProfile.type === "athlete") {
-    await Promise.all([loadFriendRequests(), loadFriends(), loadChats()]);
-
+    loadFriendRequests();
+    loadFriends();
+    loadChats();
     updateNotificationBadges();
 
     // Polling für neue Nachrichten (alle 5 Sekunden)
-    if (messagePollingInterval) {
-      clearInterval(messagePollingInterval);
-    }
     messagePollingInterval = setInterval(() => {
       updateNotificationBadges();
       if (currentChatPartner) {
@@ -123,92 +83,54 @@ async function initializeData() {
       }
     }, 5000);
   }
-
-  console.log("initializeData abgeschlossen");
 }
 
 // ================================================
-// AUTHENTIFIZIERUNG - BEREINIGT
+// AUTHENTIFIZIERUNG
 // ================================================
 
 function updateAuthUI() {
-  console.log(
-    "updateAuthUI aufgerufen, currentUser:",
-    currentUser?.email || "null"
-  );
-
   const authSection = document.getElementById("auth-section");
-  const welcomeScreen = document.getElementById("welcome-screen");
+  if (currentUser) {
+    authSection.innerHTML = `
+            <div class="user-info">
+                <span>👤 ${currentUser.email}</span>
+            </div>
+            <button class="auth-btn logout" onclick="logout()">Logout</button>
+        `;
+  } else {
+    authSection.innerHTML = `
+            <button class="auth-btn" onclick="openAuthModal('login')">Login</button>
+            <button class="auth-btn" onclick="openAuthModal('signup')">Registrieren</button>
+        `;
+  }
+  updateVisibility();
+}
+
+function updateVisibility() {
   const tabs = document.querySelectorAll(".tab-btn");
   const tabContents = document.querySelectorAll(".tab-content");
+  const welcomeScreen = document.getElementById("welcome-screen");
 
-  if (currentUser) {
-    // USER IST EINGELOGGT
-    console.log("Zeige eingeloggten Zustand");
-
-    // Auth-Section mit Logout-Button anzeigen
-    authSection.style.display = "flex";
-    authSection.innerHTML = `
-      <div class="user-info">
-        <span>👤 ${currentUser.email}</span>
-      </div>
-      <button class="auth-btn logout" onclick="logout()">Abmelden</button>
-    `;
-
-    // Tabs im Header anzeigen
-    tabs.forEach((tab) => {
-      tab.style.display = "inline-block";
-    });
-
-    // Welcome Screen ausblenden
+  if (!currentUser) {
+    tabs.forEach((tab) => (tab.style.display = "none"));
+    tabContents.forEach((content) => content.classList.remove("active"));
     if (welcomeScreen) {
-      welcomeScreen.style.display = "none";
+      welcomeScreen.classList.add("active");
+    }
+  } else {
+    tabs.forEach((tab) => (tab.style.display = "block"));
+    if (welcomeScreen) {
       welcomeScreen.classList.remove("active");
     }
-
-    // Dashboard anzeigen und Daten neu laden
     switchTab("dashboard");
-
-    // Force reload der aktuellen Daten zur Sicherheit
-    setTimeout(() => {
-      loadDashboard();
-    }, 50);
-  } else {
-    // USER IST NICHT EINGELOGGT
-    console.log("Zeige ausgeloggten Zustand - Welcome Screen");
-
-    // Auth-Section ausblenden
-    authSection.style.display = "none";
-    authSection.innerHTML = "";
-
-    // Alle Tabs im Header ausblenden
-    tabs.forEach((tab) => {
-      tab.style.display = "none";
-    });
-
-    // Alle Tab-Contents ausblenden
-    tabContents.forEach((content) => {
-      if (content.id !== "welcome-screen") {
-        content.style.display = "none";
-        content.classList.remove("active");
-      }
-    });
-
-    // Welcome Screen anzeigen
-    if (welcomeScreen) {
-      console.log("Welcome Screen wird angezeigt");
-      welcomeScreen.style.display = "block";
-      welcomeScreen.classList.add("active");
-    } else {
-      console.error("Welcome Screen Element nicht gefunden!");
-    }
   }
 }
 
 function openAuthModal(mode) {
   isLogin = mode === "login";
   document.getElementById("modal-title").textContent = isLogin
-    ? "Anmelden"
+    ? "Login"
     : "Registrieren";
   document.getElementById("auth-submit-btn").textContent = isLogin
     ? "Anmelden"
@@ -220,7 +142,11 @@ function openAuthModal(mode) {
 }
 
 function closeModal() {
-  document.getElementById("auth-modal").classList.remove("show");
+  if (!currentUser) {
+    showNotification("Bitte melde dich an, um fortzufahren", "warning");
+    return;
+  }
+  closeModalForce();
 }
 
 function closeModalForce() {
@@ -237,266 +163,238 @@ function toggleAuthMode(e) {
 }
 
 async function logout() {
-  console.log("Logout-Funktion aufgerufen");
-
-  if (!supabase) {
-    showNotification("Supabase nicht initialisiert", "error");
-    return;
-  }
-
-  try {
-    // Verwende scope: 'local' um Session-Probleme zu vermeiden
-    const { error } = await supabase.auth.signOut({ scope: "local" });
-
-    if (error) {
-      console.error("Logout Fehler:", error);
-      // Selbst bei Fehler: Lokale Daten löschen und UI zurücksetzen
-    }
-
-    console.log("Logout durchgeführt - setze lokale Daten zurück");
-
-    // Lokale Daten IMMER zurücksetzen
-    currentUser = null;
-    myProfile = null;
-
-    // Stoppe Polling
-    if (messagePollingInterval) {
-      clearInterval(messagePollingInterval);
-      messagePollingInterval = null;
-    }
-
-    // UI manuell zurücksetzen (falls onAuthStateChange nicht feuert)
-    updateAuthUI();
-
-    showNotification("Erfolgreich abgemeldet", "success");
-  } catch (error) {
-    console.error("Unerwarteter Fehler beim Logout:", error);
-
-    // Auch bei Fehler: Lokale Session löschen
-    currentUser = null;
-    myProfile = null;
-    updateAuthUI();
-
-    showNotification("Abgemeldet (lokale Session gelöscht)", "info");
-  }
+  await supabase.auth.signOut();
+  showNotification("Erfolgreich abgemeldet", "info");
 }
 
-// Stelle sicher dass logout global verfügbar ist
-window.logout = logout;
+document.getElementById("auth-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!supabase)
+    return showNotification("Bitte zuerst Supabase konfigurieren!", "warning");
 
-// Auth Form Handler
-document.addEventListener("DOMContentLoaded", () => {
-  const authForm = document.getElementById("auth-form");
-  if (authForm) {
-    authForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      if (!supabase) {
-        return showNotification(
-          "Bitte zuerst Supabase konfigurieren!",
-          "warning"
-        );
-      }
+  const formData = new FormData(e.target);
+  const email = formData.get("email");
+  const password = formData.get("password");
 
-      const formData = new FormData(e.target);
-      const email = formData.get("email");
-      const password = formData.get("password");
-
-      try {
-        if (isLogin) {
-          const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          if (error) throw error;
-          showNotification("✅ Erfolgreich angemeldet!", "success");
-        } else {
-          const { error } = await supabase.auth.signUp({ email, password });
-          if (error) throw error;
-          showNotification(
-            "✅ Registrierung erfolgreich! Bitte E-Mail bestätigen.",
-            "success"
-          );
-        }
-        e.target.reset();
-      } catch (error) {
-        showNotification("❌ " + error.message, "error");
-      }
-    });
+  try {
+    if (isLogin) {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      showNotification("Erfolgreich angemeldet!");
+      closeModalForce();
+    } else {
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+      showNotification(
+        "Registrierung erfolgreich! Bitte bestätige deine E-Mail.",
+        "info"
+      );
+      closeModalForce();
+    }
+  } catch (error) {
+    showNotification("Fehler: " + error.message, "error");
   }
 });
 
 // ================================================
-// USER PROFILE HANDLING
+// PROFIL-MANAGEMENT
 // ================================================
 
 async function loadUserProfile() {
   if (!supabase || !currentUser) return;
 
-  // Prüfe ob Athlete
-  const { data: athlete } = await supabase
+  const { data: athletes } = await supabase
     .from("athletes")
-    .select("*")
-    .eq("user_id", currentUser.id)
-    .single();
+    .select("*, gyms(name, city)")
+    .eq("user_id", currentUser.id);
 
-  if (athlete) {
-    myProfile = { type: "athlete", id: athlete.id, data: athlete };
+  if (athletes && athletes.length > 0) {
+    myProfile = { type: "athlete", id: athletes[0].id, data: athletes[0] };
+    displayMyProfile();
     return;
   }
 
-  // Prüfe ob Gym
-  const { data: gym } = await supabase
+  const { data: gyms } = await supabase
     .from("gyms")
     .select("*")
-    .eq("user_id", currentUser.id)
-    .single();
+    .eq("user_id", currentUser.id);
 
-  if (gym) {
-    myProfile = { type: "gym", id: gym.id, data: gym };
+  if (gyms && gyms.length > 0) {
+    myProfile = { type: "gym", id: gyms[0].id, data: gyms[0] };
+    displayMyProfile();
     return;
   }
 
   myProfile = null;
+  displayProfileSelector();
 }
 
-// [REST DES CODES BLEIBT IDENTISCH - Ich kürze hier für die Lesbarkeit]
-// Die vollständige Datei würde alle anderen Funktionen enthalten...
+function displayProfileSelector() {
+  document.getElementById("profile-type-selector").style.display = "block";
+  document.getElementById("athlete-profile-form").style.display = "none";
+  document.getElementById("gym-profile-form").style.display = "none";
+  document.getElementById("my-profile-display").style.display = "none";
+}
 
-// ================================================
-// TAB-NAVIGATION - VERBESSERT
-// ================================================
+function showProfileForm(type) {
+  document.getElementById("profile-type-selector").style.display = "none";
 
-function switchTab(tabName, eventTarget = null) {
-  if (!currentUser) return;
-
-  document
-    .querySelectorAll(".tab-content")
-    .forEach((t) => t.classList.remove("active"));
-  document
-    .querySelectorAll(".tab-btn")
-    .forEach((b) => b.classList.remove("active"));
-
-  const targetTab = document.getElementById(tabName + "-tab");
-  if (targetTab) {
-    targetTab.classList.add("active");
-  }
-
-  if (eventTarget) {
-    eventTarget.classList.add("active");
+  if (type === "athlete") {
+    document.getElementById("athlete-profile-form").style.display = "block";
+    document.getElementById("gym-profile-form").style.display = "none";
+    document.getElementById("athlete-form-title").textContent =
+      "Athleten-Profil anlegen";
+    document.getElementById("athlete-submit-btn").textContent =
+      "Profil anlegen";
   } else {
-    const tabMapping = {
-      dashboard: "Dashboard",
-      profile: "Mein Profil",
-      athletes: "Athleten",
-      gyms: "Gyms",
-      openmats: "Open Mats",
-      friends: "Freunde",
-      messages: "Nachrichten",
-      map: "Karte",
-    };
-
-    const buttons = document.querySelectorAll(".tab-btn");
-    buttons.forEach((btn) => {
-      const btnText = btn.textContent.trim().split("\n")[0].trim();
-      if (btnText === tabMapping[tabName]) {
-        btn.classList.add("active");
-      }
-    });
-  }
-
-  // Lade Daten wenn Tab gewechselt wird
-  if (tabName === "map") {
-    if (!map) {
-      initMap();
-    }
-  }
-  if (tabName === "dashboard") {
-    loadDashboard();
-  }
-  if (tabName === "athletes") {
-    loadAthletes(); // Stelle sicher dass Athleten-Daten aktualisiert werden
-  }
-  if (tabName === "gyms") {
-    loadGyms(); // Stelle sicher dass Gym-Daten aktualisiert werden
-  }
-  if (tabName === "openmats") {
-    loadOpenMats(); // Stelle sicher dass OpenMat-Daten aktualisiert werden
-  }
-  if (tabName === "friends" && myProfile?.type === "athlete") {
-    loadFriendRequests();
-    loadFriends();
-  }
-  if (tabName === "messages" && myProfile?.type === "athlete") {
-    loadChats();
+    document.getElementById("athlete-profile-form").style.display = "none";
+    document.getElementById("gym-profile-form").style.display = "block";
+    document.getElementById("gym-form-title").textContent =
+      "Gym-Profil anlegen";
+    document.getElementById("gym-submit-btn").textContent = "Gym anlegen";
   }
 }
 
-// ================================================
-// DASHBOARD
-// ================================================
-
-async function loadDashboard() {
-  if (!supabase) return;
-
-  const [{ data: athletes }, { data: gyms }, { data: openMats }] =
-    await Promise.all([
-      supabase.from("athletes").select("*"),
-      supabase.from("gyms").select("*"),
-      supabase
-        .from("open_mats")
-        .select("*")
-        .gte("event_date", new Date().toISOString()),
-    ]);
-
-  const statsGrid = document.getElementById("stats-grid");
-  if (statsGrid) {
-    statsGrid.innerHTML = `
-        <div class="stat-card">
-            <div>👥 Athleten</div>
-            <div class="stat-number">${athletes?.length || 0}</div>
-        </div>
-        <div class="stat-card">
-            <div>🏋️ Gyms</div>
-            <div class="stat-number">${gyms?.length || 0}</div>
-        </div>
-        <div class="stat-card">
-            <div>📅 Open Mats</div>
-            <div class="stat-number">${openMats?.length || 0}</div>
-        </div>
-    `;
+function cancelProfileEdit() {
+  if (myProfile) {
+    displayMyProfile();
+  } else {
+    displayProfileSelector();
   }
 
-  const activities = document.getElementById("recent-activities");
-  if (activities) {
-    const recentAthletes = athletes?.slice(-3).reverse() || [];
-    activities.innerHTML =
-      recentAthletes.length > 0
-        ? recentAthletes
-            .map(
-              (a) => `
-            <div style="padding: 15px; background: #f8f9fa; margin: 10px 0; border-radius: 8px;">
-                <strong>${a.name}</strong> hat sich registriert
-                <span style="float: right; color: #666; font-size: 0.9em;">
-                    ${new Date(a.created_at).toLocaleDateString("de-DE")}
-                </span>
+  // Reset forms
+  document.getElementById("athlete-form").reset();
+  document.getElementById("gym-form").reset();
+  document.getElementById("current-image-preview").innerHTML = "";
+  document.getElementById("gym-image-preview").innerHTML = "";
+}
+
+function displayMyProfile() {
+  document.getElementById("profile-type-selector").style.display = "none";
+  document.getElementById("athlete-profile-form").style.display = "none";
+  document.getElementById("gym-profile-form").style.display = "none";
+
+  const display = document.getElementById("my-profile-display");
+  display.style.display = "block";
+
+  if (myProfile.type === "athlete") {
+    const a = myProfile.data;
+    display.innerHTML = `
+            <div class="profile-card" style="max-width: 500px; margin: 0 auto;">
+                ${
+                  a.image_url
+                    ? `<img src="${a.image_url}" class="profile-image" alt="${a.name}">`
+                    : '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
+                }
+                <h2>${a.name}</h2>
+                ${
+                  a.bio
+                    ? `<p style="color: #666; margin: 10px 0;">${a.bio}</p>`
+                    : ""
+                }
+                ${a.age ? `<p>📅 ${a.age} Jahre</p>` : ""}
+                ${a.weight ? `<p>⚖️ ${a.weight} kg</p>` : ""}
+                ${
+                  a.belt_rank
+                    ? `<span class="belt-badge belt-${
+                        a.belt_rank
+                      }">${a.belt_rank.toUpperCase()}</span>`
+                    : ""
+                }
+                ${
+                  a.gyms
+                    ? `<p style="margin-top: 10px;">🏋️ <strong>${
+                        a.gyms.name
+                      }</strong>${a.gyms.city ? ` (${a.gyms.city})` : ""}</p>`
+                    : ""
+                }
+                <button class="btn" style="width: 100%; margin-top: 20px;" onclick="editMyProfile()">Profil bearbeiten</button>
             </div>
-        `
-            )
-            .join("")
-        : "<p>Noch keine Aktivitäten</p>";
+        `;
+  } else {
+    const g = myProfile.data;
+    display.innerHTML = `
+            <div class="profile-card" style="max-width: 500px; margin: 0 auto;">
+                ${
+                  g.image_url
+                    ? `<img src="${g.image_url}" class="profile-image" alt="${g.name}">`
+                    : ""
+                }
+                <h2>${g.name}</h2>
+                ${
+                  g.description
+                    ? `<p style="color: #666;">${g.description}</p>`
+                    : ""
+                }
+                <p>📍 ${g.street || ""}</p>
+                <p>🏙️ ${g.postal_code || ""} ${g.city || ""}</p>
+                ${g.phone ? `<p>📞 ${g.phone}</p>` : ""}
+                ${g.email ? `<p>📧 ${g.email}</p>` : ""}
+                ${
+                  g.website
+                    ? `<p><a href="${g.website}" target="_blank">🌐 Website</a></p>`
+                    : ""
+                }
+                <button class="btn" style="width: 100%; margin-top: 20px;" onclick="editMyProfile()">Profil bearbeiten</button>
+            </div>
+        `;
   }
 }
 
-// ================================================
-// UTILITY FUNCTIONS
-// ================================================
+function editMyProfile() {
+  if (myProfile.type === "athlete") {
+    const a = myProfile.data;
+    document.getElementById("athlete-id").value = a.id;
+    document.getElementById("athlete-name").value = a.name || "";
+    document.getElementById("athlete-bio").value = a.bio || "";
+    document.getElementById("athlete-age").value = a.age || "";
+    document.getElementById("athlete-weight").value = a.weight || "";
+    document.getElementById("athlete-belt").value = a.belt_rank || "";
+    document.getElementById("athlete-gym-select").value = a.gym_id || "";
 
-function showNotification(message, type = "success") {
-  const notif = document.getElementById("notification");
-  notif.textContent = message;
-  notif.className = "notification show";
-  if (type) notif.classList.add(type);
-  setTimeout(() => notif.classList.remove("show"), 3000);
+    if (a.image_url) {
+      document.getElementById("current-image-preview").innerHTML = `
+                <div style="margin-top: 10px;">
+                    <img src="${a.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
+                    <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
+                </div>
+            `;
+    }
+
+    document.getElementById("athlete-form-title").textContent =
+      "Profil bearbeiten";
+    document.getElementById("athlete-submit-btn").textContent =
+      "Änderungen speichern";
+    showProfileForm("athlete");
+  } else {
+    const g = myProfile.data;
+    document.getElementById("gym-id").value = g.id;
+    document.getElementById("gym-name").value = g.name || "";
+    document.getElementById("gym-description").value = g.description || "";
+    document.getElementById("gym-email").value = g.email || "";
+    document.getElementById("gym-phone").value = g.phone || "";
+    document.getElementById("gym-website").value = g.website || "";
+    document.getElementById("gym-street").value = g.street || "";
+    document.getElementById("gym-postal").value = g.postal_code || "";
+    document.getElementById("gym-city").value = g.city || "";
+
+    if (g.image_url) {
+      document.getElementById("gym-image-preview").innerHTML = `
+                <div style="margin-top: 10px;">
+                    <img src="${g.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
+                    <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
+                </div>
+            `;
+    }
+
+    document.getElementById("gym-form-title").textContent = "Profil bearbeiten";
+    document.getElementById("gym-submit-btn").textContent =
+      "Änderungen speichern";
+    showProfileForm("gym");
+  }
 }
 
 // ================================================
@@ -649,7 +547,7 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
   const gymId = formData.get("gym_id");
   const isEditing = !!gymId;
   const name = formData.get("name");
-  const street = formData.get("address");
+  const street = formData.get("street");
   const postalCode = formData.get("postal_code");
   const city = formData.get("city");
 
