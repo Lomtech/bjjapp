@@ -131,8 +131,18 @@ function closeModal() {
         showNotification('Bitte melde dich an, um fortzufahren', 'warning');
         return;
     }
-    document.getElementById('auth-modal').classList.remove('show');
-    document.getElementById('auth-form').reset();
+    closeModalForce();
+}
+
+function closeModalForce() {
+    const modal = document.getElementById('auth-modal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+    const form = document.getElementById('auth-form');
+    if (form) {
+        form.reset();
+    }
 }
 
 function toggleAuthMode(e) {
@@ -171,18 +181,38 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
     }
 });
 
-function closeModalForce() {
-    document.getElementById('auth-modal').classList.remove('show');
-    document.getElementById('auth-form').reset();
-}
-
-function switchTab(tabName) {
+function switchTab(tabName, eventTarget = null) {
     if (!currentUser) return;
     
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(tabName + '-tab').classList.add('active');
-    event.target.classList.add('active');
+    
+    const targetTab = document.getElementById(tabName + '-tab');
+    if (targetTab) {
+        targetTab.classList.add('active');
+    }
+    
+    // Aktiviere den entsprechenden Button
+    if (eventTarget) {
+        eventTarget.classList.add('active');
+    } else {
+        // Finde den Button basierend auf dem Tab-Namen
+        const tabMapping = {
+            'dashboard': 'Dashboard',
+            'athletes': 'Athleten',
+            'gyms': 'Gyms',
+            'openmats': 'Open Mats',
+            'map': 'Karte',
+            'setup': 'Setup'
+        };
+        
+        const buttons = document.querySelectorAll('.tab-btn');
+        buttons.forEach(btn => {
+            if (btn.textContent === tabMapping[tabName]) {
+                btn.classList.add('active');
+            }
+        });
+    }
 
     if (tabName === 'map' && !map) {
         initMap();

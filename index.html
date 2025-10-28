@@ -18,18 +18,24 @@
           <div class="auth-section" id="auth-section"></div>
         </div>
         <div class="tabs">
-          <button class="tab-btn" onclick="switchTab('setup')">Setup</button>
-          <button class="tab-btn active" onclick="switchTab('dashboard')">
+          <button class="tab-btn" onclick="switchTab('setup', this)">
+            Setup
+          </button>
+          <button class="tab-btn active" onclick="switchTab('dashboard', this)">
             Dashboard
           </button>
-          <button class="tab-btn" onclick="switchTab('athletes')">
+          <button class="tab-btn" onclick="switchTab('athletes', this)">
             Athleten
           </button>
-          <button class="tab-btn" onclick="switchTab('gyms')">Gyms</button>
-          <button class="tab-btn" onclick="switchTab('openmats')">
+          <button class="tab-btn" onclick="switchTab('gyms', this)">
+            Gyms
+          </button>
+          <button class="tab-btn" onclick="switchTab('openmats', this)">
             Open Mats
           </button>
-          <button class="tab-btn" onclick="switchTab('map')">Karte</button>
+          <button class="tab-btn" onclick="switchTab('map', this)">
+            Karte
+          </button>
         </div>
       </header>
 
