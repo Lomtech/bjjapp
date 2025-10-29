@@ -55,7 +55,7 @@
         </div>
       </header>
 
-      <!-- Welcome Screen -->
+      <!-- Welcome Screen für nicht-angemeldete User -->
       <div id="welcome-screen" class="tab-content">
         <div style="text-align: center; padding: 60px 20px">
           <h2 style="font-size: 3em; margin-bottom: 20px">
@@ -91,7 +91,6 @@
         </div>
       </div>
 
-      <!-- Dashboard -->
       <div id="dashboard-tab" class="tab-content">
         <h2>📊 Dashboard</h2>
         <div class="stats-grid" id="stats-grid"></div>
@@ -99,7 +98,7 @@
         <div id="recent-activities"></div>
       </div>
 
-      <!-- Mein Profil -->
+      <!-- NEUER TAB: Mein Profil -->
       <div id="profile-tab" class="tab-content">
         <h2>👤 Mein Profil</h2>
         <div id="profile-type-selector">
@@ -293,10 +292,10 @@
           </form>
         </div>
 
+        <!-- Anzeige des eigenen Profils -->
         <div id="my-profile-display" style="display: none"></div>
       </div>
 
-      <!-- Athleten -->
       <div id="athletes-tab" class="tab-content">
         <div class="search-filter">
           <h3>🔍 Athleten suchen</h3>
@@ -328,11 +327,11 @@
             </button>
           </div>
         </div>
+
         <h3>Athleten</h3>
         <div id="athletes-list" class="profiles-grid"></div>
       </div>
 
-      <!-- Gyms -->
       <div id="gyms-tab" class="tab-content">
         <div class="search-filter">
           <h3>🔍 Gyms suchen</h3>
@@ -351,11 +350,11 @@
             </button>
           </div>
         </div>
+
         <h3>Gyms</h3>
         <div id="gyms-list" class="profiles-grid"></div>
       </div>
 
-      <!-- Open Mats -->
       <div id="openmats-tab" class="tab-content">
         <h2>Open Mat Events</h2>
         <div id="create-openmat-section" style="display: none">
@@ -391,50 +390,42 @@
             <button type="submit">Event erstellen</button>
           </form>
         </div>
+
         <h3 style="margin-top: 40px">Kommende Open Mats</h3>
         <div id="openmats-list" class="calendar"></div>
       </div>
 
-      <!-- Freunde -->
+      <!-- NEUER TAB: Freunde -->
       <div id="friends-tab" class="tab-content">
         <h2>👥 Freunde</h2>
+
         <div id="friend-requests-section">
           <h3>Freundschaftsanfragen</h3>
           <div id="friend-requests-list"></div>
         </div>
+
         <div id="friends-list-section" style="margin-top: 40px">
           <h3>Meine Freunde</h3>
           <div id="friends-list" class="profiles-grid"></div>
         </div>
       </div>
 
-      <!-- NACHrichten - KOMPLETT ÜBERARBEITET -->
+      <!-- NEUER TAB: Nachrichten -->
       <div id="messages-tab" class="tab-content">
+        <h2>💬 Nachrichten</h2>
         <div class="messages-container">
-          <!-- Sidebar -->
-          <div class="chat-sidebar">
-            <div class="chat-sidebar-header">
-              <h3>Nachrichten</h3>
-            </div>
-            <div id="chat-list" class="chat-list"></div>
+          <div class="chat-list">
+            <h3>Chats</h3>
+            <div id="chat-list"></div>
           </div>
-
-          <!-- Chat Fenster -->
-          <div class="chat-main">
-            <div id="chat-window" class="chat-window">
-              <div class="chat-empty-state">
-                <div class="chat-empty-icon">💬</div>
-                <div class="chat-empty-text">Wähle einen Chat</div>
-                <div class="chat-empty-subtext">
-                  Wähle einen Freund aus der Liste, um zu beginnen
-                </div>
-              </div>
-            </div>
+          <div class="chat-window" id="chat-window">
+            <p style="text-align: center; color: #999; padding: 40px">
+              Wähle einen Chat aus der Liste
+            </p>
           </div>
         </div>
       </div>
 
-      <!-- Karte -->
       <div id="map-tab" class="tab-content">
         <h2>Gyms & Open Mats auf der Karte</h2>
         <div id="map"></div>
@@ -482,24 +473,10 @@
           <div id="openmat-messages" class="chat-messages"></div>
           <form id="openmat-message-form" class="chat-input-form">
             <input
-              type="file"
-              id="openmat-media-input"
-              accept="image/*,.gif"
-              style="display: none"
-              onchange="previewOpenMatMedia(event)"
-            />
-            <button
-              type="button"
-              class="media-btn"
-              onclick="document.getElementById('openmat-media-input').click()"
-            >
-              📎
-            </button>
-            <div id="openmat-media-preview" class="media-preview"></div>
-            <input
               type="text"
               name="message"
               placeholder="Nachricht schreiben..."
+              required
             />
             <button type="submit">Senden</button>
           </form>
