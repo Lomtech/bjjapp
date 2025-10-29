@@ -1,0 +1,29 @@
+<div id="athletes-tab" class="tab-content">
+  <div class="search-filter">
+    <h3>🔍 Athleten suchen</h3>
+    <div class="search-row">
+      <div class="form-group">
+        <input type="text" id="search-athlete" placeholder="Name suchen..." />
+      </div>
+      <div class="form-group">
+        <select id="filter-belt">
+          <option value="">Alle Gürtelgrade</option>
+          <option value="weiß">Weiß</option>
+          <option value="blau">Blau</option>
+          <option value="lila">Lila</option>
+          <option value="braun">Braun</option>
+          <option value="schwarz">Schwarz</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <select id="filter-gym">
+          <option value="">Alle Gyms</option>
+        </select>
+      </div>
+      <button onclick="filterAthletes()" class="btn btn-small">Filtern</button>
+    </div>
+  </div>
+
+  <h3>Athleten</h3>
+  <div id="athletes-list" class="profiles-grid"></div>
+</div>

@@ -1,0 +1,22 @@
+<div class="modal" id="openmat-chat-modal">
+  <div class="modal-content modal-large">
+    <div class="modal-header">
+      <h2 id="openmat-chat-title">Event Chat</h2>
+      <button class="modal-close" onclick="closeOpenMatChat()">&times;</button>
+    </div>
+
+    <div class="openmat-chat-container">
+      <div id="openmat-messages" class="chat-messages"></div>
+
+      <form id="openmat-message-form" class="chat-input-form">
+        <input
+          type="text"
+          name="message"
+          placeholder="Nachricht schreiben..."
+          required
+        />
+        <button type="submit">Senden</button>
+      </form>
+    </div>
+  </div>
+</div>

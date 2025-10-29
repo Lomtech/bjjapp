@@ -1,0 +1,28 @@
+<div class="modal" id="auth-modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modal-title">Login</h2>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+
+    <form id="auth-form">
+      <div class="form-group">
+        <label>E-Mail</label>
+        <input type="email" name="email" required />
+      </div>
+
+      <div class="form-group">
+        <label>Passwort</label>
+        <input type="password" name="password" required minlength="6" />
+      </div>
+
+      <button type="submit" id="auth-submit-btn">Anmelden</button>
+
+      <p class="modal-toggle">
+        <a href="#" id="toggle-auth" onclick="toggleAuthMode(event)">
+          Noch kein Konto? Registrieren
+        </a>
+      </p>
+    </form>
+  </div>
+</div>
