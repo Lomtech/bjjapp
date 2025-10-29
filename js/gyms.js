@@ -1,267 +1,281 @@
 // ================================================
-// GYM-VERWALTUNG
+// GYMS
+// Gyms Tab Logik
 // ================================================
 
-async function geocodeAddress(street, postalCode, city) {
-  const address = `${street}, ${postalCode} ${city}, Germany`;
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-    address
-  )}&limit=1`;
+let gymsData = [];
+let gymsFilters = {
+  search: "",
+  location: "",
+};
 
-  try {
-    const response = await fetch(url, {
-      headers: { "User-Agent": "BJJ-Community-Platform" },
+function initGyms() {
+  console.log("🏢 Gyms initialisiert");
+
+  // Lade Gyms
+  loadGyms();
+
+  // Event Listener für Gym-Suche
+  const searchBtn = document.getElementById("search-gyms-btn");
+  if (searchBtn) {
+    searchBtn.addEventListener("click", applyGymsFilters);
+  }
+
+  // Suche bei Enter
+  const searchInput = document.getElementById("search-gyms");
+  if (searchInput) {
+    searchInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        applyGymsFilters();
+      }
     });
-    const data = await response.json();
-
-    if (data && data.length > 0) {
-      return {
-        latitude: parseFloat(data[0].lat),
-        longitude: parseFloat(data[0].lon),
-        success: true,
-      };
-    }
-
-    console.warn("Geocoding failed, using fallback");
-    return {
-      latitude: 48.1351,
-      longitude: 11.582,
-      success: true,
-      fallback: true,
-    };
-  } catch (error) {
-    console.error("Geocoding error:", error);
-    return {
-      latitude: 48.1351,
-      longitude: 11.582,
-      success: true,
-      fallback: true,
-    };
-  }
-}
-
-async function checkGymDuplicate(name, street, gymId = null) {
-  let query = supabase
-    .from("gyms")
-    .select("id")
-    .eq("name", name)
-    .eq("street", street);
-
-  if (gymId) {
-    query = query.neq("id", gymId);
   }
 
-  const { data } = await query;
-  return data && data.length > 0;
-}
-
-async function loadGymsForAthleteSelect() {
-  if (!supabase) return;
-  const { data: gyms } = await supabase
-    .from("gyms")
-    .select("id, name, city")
-    .order("name");
-  const select = document.getElementById("athlete-gym-select");
-  if (gyms && select) {
-    select.innerHTML =
-      '<option value="">Kein Gym zugeordnet</option>' +
-      gyms
-        .map(
-          (g) =>
-            `<option value="${g.id}">${g.name}${
-              g.city ? ` (${g.city})` : ""
-            }</option>`
-        )
-        .join("");
+  // Location Filter
+  const locationFilter = document.getElementById("filter-gym-location");
+  if (locationFilter) {
+    locationFilter.addEventListener("change", applyGymsFilters);
   }
-}
 
-async function loadGymsForFilter() {
-  if (!supabase) return;
-  const { data: gyms } = await supabase
-    .from("gyms")
-    .select("id, name, city")
-    .order("name");
-  const select = document.getElementById("filter-gym");
-  if (gyms && select) {
-    select.innerHTML =
-      '<option value="">Alle Gyms</option>' +
-      gyms
-        .map(
-          (g) =>
-            `<option value="${g.id}">${g.name}${
-              g.city ? ` (${g.city})` : ""
-            }</option>`
-        )
-        .join("");
+  // Reset-Button
+  const resetBtn = document.getElementById("reset-gyms-filters");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", resetGymsFilters);
+  }
+
+  // Gym hinzufügen Button
+  const addGymBtn = document.getElementById("add-gym-btn");
+  if (addGymBtn) {
+    addGymBtn.addEventListener("click", showAddGymModal);
   }
 }
 
 async function loadGyms() {
-  if (!supabase) return;
-  const { data: gyms } = await supabase.from("gyms").select("*");
+  console.log("🔍 Lade Gyms...");
 
-  if (gyms) {
-    allGyms = gyms;
-    displayGyms(gyms);
+  const container = document.getElementById("gyms-grid");
+  if (!container) return;
+
+  // Loading State
+  container.innerHTML = `
+    <div style="grid-column: 1/-1; text-align: center; padding: 40px;">
+      <p>Lädt Gyms...</p>
+    </div>
+  `;
+
+  try {
+    if (supabase) {
+      // Lade echte Gyms von Supabase
+      const { data, error } = await supabase
+        .from(DB_TABLES.gyms)
+        .select("*")
+        .order("name", { ascending: true });
+
+      if (error) throw error;
+      gymsData = data || [];
+    } else {
+      // Demo-Gyms
+      gymsData = [
+        {
+          id: 1,
+          name: "BJJ Munich",
+          location: "München",
+          address: "Musterstraße 123",
+          website: "https://bjjmunich.de",
+          phone: "+49 89 123456",
+          description: "Traditionelles Brazilian Jiu-Jitsu Training",
+        },
+        {
+          id: 2,
+          name: "Gracie Barra Berlin",
+          location: "Berlin",
+          address: "Alexanderplatz 1",
+          website: "https://graciebarraberlin.de",
+          phone: "+49 30 987654",
+          description: "Gracie Barra Network - BJJ für alle Level",
+        },
+        {
+          id: 3,
+          name: "CheckMat Hamburg",
+          location: "Hamburg",
+          address: "Hafenstraße 45",
+          website: "https://checkmathamburg.de",
+          phone: "+49 40 555666",
+          description: "CheckMat Team - Wettkampforientiertes Training",
+        },
+        {
+          id: 4,
+          name: "Alliance Frankfurt",
+          location: "Frankfurt",
+          address: "Mainzer Straße 78",
+          website: "https://alliancefrankfurt.de",
+          phone: "+49 69 777888",
+          description: "Alliance Jiu-Jitsu - High Level Training",
+        },
+      ];
+    }
+
+    renderGyms(gymsData);
+  } catch (error) {
+    console.error("Fehler beim Laden der Gyms:", error);
+    container.innerHTML = `
+      <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: red;">
+        <p>❌ Fehler beim Laden der Gyms</p>
+      </div>
+    `;
   }
 }
 
-function displayGyms(gyms) {
-  const list = document.getElementById("gyms-list");
-  list.innerHTML = gyms
+function renderGyms(gyms) {
+  const container = document.getElementById("gyms-grid");
+  if (!container) return;
+
+  if (gyms.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">
+        <p>Keine Gyms gefunden</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = gyms
     .map(
-      (g) => `
-        <div class="profile-card">
-            ${
-              g.image_url
-                ? `<img src="${g.image_url}" class="profile-image" alt="${g.name}">`
-                : ""
-            }
-            <h3>${g.name}</h3>
-            ${
-              g.description
-                ? `<p style="font-size: 0.9em; color: #666;">${g.description}</p>`
-                : ""
-            }
-            <p>📍 ${g.street || ""}</p>
-            <p>🏙️ ${g.postal_code || ""} ${g.city || ""}</p>
-            ${g.phone ? `<p>📞 ${g.phone}</p>` : ""}
-            ${
-              g.website
-                ? `<p><a href="${g.website}" target="_blank">🌐 Website</a></p>`
-                : ""
-            }
+      (gym) => `
+    <div class="profile-card">
+      ${
+        gym.image
+          ? `<img src="${gym.image}" alt="${escapeHtml(
+              gym.name
+            )}" class="profile-image" />`
+          : `
+        <div class="profile-image" style="display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; font-size: 3rem; font-weight: bold;">
+          🥋
         </div>
-    `
+      `
+      }
+      <div class="profile-card-content">
+        <h3>${escapeHtml(gym.name)}</h3>
+        <p style="color: #666; margin-bottom: 8px;">
+          📍 ${escapeHtml(gym.location || "")}
+        </p>
+        ${
+          gym.address
+            ? `<p style="color: #999; font-size: 0.875rem; margin-bottom: 8px;">${escapeHtml(
+                gym.address
+              )}</p>`
+            : ""
+        }
+        ${
+          gym.phone
+            ? `<p style="color: #666; margin-bottom: 8px;">📞 ${escapeHtml(
+                gym.phone
+              )}</p>`
+            : ""
+        }
+        ${
+          gym.description
+            ? `<p style="color: #666; margin-bottom: 12px; font-size: 0.9rem;">${escapeHtml(
+                truncateText(gym.description, 100)
+              )}</p>`
+            : ""
+        }
+        <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
+          ${
+            gym.website
+              ? `<a href="${gym.website}" target="_blank" class="btn btn-small" style="text-decoration: none;">🌐 Website</a>`
+              : ""
+          }
+          <button class="btn btn-secondary btn-small" onclick="viewGymDetails('${
+            gym.id
+          }')">
+            Details
+          </button>
+        </div>
+      </div>
+    </div>
+  `
     )
     .join("");
 }
 
-function filterGyms() {
-  const searchTerm = document.getElementById("search-gym").value.toLowerCase();
-  let filtered = allGyms;
+function applyGymsFilters() {
+  console.log("🔍 Wende Filter an...");
 
-  if (searchTerm) {
-    filtered = filtered.filter(
-      (g) =>
-        g.name.toLowerCase().includes(searchTerm) ||
-        g.city?.toLowerCase().includes(searchTerm)
-    );
-  }
+  // Sammle Filter-Werte
+  gymsFilters.search =
+    document.getElementById("search-gyms")?.value.toLowerCase() || "";
+  gymsFilters.location =
+    document.getElementById("filter-gym-location")?.value.toLowerCase() || "";
 
-  displayGyms(filtered);
+  // Filtere Gyms
+  let filtered = gymsData.filter((gym) => {
+    // Such-Filter
+    if (gymsFilters.search) {
+      const searchLower = gymsFilters.search;
+      const matchesSearch =
+        gym.name?.toLowerCase().includes(searchLower) ||
+        gym.location?.toLowerCase().includes(searchLower) ||
+        gym.description?.toLowerCase().includes(searchLower);
+
+      if (!matchesSearch) return false;
+    }
+
+    // Ort-Filter
+    if (
+      gymsFilters.location &&
+      !gym.location?.toLowerCase().includes(gymsFilters.location)
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+
+  console.log(`Gefilterte Gyms: ${filtered.length}/${gymsData.length}`);
+  renderGyms(filtered);
 }
 
-// Event Listener für Gym Form
-document.getElementById("gym-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (!supabase) return;
+function resetGymsFilters() {
+  console.log("🔄 Setze Filter zurück...");
 
-  const submitBtn = document.getElementById("gym-submit-btn");
-  submitBtn.disabled = true;
-  const originalText = submitBtn.textContent;
-  submitBtn.textContent = "Wird gespeichert...";
+  // Reset Inputs
+  const searchInput = document.getElementById("search-gyms");
+  const locationFilter = document.getElementById("filter-gym-location");
 
-  const formData = new FormData(e.target);
-  const gymId = formData.get("gym_id");
-  const isEditing = !!gymId;
-  const name = formData.get("name");
-  const street = formData.get("street");
-  const postalCode = formData.get("postal_code");
-  const city = formData.get("city");
+  if (searchInput) searchInput.value = "";
+  if (locationFilter) locationFilter.value = "";
 
-  // Duplikat-Check
-  const isDuplicate = await checkGymDuplicate(name, street, gymId);
-  if (isDuplicate) {
-    showNotification(
-      "Ein Gym mit diesem Namen und dieser Straße existiert bereits!",
-      "error"
-    );
-    submitBtn.disabled = false;
-    submitBtn.textContent = originalText;
+  // Reset Filter-Objekt
+  gymsFilters = {
+    search: "",
+    location: "",
+  };
+
+  // Zeige alle Gyms
+  renderGyms(gymsData);
+}
+
+function viewGymDetails(gymId) {
+  console.log("🏢 Zeige Gym Details:", gymId);
+  const gym = gymsData.find((g) => g.id == gymId);
+
+  if (!gym) {
+    showNotification("❌ Gym nicht gefunden");
     return;
   }
 
-  const statusDiv = document.getElementById("geocoding-status");
-  statusDiv.textContent = "🔄 Geocodiere Adresse...";
-  statusDiv.className = "geocoding-status";
+  // Zeige Details in Modal oder erweiterte Ansicht
+  showNotification(`Details für ${gym.name}`);
+  // Hier kannst du ein Modal mit vollständigen Gym-Infos öffnen
+}
 
-  const geoResult = await geocodeAddress(street, postalCode, city);
+function showAddGymModal() {
+  console.log("➕ Zeige Gym hinzufügen Modal");
+  showNotification("Gym hinzufügen (Coming Soon)");
+  // Hier Modal zum Hinzufügen eines neuen Gyms öffnen
+}
 
-  if (geoResult.fallback) {
-    statusDiv.textContent = "⚠️ Adresse approximiert (München als Fallback)";
-    statusDiv.className = "geocoding-status warning";
-  } else {
-    statusDiv.textContent = "✅ Adresse erfolgreich gefunden";
-    statusDiv.className = "geocoding-status success";
-  }
-
-  const imageFile = formData.get("image");
-  let imageUrl = myProfile?.data?.image_url || null;
-
-  if (imageFile && imageFile.size > 0) {
-    const fileExt = imageFile.name.split(".").pop();
-    const fileName = `gym_${currentUser.id}_${Date.now()}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("profile-images")
-      .upload(fileName, imageFile, { upsert: true });
-
-    if (!uploadError) {
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("profile-images").getPublicUrl(fileName);
-      imageUrl = publicUrl;
-    }
-  }
-
-  const data = {
-    name: name,
-    description: formData.get("description") || null,
-    email: formData.get("email") || null,
-    phone: formData.get("phone") || null,
-    website: formData.get("website") || null,
-    street: street,
-    postal_code: postalCode,
-    city: city,
-    address: `${street}, ${postalCode} ${city}`,
-    latitude: geoResult.latitude,
-    longitude: geoResult.longitude,
-    image_url: imageUrl,
-    user_id: currentUser.id,
-  };
-
-  if (isEditing) {
-    const { error } = await supabase.from("gyms").update(data).eq("id", gymId);
-
-    if (error) {
-      showNotification("Fehler: " + error.message, "error");
-    } else {
-      showNotification("Profil aktualisiert!");
-      await loadUserProfile();
-      loadGyms();
-      loadGymsForAthleteSelect();
-      loadGymsForFilter();
-      if (map) initMap();
-    }
-  } else {
-    const { error } = await supabase.from("gyms").insert([data]);
-
-    if (error) {
-      showNotification("Fehler: " + error.message, "error");
-    } else {
-      showNotification("Gym erstellt!");
-      await loadUserProfile();
-      loadGyms();
-      loadGymsForAthleteSelect();
-      loadGymsForFilter();
-      loadDashboard();
-      if (map) initMap();
-    }
-  }
-
-  submitBtn.disabled = false;
-  submitBtn.textContent = originalText;
-  statusDiv.textContent = "";
-});
+// Exportiere global
+window.initGyms = initGyms;
+window.viewGymDetails = viewGymDetails;

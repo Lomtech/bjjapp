@@ -1,275 +1,300 @@
 // ================================================
-// PROFIL-MANAGEMENT
+// PROFILE
+// Profil Tab Logik
 // ================================================
 
-async function loadUserProfile() {
-  if (!supabase || !currentUser) return;
+let currentProfile = null;
 
-  const { data: athletes } = await supabase
-    .from("athletes")
-    .select("*, gyms(name, city)")
-    .eq("user_id", currentUser.id);
+function initProfile() {
+  console.log("👤 Profil initialisiert");
 
-  if (athletes && athletes.length > 0) {
-    myProfile = { type: "athlete", id: athletes[0].id, data: athletes[0] };
-    displayMyProfile();
+  // Lade Profil-Daten
+  loadProfile();
+
+  // Event Listener für Profil-Formular
+  const profileForm = document.getElementById("profile-form");
+  if (profileForm) {
+    profileForm.addEventListener("submit", handleProfileSubmit);
+  }
+
+  // Event Listener für Profilbild-Upload
+  const profileImageInput = document.getElementById("profile-image-input");
+  if (profileImageInput) {
+    profileImageInput.addEventListener("change", handleProfileImageChange);
+  }
+
+  // Event Listener für Profilbild-Button
+  const uploadImageBtn = document.getElementById("upload-profile-image-btn");
+  if (uploadImageBtn) {
+    uploadImageBtn.addEventListener("click", () => {
+      profileImageInput?.click();
+    });
+  }
+}
+
+async function loadProfile() {
+  console.log("👤 Lade Profil...");
+
+  if (!currentUser) {
+    console.warn("⚠️ Kein User eingeloggt");
     return;
   }
 
-  const { data: gyms } = await supabase
-    .from("gyms")
-    .select("*")
-    .eq("user_id", currentUser.id);
+  try {
+    if (supabase) {
+      // Lade echtes Profil von Supabase
+      const { data, error } = await supabase
+        .from(DB_TABLES.profiles)
+        .select("*")
+        .eq("id", currentUser.id)
+        .single();
 
-  if (gyms && gyms.length > 0) {
-    myProfile = { type: "gym", id: gyms[0].id, data: gyms[0] };
-    displayMyProfile();
-    return;
-  }
-
-  myProfile = null;
-  displayProfileSelector();
-}
-
-function displayProfileSelector() {
-  document.getElementById("profile-type-selector").style.display = "block";
-  document.getElementById("athlete-profile-form").style.display = "none";
-  document.getElementById("gym-profile-form").style.display = "none";
-  document.getElementById("my-profile-display").style.display = "none";
-}
-
-function showProfileForm(type) {
-  document.getElementById("profile-type-selector").style.display = "none";
-
-  if (type === "athlete") {
-    document.getElementById("athlete-profile-form").style.display = "block";
-    document.getElementById("gym-profile-form").style.display = "none";
-    document.getElementById("athlete-form-title").textContent =
-      "Athleten-Profil anlegen";
-    document.getElementById("athlete-submit-btn").textContent =
-      "Profil anlegen";
-  } else {
-    document.getElementById("athlete-profile-form").style.display = "none";
-    document.getElementById("gym-profile-form").style.display = "block";
-    document.getElementById("gym-form-title").textContent =
-      "Gym-Profil anlegen";
-    document.getElementById("gym-submit-btn").textContent = "Gym anlegen";
-  }
-}
-
-function cancelProfileEdit() {
-  if (myProfile) {
-    displayMyProfile();
-  } else {
-    displayProfileSelector();
-  }
-
-  document.getElementById("athlete-form").reset();
-  document.getElementById("gym-form").reset();
-  document.getElementById("current-image-preview").innerHTML = "";
-  document.getElementById("gym-image-preview").innerHTML = "";
-}
-
-function displayMyProfile() {
-  document.getElementById("profile-type-selector").style.display = "none";
-  document.getElementById("athlete-profile-form").style.display = "none";
-  document.getElementById("gym-profile-form").style.display = "none";
-
-  const display = document.getElementById("my-profile-display");
-  display.style.display = "block";
-
-  if (myProfile.type === "athlete") {
-    const a = myProfile.data;
-    display.innerHTML = `
-            <div class="profile-card" style="max-width: 500px; margin: 0 auto;">
-                ${
-                  a.image_url
-                    ? `<img src="${a.image_url}" class="profile-image" alt="${a.name}">`
-                    : '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
-                }
-                <h2>${a.name}</h2>
-                ${
-                  a.bio
-                    ? `<p style="color: #666; margin: 10px 0;">${a.bio}</p>`
-                    : ""
-                }
-                ${a.age ? `<p>📅 ${a.age} Jahre</p>` : ""}
-                ${a.weight ? `<p>⚖️ ${a.weight} kg</p>` : ""}
-                ${
-                  a.belt_rank
-                    ? `<span class="belt-badge belt-${
-                        a.belt_rank
-                      }">${a.belt_rank.toUpperCase()}</span>`
-                    : ""
-                }
-                ${
-                  a.gyms
-                    ? `<p style="margin-top: 10px;">🏋️ <strong>${
-                        a.gyms.name
-                      }</strong>${a.gyms.city ? ` (${a.gyms.city})` : ""}</p>`
-                    : ""
-                }
-                <button class="btn" style="width: 100%; margin-top: 20px;" onclick="editMyProfile()">Profil bearbeiten</button>
-            </div>
-        `;
-  } else {
-    const g = myProfile.data;
-    display.innerHTML = `
-            <div class="profile-card" style="max-width: 500px; margin: 0 auto;">
-                ${
-                  g.image_url
-                    ? `<img src="${g.image_url}" class="profile-image" alt="${g.name}">`
-                    : ""
-                }
-                <h2>${g.name}</h2>
-                ${
-                  g.description
-                    ? `<p style="color: #666;">${g.description}</p>`
-                    : ""
-                }
-                <p>📍 ${g.street || ""}</p>
-                <p>🏙️ ${g.postal_code || ""} ${g.city || ""}</p>
-                ${g.phone ? `<p>📞 ${g.phone}</p>` : ""}
-                ${g.email ? `<p>📧 ${g.email}</p>` : ""}
-                ${
-                  g.website
-                    ? `<p><a href="${g.website}" target="_blank">🌐 Website</a></p>`
-                    : ""
-                }
-                <button class="btn" style="width: 100%; margin-top: 20px;" onclick="editMyProfile()">Profil bearbeiten</button>
-            </div>
-        `;
-  }
-}
-
-function editMyProfile() {
-  if (myProfile.type === "athlete") {
-    const a = myProfile.data;
-    document.getElementById("athlete-id").value = a.id;
-    document.getElementById("athlete-name").value = a.name || "";
-    document.getElementById("athlete-bio").value = a.bio || "";
-    document.getElementById("athlete-age").value = a.age || "";
-    document.getElementById("athlete-weight").value = a.weight || "";
-    document.getElementById("athlete-belt").value = a.belt_rank || "";
-    document.getElementById("athlete-gym-select").value = a.gym_id || "";
-
-    if (a.image_url) {
-      document.getElementById("current-image-preview").innerHTML = `
-                <div style="margin-top: 10px;">
-                    <img src="${a.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
-                    <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
-                </div>
-            `;
+      if (error) throw error;
+      currentProfile = data;
+    } else {
+      // Demo-Profil
+      currentProfile = {
+        id: "demo-user",
+        name: "Demo User",
+        email: currentUser?.email || "demo@example.com",
+        belt: "Blau",
+        gym: "Demo Gym",
+        bio: "Leidenschaftlicher BJJ-Athlet",
+        location: "München",
+        instagram: "@demo",
+        profile_image: null,
+      };
     }
 
-    document.getElementById("athlete-form-title").textContent =
-      "Profil bearbeiten";
-    document.getElementById("athlete-submit-btn").textContent =
-      "Änderungen speichern";
-    showProfileForm("athlete");
-  } else {
-    const g = myProfile.data;
-    document.getElementById("gym-id").value = g.id;
-    document.getElementById("gym-name").value = g.name || "";
-    document.getElementById("gym-description").value = g.description || "";
-    document.getElementById("gym-email").value = g.email || "";
-    document.getElementById("gym-phone").value = g.phone || "";
-    document.getElementById("gym-website").value = g.website || "";
-    document.getElementById("gym-street").value = g.street || "";
-    document.getElementById("gym-postal").value = g.postal_code || "";
-    document.getElementById("gym-city").value = g.city || "";
-
-    if (g.image_url) {
-      document.getElementById("gym-image-preview").innerHTML = `
-                <div style="margin-top: 10px;">
-                    <img src="${g.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
-                    <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
-                </div>
-            `;
-    }
-
-    document.getElementById("gym-form-title").textContent = "Profil bearbeiten";
-    document.getElementById("gym-submit-btn").textContent =
-      "Änderungen speichern";
-    showProfileForm("gym");
+    // Rendere Profil
+    renderProfile();
+  } catch (error) {
+    console.error("Fehler beim Laden des Profils:", error);
+    showNotification("❌ Fehler beim Laden des Profils");
   }
 }
 
-// ================================================
-// ATHLETEN-FORMULAR
-// ================================================
+function renderProfile() {
+  if (!currentProfile) return;
 
-document
-  .getElementById("athlete-form")
-  .addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (!supabase) return;
+  // Fülle Formular-Felder
+  const fields = [
+    { id: "profile-name", value: currentProfile.name },
+    { id: "profile-email", value: currentProfile.email },
+    { id: "profile-belt", value: currentProfile.belt },
+    { id: "profile-gym", value: currentProfile.gym },
+    { id: "profile-location", value: currentProfile.location },
+    { id: "profile-instagram", value: currentProfile.instagram },
+    { id: "profile-bio", value: currentProfile.bio },
+  ];
 
-    const formData = new FormData(e.target);
-    const athleteId = formData.get("athlete_id");
-    const isEditing = !!athleteId;
-    const imageFile = formData.get("image");
+  fields.forEach((field) => {
+    const element = document.getElementById(field.id);
+    if (element && field.value) {
+      element.value = field.value;
+    }
+  });
 
-    let imageUrl = myProfile?.data?.image_url || null;
-
-    if (imageFile && imageFile.size > 0) {
-      const fileExt = imageFile.name.split(".").pop();
-      const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("profile-images")
-        .upload(fileName, imageFile, { upsert: true });
-
-      if (uploadError) {
-        showNotification(
-          "Fehler beim Bild-Upload: " + uploadError.message,
-          "error"
-        );
-        return;
+  // Zeige Profilbild
+  const profileImagePreview = document.getElementById("profile-image-preview");
+  if (profileImagePreview) {
+    if (currentProfile.profile_image) {
+      profileImagePreview.src = currentProfile.profile_image;
+      profileImagePreview.style.display = "block";
+    } else {
+      // Zeige Initialen
+      const initials = getInitials(currentProfile.name);
+      profileImagePreview.style.display = "none";
+      const placeholder = document.getElementById("profile-image-placeholder");
+      if (placeholder) {
+        placeholder.textContent = initials;
+        placeholder.style.display = "flex";
       }
+    }
+  }
+}
 
+async function handleProfileSubmit(e) {
+  e.preventDefault();
+  console.log("💾 Profil wird gespeichert...");
+
+  // Sammle Formulardaten
+  const formData = {
+    name: document.getElementById("profile-name")?.value,
+    email: document.getElementById("profile-email")?.value,
+    belt: document.getElementById("profile-belt")?.value,
+    gym: document.getElementById("profile-gym")?.value,
+    location: document.getElementById("profile-location")?.value,
+    instagram: document.getElementById("profile-instagram")?.value,
+    bio: document.getElementById("profile-bio")?.value,
+  };
+
+  // Validierung
+  if (!formData.name || !formData.email) {
+    showNotification("❌ Name und Email sind Pflichtfelder");
+    return;
+  }
+
+  if (!isValidEmail(formData.email)) {
+    showNotification("❌ Ungültige Email-Adresse");
+    return;
+  }
+
+  // Loading State
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn?.textContent;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Wird gespeichert...";
+  }
+
+  try {
+    if (supabase && currentUser) {
+      // Speichere in Supabase
+      const { error } = await supabase
+        .from(DB_TABLES.profiles)
+        .update(formData)
+        .eq("id", currentUser.id);
+
+      if (error) throw error;
+
+      // Aktualisiere lokales Profil
+      currentProfile = { ...currentProfile, ...formData };
+    } else {
+      // Demo-Modus
+      console.log("Demo-Update:", formData);
+      currentProfile = { ...currentProfile, ...formData };
+    }
+
+    showNotification("✅ Profil gespeichert!");
+  } catch (error) {
+    console.error("Fehler beim Speichern:", error);
+    showNotification("❌ Fehler beim Speichern: " + error.message);
+  } finally {
+    // Reset Button
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    }
+  }
+}
+
+async function handleProfileImageChange(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  console.log("🖼️ Profilbild wird hochgeladen...");
+  showNotification("Bild wird hochgeladen...");
+
+  try {
+    // Validiere und komprimiere Bild
+    const compressedFile = await compressImage(file, 400, 400, 0.8);
+
+    // Lade als Data URL für Vorschau
+    const dataUrl = await loadImageAsDataUrl(compressedFile);
+
+    // Zeige Vorschau
+    const profileImagePreview = document.getElementById(
+      "profile-image-preview"
+    );
+    if (profileImagePreview) {
+      profileImagePreview.src = dataUrl;
+      profileImagePreview.style.display = "block";
+    }
+
+    const placeholder = document.getElementById("profile-image-placeholder");
+    if (placeholder) {
+      placeholder.style.display = "none";
+    }
+
+    if (supabase && currentUser) {
+      // Upload zu Supabase Storage
+      const fileName = `${currentUser.id}-${Date.now()}.${file.name
+        .split(".")
+        .pop()}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("profile-images")
+        .upload(fileName, compressedFile, {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Hole Public URL
       const {
         data: { publicUrl },
       } = supabase.storage.from("profile-images").getPublicUrl(fileName);
-      imageUrl = publicUrl;
-    }
 
-    const data = {
-      name: formData.get("name"),
-      age: formData.get("age") ? parseInt(formData.get("age")) : null,
-      weight: formData.get("weight")
-        ? parseFloat(formData.get("weight"))
-        : null,
-      belt_rank: formData.get("belt_rank"),
-      bio: formData.get("bio") || null,
-      gym_id: formData.get("gym_id") || null,
-      image_url: imageUrl,
-      user_id: currentUser.id,
-    };
+      // Update Profil in Datenbank
+      const { error: updateError } = await supabase
+        .from(DB_TABLES.profiles)
+        .update({ profile_image: publicUrl })
+        .eq("id", currentUser.id);
 
-    if (isEditing) {
-      const { error } = await supabase
-        .from("athletes")
-        .update(data)
-        .eq("id", athleteId);
+      if (updateError) throw updateError;
 
-      if (error) {
-        showNotification("Fehler: " + error.message, "error");
-      } else {
-        showNotification("Profil aktualisiert!");
-        await loadUserProfile();
-        loadAthletes();
-      }
+      currentProfile.profile_image = publicUrl;
+      showNotification("✅ Profilbild gespeichert!");
     } else {
-      const { error } = await supabase.from("athletes").insert([data]);
-
-      if (error) {
-        showNotification("Fehler: " + error.message, "error");
-      } else {
-        showNotification("Profil erstellt!");
-        await loadUserProfile();
-        loadAthletes();
-        loadDashboard();
-      }
+      // Demo-Modus - nur lokale Vorschau
+      currentProfile.profile_image = dataUrl;
+      showNotification("✅ Profilbild aktualisiert (Demo)");
     }
-  });
+  } catch (error) {
+    console.error("Fehler beim Upload:", error);
+    showNotification("❌ Fehler beim Upload: " + error.message);
+  }
+}
+
+async function deleteProfileImage() {
+  if (!confirm("Profilbild wirklich löschen?")) return;
+
+  console.log("🗑️ Profilbild wird gelöscht...");
+
+  try {
+    if (supabase && currentUser && currentProfile?.profile_image) {
+      // Lösche von Supabase Storage
+      const fileName = currentProfile.profile_image.split("/").pop();
+      const { error: deleteError } = await supabase.storage
+        .from("profile-images")
+        .remove([fileName]);
+
+      if (deleteError) throw deleteError;
+
+      // Update Profil in Datenbank
+      const { error: updateError } = await supabase
+        .from(DB_TABLES.profiles)
+        .update({ profile_image: null })
+        .eq("id", currentUser.id);
+
+      if (updateError) throw updateError;
+    }
+
+    // Verstecke Vorschau
+    const profileImagePreview = document.getElementById(
+      "profile-image-preview"
+    );
+    if (profileImagePreview) {
+      profileImagePreview.style.display = "none";
+    }
+
+    // Zeige Initialen
+    const placeholder = document.getElementById("profile-image-placeholder");
+    if (placeholder) {
+      placeholder.textContent = getInitials(currentProfile?.name);
+      placeholder.style.display = "flex";
+    }
+
+    currentProfile.profile_image = null;
+    showNotification("✅ Profilbild gelöscht!");
+  } catch (error) {
+    console.error("Fehler beim Löschen:", error);
+    showNotification("❌ Fehler beim Löschen: " + error.message);
+  }
+}
+
+// Exportiere global
+window.initProfile = initProfile;
+window.loadProfile = loadProfile;
+window.deleteProfileImage = deleteProfileImage;

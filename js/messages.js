@@ -1,203 +1,240 @@
 // ================================================
-// PRIVATE NACHRICHTEN
+// MESSAGES
+// Nachrichten Tab Logik
 // ================================================
 
-async function loadChats() {
-  if (!supabase || !myProfile || myProfile.type !== "athlete") return;
+let conversations = [];
+let activeConversation = null;
 
-  const { data: friendships } = await supabase
-    .from("friendships")
-    .select(
-      `
-            id,
-            requester_id,
-            addressee_id,
-            requester:athletes!friendships_requester_id_fkey(id, name, image_url),
-            addressee:athletes!friendships_addressee_id_fkey(id, name, image_url)
+function initMessages() {
+  console.log("💬 Messages initialisiert");
+
+  loadConversations();
+
+  const sendBtn = document.getElementById("send-btn");
+  if (sendBtn) {
+    sendBtn.addEventListener("click", sendMessage);
+  }
+
+  const messageInput = document.getElementById("message-input");
+  if (messageInput) {
+    messageInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  }
+
+  const attachBtn = document.getElementById("attach-btn");
+  if (attachBtn) {
+    attachBtn.addEventListener("click", () => {
+      document.getElementById("file-input")?.click();
+    });
+  }
+}
+
+async function loadConversations() {
+  console.log("💬 Lade Konversationen...");
+
+  const chatList = document.getElementById("chat-list");
+  if (!chatList) return;
+
+  try {
+    if (supabase && currentUser) {
+      const { data, error } = await supabase
+        .from(DB_TABLES.conversations)
+        .select(
+          `
+          *,
+          other_user:${DB_TABLES.profiles}(*)
         `
+        )
+        .or(`user1_id.eq.${currentUser.id},user2_id.eq.${currentUser.id}`)
+        .order("updated_at", { ascending: false });
+
+      if (error) throw error;
+      conversations = data || [];
+    } else {
+      conversations = [
+        {
+          id: 1,
+          other_user: { name: "Max Mustermann", profile_image: null },
+          last_message: "Hey, wann trainierst du?",
+          updated_at: new Date().toISOString(),
+          unread_count: 2,
+        },
+        {
+          id: 2,
+          other_user: { name: "Maria Schmidt", profile_image: null },
+          last_message: "Danke für das Training!",
+          updated_at: new Date(Date.now() - 3600000).toISOString(),
+          unread_count: 0,
+        },
+      ];
+    }
+
+    renderConversations();
+  } catch (error) {
+    console.error("Fehler:", error);
+  }
+}
+
+function renderConversations() {
+  const chatList = document.getElementById("chat-list");
+  if (!chatList) return;
+
+  if (conversations.length === 0) {
+    chatList.innerHTML =
+      '<div style="padding: 20px; text-align: center; color: #999;">Keine Konversationen</div>';
+    return;
+  }
+
+  chatList.innerHTML = conversations
+    .map(
+      (conv) => `
+    <div class="chat-item ${
+      activeConversation?.id === conv.id ? "active" : ""
+    }" onclick="selectConversation('${conv.id}')">
+      <div class="chat-avatar">
+        ${
+          conv.other_user.profile_image
+            ? `<img src="${conv.other_user.profile_image}" alt="${conv.other_user.name}" />`
+            : `<div class="avatar-placeholder">${getInitials(
+                conv.other_user.name
+              )}</div>`
+        }
+      </div>
+      <div class="chat-preview">
+        <div class="chat-name">${escapeHtml(conv.other_user.name)}</div>
+        <div class="chat-last">${escapeHtml(
+          truncateText(conv.last_message, 40)
+        )}</div>
+      </div>
+      <div class="chat-meta">
+        <div>${getRelativeTime(conv.updated_at)}</div>
+        ${
+          conv.unread_count > 0
+            ? `<div class="unread-count">${conv.unread_count}</div>`
+            : ""
+        }
+      </div>
+    </div>
+  `
     )
-    .or(`requester_id.eq.${myProfile.id},addressee_id.eq.${myProfile.id}`)
-    .eq("status", "accepted");
+    .join("");
+}
 
-  const list = document.getElementById("chat-list");
+function selectConversation(id) {
+  activeConversation = conversations.find((c) => c.id == id);
+  if (!activeConversation) return;
 
-  if (friendships && friendships.length > 0) {
-    const chatItems = await Promise.all(
-      friendships.map(async (f) => {
-        const friend =
-          f.requester_id === myProfile.id ? f.addressee : f.requester;
+  console.log(
+    "💬 Konversation ausgewählt:",
+    activeConversation.other_user.name
+  );
+  renderConversations();
+  loadMessages(id);
+}
 
-        // Lade letzte Nachricht
-        const { data: lastMsg } = await supabase
-          .from("private_messages")
-          .select("message, created_at")
-          .or(
-            `and(sender_id.eq.${myProfile.id},receiver_id.eq.${friend.id}),and(sender_id.eq.${friend.id},receiver_id.eq.${myProfile.id})`
-          )
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
+async function loadMessages(conversationId) {
+  const messagesContainer = document.getElementById("messages-container");
+  if (!messagesContainer) return;
 
-        // Zähle ungelesene
-        const { count: unreadCount } = await supabase
-          .from("private_messages")
-          .select("id", { count: "exact", head: true })
-          .eq("sender_id", friend.id)
-          .eq("receiver_id", myProfile.id)
-          .eq("read", false);
+  messagesContainer.innerHTML =
+    '<div style="text-align: center; padding: 20px;">Lädt Nachrichten...</div>';
 
-        return {
-          friend,
-          lastMsg,
-          unreadCount: unreadCount || 0,
-        };
-      })
-    );
+  try {
+    let messages = [];
 
-    list.innerHTML = chatItems
-      .map(
-        (item) => `
-            <div class="chat-item ${
-              currentChatPartner === item.friend.id ? "active" : ""
-            }" onclick="openChat('${item.friend.id}')">
-                <div class="name">
-                    ${item.friend.name}
-                    ${
-                      item.unreadCount > 0
-                        ? `<span class="unread-badge">${item.unreadCount}</span>`
-                        : ""
-                    }
-                </div>
-                ${
-                  item.lastMsg
-                    ? `<div class="last-message">${item.lastMsg.message}</div>`
-                    : ""
-                }
-            </div>
-        `
-      )
-      .join("");
-  } else {
-    list.innerHTML =
-      '<p style="color: #666; padding: 10px;">Noch keine Chats</p>';
+    if (supabase) {
+      const { data, error } = await supabase
+        .from(DB_TABLES.messages)
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+      messages = data || [];
+    } else {
+      messages = [
+        {
+          id: 1,
+          text: "Hey, wie geht's?",
+          sender_id: "other",
+          created_at: new Date(Date.now() - 7200000).toISOString(),
+        },
+        {
+          id: 2,
+          text: "Gut, danke! Und dir?",
+          sender_id: currentUser?.id || "me",
+          created_at: new Date(Date.now() - 3600000).toISOString(),
+        },
+      ];
+    }
+
+    renderMessages(messages);
+  } catch (error) {
+    console.error("Fehler:", error);
   }
 }
 
-async function openChat(friendId) {
-  currentChatPartner = friendId;
-  switchTab("messages");
+function renderMessages(messages) {
+  const messagesContainer = document.getElementById("messages-container");
+  if (!messagesContainer) return;
 
-  // Lade Friend-Info
-  const { data: friend } = await supabase
-    .from("athletes")
-    .select("id, name, image_url")
-    .eq("id", friendId)
-    .single();
+  if (messages.length === 0) {
+    messagesContainer.innerHTML =
+      '<div style="text-align: center; padding: 40px; color: #999;">Keine Nachrichten</div>';
+    return;
+  }
 
-  const chatWindow = document.getElementById("chat-window");
-  chatWindow.innerHTML = `
-        <div class="chat-header">
-            <h3>${friend.name}</h3>
-        </div>
-        <div class="chat-messages" id="current-chat-messages"></div>
-        <form class="chat-input-form" onsubmit="sendPrivateMessage(event, '${friendId}')">
-            <input type="text" name="message" placeholder="Nachricht schreiben..." required />
-            <button type="submit">Senden</button>
-        </form>
-    `;
-
-  await loadMessages(friendId);
-  loadChats(); // Aktualisiere Chat-Liste
-}
-
-async function loadMessages(friendId) {
-  if (!supabase || !myProfile || myProfile.type !== "athlete") return;
-
-  const { data: messages } = await supabase
-    .from("private_messages")
-    .select("*, sender:athletes!private_messages_sender_id_fkey(name)")
-    .or(
-      `and(sender_id.eq.${myProfile.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${myProfile.id})`
+  messagesContainer.innerHTML = messages
+    .map(
+      (msg) => `
+    <div class="message ${
+      msg.sender_id === (currentUser?.id || "me") ? "own" : ""
+    }">
+      <div class="msg-text">${escapeHtml(msg.text)}</div>
+      <div class="msg-time">${formatTime(msg.created_at)}</div>
+    </div>
+  `
     )
-    .order("created_at", { ascending: true });
+    .join("");
 
-  const messagesDiv = document.getElementById("current-chat-messages");
-  if (messagesDiv) {
-    messagesDiv.innerHTML = messages
-      .map((m) => {
-        const isOwn = m.sender_id === myProfile.id;
-        const date = new Date(m.created_at);
-        return `
-                <div class="message ${isOwn ? "own" : "other"}">
-                    ${
-                      !isOwn
-                        ? `<div class="message-sender">${m.sender.name}</div>`
-                        : ""
-                    }
-                    <div class="message-content">${m.message}</div>
-                    <div class="message-time">${date.toLocaleTimeString(
-                      "de-DE",
-                      { hour: "2-digit", minute: "2-digit" }
-                    )}</div>
-                </div>
-            `;
-      })
-      .join("");
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
 
-    // Scroll to bottom
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+async function sendMessage() {
+  const input = document.getElementById("message-input");
+  if (!input || !input.value.trim()) return;
 
-    // Markiere als gelesen
-    await supabase
-      .from("private_messages")
-      .update({ read: true })
-      .eq("receiver_id", myProfile.id)
-      .eq("sender_id", friendId)
-      .eq("read", false);
+  const text = input.value.trim();
+  console.log("📤 Sende Nachricht:", text);
 
-    updateNotificationBadges();
+  try {
+    if (supabase && activeConversation) {
+      const { error } = await supabase.from(DB_TABLES.messages).insert([
+        {
+          conversation_id: activeConversation.id,
+          sender_id: currentUser.id,
+          text: text,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+
+      if (error) throw error;
+    }
+
+    input.value = "";
+    if (activeConversation) {
+      loadMessages(activeConversation.id);
+    }
+  } catch (error) {
+    console.error("Fehler:", error);
+    showNotification("❌ Fehler beim Senden");
   }
 }
 
-async function sendPrivateMessage(event, receiverId) {
-  event.preventDefault();
-  if (!supabase || !myProfile || myProfile.type !== "athlete") return;
-
-  const formData = new FormData(event.target);
-  const message = formData.get("message");
-
-  const { error } = await supabase.from("private_messages").insert([
-    {
-      sender_id: myProfile.id,
-      receiver_id: receiverId,
-      message: message,
-    },
-  ]);
-
-  if (error) {
-    showNotification("Fehler: " + error.message, "error");
-  } else {
-    event.target.reset();
-    await loadMessages(receiverId);
-    loadChats();
-  }
-}
-
-async function updateNotificationBadges() {
-  if (!supabase || !myProfile || myProfile.type !== "athlete") return;
-
-  // Ungelesene Nachrichten
-  const { count: unreadCount } = await supabase
-    .from("private_messages")
-    .select("id", { count: "exact", head: true })
-    .eq("receiver_id", myProfile.id)
-    .eq("read", false);
-
-  const messagesBadge = document.getElementById("messages-badge");
-  if (unreadCount > 0) {
-    messagesBadge.textContent = unreadCount;
-    messagesBadge.style.display = "inline-block";
-  } else {
-    messagesBadge.style.display = "none";
-  }
-}
+window.initMessages = initMessages;
+window.selectConversation = selectConversation;

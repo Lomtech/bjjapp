@@ -1,183 +1,135 @@
 // ================================================
-// FREUNDSCHAFTEN
+// FRIENDS
+// Freunde Tab Logik
 // ================================================
 
-async function loadFriendRequests() {
-  if (!supabase || !myProfile || myProfile.type !== "athlete") return;
+let friendsData = [];
 
-  const { data } = await supabase
-    .from("friendships")
-    .select(
-      "*, requester:athletes!friendships_requester_id_fkey(id, name, image_url)"
-    )
-    .eq("addressee_id", myProfile.id)
-    .eq("status", "pending");
+function initFriends() {
+  console.log("👥 Freunde initialisiert");
 
-  const list = document.getElementById("friend-requests-list");
-  const badge = document.getElementById("friend-requests-badge");
+  loadFriends();
 
-  if (data && data.length > 0) {
-    badge.textContent = data.length;
-    badge.style.display = "inline-block";
-
-    list.innerHTML = data
-      .map(
-        (fr) => `
-            <div class="friend-request">
-                <p><strong>${fr.requester.name}</strong> möchte mit dir befreundet sein</p>
-                <div class="actions">
-                    <button class="btn btn-small" onclick="acceptFriendRequest('${fr.id}')">✅ Annehmen</button>
-                    <button class="btn btn-small btn-danger" onclick="rejectFriendRequest('${fr.id}')">❌ Ablehnen</button>
-                </div>
-            </div>
-        `
-      )
-      .join("");
-  } else {
-    badge.style.display = "none";
-    list.innerHTML = '<p style="color: #666;">Keine offenen Anfragen</p>';
+  const searchBtn = document.getElementById("search-friends-btn");
+  if (searchBtn) {
+    searchBtn.addEventListener("click", searchFriends);
   }
+
+  const tabBtns = document.querySelectorAll(".friends-tab-btn");
+  tabBtns.forEach((btn) => {
+    btn.addEventListener("click", () => switchFriendsTab(btn.dataset.tab));
+  });
 }
 
 async function loadFriends() {
-  if (!supabase || !myProfile || myProfile.type !== "athlete") return;
+  console.log("🔍 Lade Freunde...");
 
-  const { data } = await supabase
-    .from("friendships")
-    .select(
-      `
-            id,
-            requester_id,
-            addressee_id,
-            requester:athletes!friendships_requester_id_fkey(id, name, image_url, belt_rank),
-            addressee:athletes!friendships_addressee_id_fkey(id, name, image_url, belt_rank)
+  const container = document.getElementById("friends-list");
+  if (!container) return;
+
+  container.innerHTML =
+    '<div style="text-align: center; padding: 40px;"><p>Lädt Freunde...</p></div>';
+
+  try {
+    if (supabase && currentUser) {
+      const { data, error } = await supabase
+        .from(DB_TABLES.friendships)
+        .select(
+          `
+          *,
+          friend:${DB_TABLES.profiles}!friend_id(*)
         `
+        )
+        .eq("user_id", currentUser.id)
+        .eq("status", "accepted");
+
+      if (error) throw error;
+      friendsData = data || [];
+    } else {
+      friendsData = [
+        {
+          id: 1,
+          friend: { name: "Max Mustermann", belt: "Blau", gym: "BJJ Munich" },
+        },
+        {
+          id: 2,
+          friend: { name: "Maria Schmidt", belt: "Lila", gym: "Gracie Barra" },
+        },
+        {
+          id: 3,
+          friend: { name: "Tom Weber", belt: "Braun", gym: "CheckMat" },
+        },
+      ];
+    }
+
+    renderFriends(friendsData);
+  } catch (error) {
+    console.error("Fehler:", error);
+    container.innerHTML =
+      '<div style="text-align: center; padding: 40px; color: red;"><p>❌ Fehler beim Laden</p></div>';
+  }
+}
+
+function renderFriends(friends) {
+  const container = document.getElementById("friends-list");
+  if (!container) return;
+
+  if (friends.length === 0) {
+    container.innerHTML =
+      '<div style="text-align: center; padding: 40px; color: #999;"><p>Keine Freunde gefunden</p></div>';
+    return;
+  }
+
+  container.innerHTML = friends
+    .map(
+      (f) => `
+    <div class="profile-card">
+      <div class="profile-image" style="display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 3rem; font-weight: bold;">
+        ${getInitials(f.friend.name)}
+      </div>
+      <div class="profile-card-content">
+        <h3>${escapeHtml(f.friend.name)}</h3>
+        <p style="color: #666;">🥋 ${escapeHtml(f.friend.gym || "")}</p>
+        <span class="belt-badge belt-${(
+          f.friend.belt || "weiß"
+        ).toLowerCase()}">${escapeHtml(f.friend.belt || "Weiß")}</span>
+        <div style="margin-top: 16px; display: flex; gap: 8px;">
+          <button class="btn btn-small" onclick="sendMessage('${
+            f.friend.id
+          }')">Nachricht</button>
+          <button class="btn btn-secondary btn-small" onclick="viewProfile('${
+            f.friend.id
+          }')">Profil</button>
+        </div>
+      </div>
+    </div>
+  `
     )
-    .or(`requester_id.eq.${myProfile.id},addressee_id.eq.${myProfile.id}`)
-    .eq("status", "accepted");
-
-  const list = document.getElementById("friends-list");
-
-  if (data && data.length > 0) {
-    list.innerHTML = data
-      .map((f) => {
-        const friend =
-          f.requester_id === myProfile.id ? f.addressee : f.requester;
-        return `
-                <div class="profile-card">
-                    ${
-                      friend.image_url
-                        ? `<img src="${friend.image_url}" class="profile-image" alt="${friend.name}">`
-                        : '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
-                    }
-                    <h3>${friend.name}</h3>
-                    ${
-                      friend.belt_rank
-                        ? `<span class="belt-badge belt-${
-                            friend.belt_rank
-                          }">${friend.belt_rank.toUpperCase()}</span>`
-                        : ""
-                    }
-                    <button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="openChat('${
-                      friend.id
-                    }')">
-                        💬 Chat öffnen
-                    </button>
-                    <button class="btn btn-small btn-danger" style="margin-top: 5px; width: 100%;" onclick="endFriendship('${
-                      f.id
-                    }')">
-                        Freundschaft beenden
-                    </button>
-                </div>
-            `;
-      })
-      .join("");
-  } else {
-    list.innerHTML =
-      '<p style="color: #666;">Noch keine Freunde. Sende Freundschaftsanfragen!</p>';
-  }
+    .join("");
 }
 
-async function sendFriendRequest(athleteId) {
-  if (!supabase || !myProfile || myProfile.type !== "athlete") {
-    showNotification(
-      "Nur Athleten können Freundschaftsanfragen senden",
-      "warning"
-    );
-    return;
-  }
-
-  // Prüfe ob bereits Anfrage existiert
-  const { data: existing } = await supabase
-    .from("friendships")
-    .select("id")
-    .or(
-      `and(requester_id.eq.${myProfile.id},addressee_id.eq.${athleteId}),and(requester_id.eq.${athleteId},addressee_id.eq.${myProfile.id})`
-    );
-
-  if (existing && existing.length > 0) {
-    showNotification("Freundschaftsanfrage existiert bereits", "info");
-    return;
-  }
-
-  const { error } = await supabase.from("friendships").insert([
-    {
-      requester_id: myProfile.id,
-      addressee_id: athleteId,
-      status: "pending",
-    },
-  ]);
-
-  if (error) {
-    showNotification("Fehler: " + error.message, "error");
-  } else {
-    showNotification("Freundschaftsanfrage gesendet!");
-  }
+function searchFriends() {
+  const query =
+    document.getElementById("search-friends")?.value.toLowerCase() || "";
+  const filtered = friendsData.filter(
+    (f) =>
+      f.friend.name?.toLowerCase().includes(query) ||
+      f.friend.gym?.toLowerCase().includes(query)
+  );
+  renderFriends(filtered);
 }
 
-async function acceptFriendRequest(friendshipId) {
-  const { error } = await supabase
-    .from("friendships")
-    .update({ status: "accepted" })
-    .eq("id", friendshipId);
-
-  if (error) {
-    showNotification("Fehler: " + error.message, "error");
-  } else {
-    showNotification("Freundschaft akzeptiert!");
-    loadFriendRequests();
-    loadFriends();
-    loadChats();
-  }
+function switchFriendsTab(tab) {
+  console.log("🔄 Wechsle zu:", tab);
+  showNotification(`${tab} Tab (Coming Soon)`);
 }
 
-async function rejectFriendRequest(friendshipId) {
-  const { error } = await supabase
-    .from("friendships")
-    .delete()
-    .eq("id", friendshipId);
-
-  if (error) {
-    showNotification("Fehler: " + error.message, "error");
-  } else {
-    showNotification("Anfrage abgelehnt");
-    loadFriendRequests();
-  }
+function sendMessage(friendId) {
+  switchTab("messages");
 }
 
-async function endFriendship(friendshipId) {
-  if (!confirm("Freundschaft wirklich beenden?")) return;
-
-  const { error } = await supabase
-    .from("friendships")
-    .delete()
-    .eq("id", friendshipId);
-
-  if (error) {
-    showNotification("Fehler: " + error.message, "error");
-  } else {
-    showNotification("Freundschaft beendet");
-    loadFriends();
-    loadChats();
-  }
+function viewProfile(friendId) {
+  showNotification("Profil wird geladen...");
 }
+
+window.initFriends = initFriends;

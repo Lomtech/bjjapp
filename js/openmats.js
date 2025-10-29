@@ -1,225 +1,148 @@
 // ================================================
-// OPEN MAT EVENTS
+// OPEN MATS
+// Open Mats Tab Logik
 // ================================================
+
+let openMatsData = [];
+
+function initOpenMats() {
+  console.log("🤼 Open Mats initialisiert");
+
+  loadOpenMats();
+
+  const createBtn = document.getElementById("create-openmat-btn");
+  if (createBtn) {
+    createBtn.addEventListener("click", showCreateOpenMatModal);
+  }
+
+  const filterUpcoming = document.getElementById("filter-upcoming");
+  if (filterUpcoming) {
+    filterUpcoming.addEventListener("change", loadOpenMats);
+  }
+}
 
 async function loadOpenMats() {
-  if (!supabase) return;
-  const { data } = await supabase
-    .from("open_mats")
-    .select("*, gyms(name, city, street, postal_code, user_id)")
-    .gte("event_date", new Date().toISOString())
-    .order("event_date", { ascending: true });
+  console.log("🔍 Lade Open Mats...");
 
-  if (data) {
-    const list = document.getElementById("openmats-list");
-    list.innerHTML = data
-      .map((om) => {
-        const date = new Date(om.event_date);
-        const isOwner =
-          myProfile &&
-          myProfile.type === "gym" &&
-          om.gyms?.user_id === currentUser.id;
-        return `
-                <div class="event-card">
-                    ${
-                      isOwner
-                        ? `
-                        <div class="event-actions">
-                            <button class="btn btn-small btn-danger" onclick="deleteOpenMat('${om.id}')">🗑️</button>
-                        </div>
-                    `
-                        : ""
-                    }
-                    <div class="event-date">${date.toLocaleDateString("de-DE", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}</div>
-                    <h3>${om.title}</h3>
-                    <p><strong>${om.gyms?.name || ""}</strong></p>
-                    ${om.gyms?.street ? `<p>📍 ${om.gyms.street}</p>` : ""}
-                    ${
-                      om.gyms?.city
-                        ? `<p>🏙️ ${om.gyms.postal_code || ""} ${
-                            om.gyms.city
-                          }</p>`
-                        : ""
-                    }
-                    ${om.description ? `<p>${om.description}</p>` : ""}
-                    <p>⏱️ Dauer: ${om.duration_minutes} Minuten</p>
-                    ${
-                      myProfile?.type === "athlete"
-                        ? `
-                        <button class="btn event-chat-btn" onclick="openOpenMatChat('${om.id}', '${om.title}')">
-                            💬 Chat beitreten
-                        </button>
-                    `
-                        : ""
-                    }
-                </div>
-            `;
-      })
-      .join("");
-  }
+  const container = document.getElementById("openmats-grid");
+  if (!container) return;
 
-  // Zeige/Verstecke Event-Erstellungs-Formular
-  const createSection = document.getElementById("create-openmat-section");
-  if (createSection) {
-    createSection.style.display =
-      myProfile && myProfile.type === "gym" ? "block" : "none";
-  }
-}
+  container.innerHTML =
+    '<div style="grid-column: 1/-1; text-align: center; padding: 40px;"><p>Lädt Open Mats...</p></div>';
 
-async function deleteOpenMat(id) {
-  if (!confirm("Event wirklich löschen?")) return;
-  const { error } = await supabase.from("open_mats").delete().eq("id", id);
-  if (error) {
-    showNotification("Fehler beim Löschen", "error");
-  } else {
-    showNotification("Event gelöscht");
-    loadOpenMats();
-    loadDashboard();
-    if (map) initMap();
-  }
-}
+  try {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from(DB_TABLES.openMats)
+        .select("*")
+        .order("date", { ascending: true });
 
-// Event Listener für OpenMat Form
-document
-  .getElementById("openmat-form")
-  .addEventListener("submit", async (e) => {
-    e.preventDefault();
-    console.log("OpenMat Form Submit");
-    console.log("supabase:", !!supabase);
-    console.log("myProfile:", myProfile);
-
-    if (!supabase || !myProfile || myProfile.type !== "gym") {
-      showNotification("Nur Gym-Besitzer können Open Mats erstellen!", "error");
-      return;
-    }
-
-    const formData = new FormData(e.target);
-    const data = {
-      gym_id: myProfile.id,
-      title: formData.get("title"),
-      description: formData.get("description") || null,
-      event_date: formData.get("event_date"),
-      duration_minutes: parseInt(formData.get("duration_minutes")),
-    };
-
-    console.log("Creating OpenMat:", data);
-
-    const { error } = await supabase.from("open_mats").insert([data]);
-    if (error) {
-      console.error("OpenMat Error:", error);
-      showNotification("Fehler: " + error.message, "error");
+      if (error) throw error;
+      openMatsData = data || [];
     } else {
-      showNotification("Event erstellt!");
-      e.target.reset();
-      loadOpenMats();
-      loadDashboard();
-      if (map) initMap();
+      const today = new Date();
+      openMatsData = [
+        {
+          id: 1,
+          title: "Saturday Open Mat",
+          gym_name: "BJJ Munich",
+          location: "München",
+          date: new Date(today.getTime() + 86400000 * 2).toISOString(),
+          time: "10:00",
+          duration: "2 Stunden",
+          description: "Lockeres Rollen für alle Level",
+          participants: 12,
+        },
+        {
+          id: 2,
+          title: "Sunday Morning Roll",
+          gym_name: "Gracie Barra Berlin",
+          location: "Berlin",
+          date: new Date(today.getTime() + 86400000 * 3).toISOString(),
+          time: "09:00",
+          duration: "3 Stunden",
+          description: "Technisches Training + Sparring",
+          participants: 18,
+        },
+      ];
     }
-  });
 
-// ================================================
-// OPEN MAT GRUPPENCHATS
-// ================================================
-
-function openOpenMatChat(openmatId, title) {
-  currentOpenMatChat = openmatId;
-  document.getElementById("openmat-chat-title").textContent = title;
-  document.getElementById("openmat-chat-modal").classList.add("show");
-  loadOpenMatMessages(openmatId);
-
-  // Auto-refresh alle 3 Sekunden
-  if (window.openmatChatInterval) {
-    clearInterval(window.openmatChatInterval);
-  }
-  window.openmatChatInterval = setInterval(() => {
-    if (currentOpenMatChat === openmatId) {
-      loadOpenMatMessages(openmatId);
-    }
-  }, 3000);
-}
-
-function closeOpenMatChat() {
-  document.getElementById("openmat-chat-modal").classList.remove("show");
-  currentOpenMatChat = null;
-  if (window.openmatChatInterval) {
-    clearInterval(window.openmatChatInterval);
+    renderOpenMats(openMatsData);
+  } catch (error) {
+    console.error("Fehler:", error);
+    container.innerHTML =
+      '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: red;"><p>❌ Fehler beim Laden</p></div>';
   }
 }
 
-async function loadOpenMatMessages(openmatId) {
-  if (!supabase) return;
+function renderOpenMats(openMats) {
+  const container = document.getElementById("openmats-grid");
+  if (!container) return;
 
-  const { data: messages } = await supabase
-    .from("openmat_messages")
-    .select("*, athlete:athletes(name, image_url)")
-    .eq("openmat_id", openmatId)
-    .order("created_at", { ascending: true });
-
-  const messagesDiv = document.getElementById("openmat-messages");
-  if (messagesDiv) {
-    messagesDiv.innerHTML = messages
-      .map((m) => {
-        const isOwn =
-          myProfile &&
-          myProfile.type === "athlete" &&
-          m.athlete_id === myProfile.id;
-        const date = new Date(m.created_at);
-        return `
-                <div class="message ${isOwn ? "own" : "other"}">
-                    ${
-                      !isOwn
-                        ? `<div class="message-sender">${m.athlete.name}</div>`
-                        : ""
-                    }
-                    <div class="message-content">${m.message}</div>
-                    <div class="message-time">${date.toLocaleTimeString(
-                      "de-DE",
-                      { hour: "2-digit", minute: "2-digit" }
-                    )}</div>
-                </div>
-            `;
-      })
-      .join("");
-
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  if (openMats.length === 0) {
+    container.innerHTML =
+      '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;"><p>Keine Open Mats gefunden</p></div>';
+    return;
   }
-}
 
-// Event Listener für OpenMat Chat Form
-document
-  .getElementById("openmat-message-form")
-  .addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (
-      !supabase ||
-      !myProfile ||
-      myProfile.type !== "athlete" ||
-      !currentOpenMatChat
+  container.innerHTML = openMats
+    .map(
+      (om) => `
+    <div class="profile-card">
+      <div class="profile-image" style="display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; font-size: 3rem;">
+        🤼
+      </div>
+      <div class="profile-card-content">
+        <h3>${escapeHtml(om.title)}</h3>
+        <p style="color: #666; margin-bottom: 8px;">🥋 ${escapeHtml(
+          om.gym_name
+        )}</p>
+        <p style="color: #666; margin-bottom: 8px;">📍 ${escapeHtml(
+          om.location
+        )}</p>
+        <p style="color: #666; margin-bottom: 8px;">📅 ${formatDate(
+          om.date
+        )}</p>
+        <p style="color: #666; margin-bottom: 8px;">🕐 ${om.time} (${
+        om.duration
+      })</p>
+        ${
+          om.description
+            ? `<p style="color: #999; font-size: 0.9rem; margin-bottom: 12px;">${escapeHtml(
+                truncateText(om.description, 80)
+              )}</p>`
+            : ""
+        }
+        <p style="color: #666; margin-bottom: 12px;">👥 ${
+          om.participants || 0
+        } Teilnehmer</p>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-small" onclick="joinOpenMat('${
+            om.id
+          }')">Teilnehmen</button>
+          <button class="btn btn-secondary btn-small" onclick="viewOpenMatDetails('${
+            om.id
+          }')">Details</button>
+        </div>
+      </div>
+    </div>
+  `
     )
-      return;
+    .join("");
+}
 
-    const formData = new FormData(e.target);
-    const message = formData.get("message");
+function showCreateOpenMatModal() {
+  showNotification("Open Mat erstellen (Coming Soon)");
+}
 
-    const { error } = await supabase.from("openmat_messages").insert([
-      {
-        openmat_id: currentOpenMatChat,
-        athlete_id: myProfile.id,
-        message: message,
-      },
-    ]);
+function joinOpenMat(id) {
+  showNotification("✅ Du nimmst teil!");
+}
 
-    if (error) {
-      showNotification("Fehler: " + error.message, "error");
-    } else {
-      e.target.reset();
-      loadOpenMatMessages(currentOpenMatChat);
-    }
-  });
+function viewOpenMatDetails(id) {
+  showNotification("Details werden geladen...");
+}
+
+window.initOpenMats = initOpenMats;
+window.joinOpenMat = joinOpenMat;
+window.viewOpenMatDetails = viewOpenMatDetails;
