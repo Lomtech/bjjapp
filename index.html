@@ -4,60 +4,488 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BJJ Community Platform</title>
-
-    <!-- CSS -->
-    <link rel="stylesheet" href="css/main.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="container" id="app-root">
-      <!-- Content wird dynamisch geladen -->
+    <div class="container">
+      <header>
+        <div class="header-top">
+          <h1>🥋 BJJ Community</h1>
+          <div class="auth-section" id="auth-section"></div>
+        </div>
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('dashboard', this)">
+            Dashboard
+          </button>
+          <button class="tab-btn" onclick="switchTab('profile', this)">
+            Mein Profil
+          </button>
+          <button class="tab-btn" onclick="switchTab('athletes', this)">
+            Athleten
+          </button>
+          <button class="tab-btn" onclick="switchTab('gyms', this)">
+            Gyms
+          </button>
+          <button class="tab-btn" onclick="switchTab('openmats', this)">
+            Open Mats
+          </button>
+          <button class="tab-btn" onclick="switchTab('friends', this)">
+            Freunde
+            <span
+              id="friend-requests-badge"
+              class="notification-badge"
+              style="display: none"
+            ></span>
+          </button>
+          <button class="tab-btn" onclick="switchTab('messages', this)">
+            Nachrichten
+            <span
+              id="messages-badge"
+              class="notification-badge"
+              style="display: none"
+            ></span>
+          </button>
+          <button class="tab-btn" onclick="switchTab('map', this)">
+            Karte
+          </button>
+        </div>
+      </header>
+
+      <!-- Welcome Screen für nicht-angemeldete User -->
+      <div id="welcome-screen" class="tab-content">
+        <div style="text-align: center; padding: 60px 20px">
+          <h2 style="font-size: 3em; margin-bottom: 20px">
+            Willkommen bei der BJJ Community! 🥋
+          </h2>
+          <p style="font-size: 1.3em; margin-bottom: 30px; color: #666">
+            Entdecke Gyms, vernetze dich mit Athleten und finde Open Mats in
+            deiner Nähe.
+          </p>
+          <div
+            style="
+              display: flex;
+              gap: 20px;
+              justify-content: center;
+              flex-wrap: wrap;
+            "
+          >
+            <button
+              class="btn"
+              onclick="openAuthModal('signup')"
+              style="font-size: 1.2em; padding: 15px 40px"
+            >
+              Jetzt registrieren
+            </button>
+            <button
+              class="btn btn-secondary"
+              onclick="openAuthModal('login')"
+              style="font-size: 1.2em; padding: 15px 40px"
+            >
+              Anmelden
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="dashboard-tab" class="tab-content">
+        <h2>📊 Dashboard</h2>
+        <div class="stats-grid" id="stats-grid"></div>
+        <h3>Neueste Aktivitäten</h3>
+        <div id="recent-activities"></div>
+      </div>
+
+      <!-- NEUER TAB: Mein Profil -->
+      <div id="profile-tab" class="tab-content">
+        <h2>👤 Mein Profil</h2>
+        <div id="profile-type-selector">
+          <p style="margin-bottom: 20px">
+            Du hast noch kein Profil. Was möchtest du erstellen?
+          </p>
+          <div style="display: flex; gap: 20px; flex-wrap: wrap">
+            <button
+              class="btn"
+              onclick="showProfileForm('athlete')"
+              style="flex: 1"
+            >
+              🥋 Athleten-Profil
+            </button>
+            <button
+              class="btn btn-secondary"
+              onclick="showProfileForm('gym')"
+              style="flex: 1"
+            >
+              🏋️ Gym-Profil
+            </button>
+          </div>
+        </div>
+
+        <!-- Athleten-Formular -->
+        <div id="athlete-profile-form" style="display: none">
+          <h3 id="athlete-form-title">Athleten-Profil anlegen</h3>
+          <form id="athlete-form">
+            <input type="hidden" name="athlete_id" id="athlete-id" />
+            <div class="form-group">
+              <label>Name *</label>
+              <input type="text" name="name" id="athlete-name" required />
+            </div>
+            <div class="form-group">
+              <label>Bio</label>
+              <textarea
+                name="bio"
+                id="athlete-bio"
+                rows="3"
+                placeholder="Erzähle etwas über dich..."
+              ></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Alter</label>
+                <input
+                  type="number"
+                  name="age"
+                  id="athlete-age"
+                  min="1"
+                  max="120"
+                />
+              </div>
+              <div class="form-group">
+                <label>Gewicht (kg)</label>
+                <input
+                  type="number"
+                  name="weight"
+                  id="athlete-weight"
+                  step="0.1"
+                />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Gürtelgrad *</label>
+              <select name="belt_rank" id="athlete-belt" required>
+                <option value="">Bitte wählen</option>
+                <option value="weiß">Weiß</option>
+                <option value="blau">Blau</option>
+                <option value="lila">Lila</option>
+                <option value="braun">Braun</option>
+                <option value="schwarz">Schwarz</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Gym Zugehörigkeit</label>
+              <select name="gym_id" id="athlete-gym-select">
+                <option value="">Kein Gym zugeordnet</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Profilbild</label>
+              <input
+                type="file"
+                name="image"
+                id="athlete-image"
+                accept="image/*"
+              />
+              <div id="current-image-preview"></div>
+            </div>
+            <div style="display: flex; gap: 10px">
+              <button type="submit" id="athlete-submit-btn">
+                Profil anlegen
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                onclick="cancelProfileEdit()"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Gym-Formular -->
+        <div id="gym-profile-form" style="display: none">
+          <h3 id="gym-form-title">Gym-Profil anlegen</h3>
+          <form id="gym-form">
+            <input type="hidden" name="gym_id" id="gym-id" />
+            <div class="form-group">
+              <label>Gym Name *</label>
+              <input type="text" name="name" id="gym-name" required />
+            </div>
+            <div class="form-group">
+              <label>Beschreibung</label>
+              <textarea
+                name="description"
+                id="gym-description"
+                rows="3"
+                placeholder="Beschreibe dein Gym..."
+              ></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>E-Mail</label>
+                <input type="email" name="email" id="gym-email" />
+              </div>
+              <div class="form-group">
+                <label>Telefon</label>
+                <input type="tel" name="phone" id="gym-phone" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Website</label>
+              <input
+                type="url"
+                name="website"
+                id="gym-website"
+                placeholder="https://..."
+              />
+            </div>
+            <div class="form-group">
+              <label>Straße & Hausnummer *</label>
+              <input
+                type="text"
+                name="street"
+                id="gym-street"
+                required
+                placeholder="z.B. Hauptstraße 123"
+              />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Postleitzahl *</label>
+                <input
+                  type="text"
+                  name="postal_code"
+                  id="gym-postal"
+                  required
+                  placeholder="z.B. 80331"
+                />
+              </div>
+              <div class="form-group">
+                <label>Stadt *</label>
+                <input
+                  type="text"
+                  name="city"
+                  id="gym-city"
+                  required
+                  placeholder="z.B. München"
+                />
+              </div>
+            </div>
+            <div id="geocoding-status" class="geocoding-status"></div>
+            <div class="form-group">
+              <label>Gym Bild</label>
+              <input type="file" name="image" id="gym-image" accept="image/*" />
+              <div id="gym-image-preview"></div>
+            </div>
+            <div style="display: flex; gap: 10px">
+              <button type="submit" id="gym-submit-btn">Gym anlegen</button>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                onclick="cancelProfileEdit()"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Anzeige des eigenen Profils -->
+        <div id="my-profile-display" style="display: none"></div>
+      </div>
+
+      <div id="athletes-tab" class="tab-content">
+        <div class="search-filter">
+          <h3>🔍 Athleten suchen</h3>
+          <div class="search-row">
+            <div class="form-group">
+              <input
+                type="text"
+                id="search-athlete"
+                placeholder="Name suchen..."
+              />
+            </div>
+            <div class="form-group">
+              <select id="filter-belt">
+                <option value="">Alle Gürtelgrade</option>
+                <option value="weiß">Weiß</option>
+                <option value="blau">Blau</option>
+                <option value="lila">Lila</option>
+                <option value="braun">Braun</option>
+                <option value="schwarz">Schwarz</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <select id="filter-gym">
+                <option value="">Alle Gyms</option>
+              </select>
+            </div>
+            <button onclick="filterAthletes()" class="btn btn-small">
+              Filtern
+            </button>
+          </div>
+        </div>
+
+        <h3>Athleten</h3>
+        <div id="athletes-list" class="profiles-grid"></div>
+      </div>
+
+      <div id="gyms-tab" class="tab-content">
+        <div class="search-filter">
+          <h3>🔍 Gyms suchen</h3>
+          <div class="search-row">
+            <div class="form-group">
+              <input
+                type="text"
+                id="search-gym"
+                placeholder="Gym Name oder Stadt..."
+              />
+            </div>
+            <div></div>
+            <div></div>
+            <button onclick="filterGyms()" class="btn btn-small">
+              Filtern
+            </button>
+          </div>
+        </div>
+
+        <h3>Gyms</h3>
+        <div id="gyms-list" class="profiles-grid"></div>
+      </div>
+
+      <div id="openmats-tab" class="tab-content">
+        <h2>Open Mat Events</h2>
+        <div id="create-openmat-section" style="display: none">
+          <h3>Event erstellen</h3>
+          <form id="openmat-form">
+            <div class="form-group">
+              <label>Event Titel *</label>
+              <input
+                type="text"
+                name="title"
+                required
+                placeholder="z.B. Samstag Open Mat"
+              />
+            </div>
+            <div class="form-group">
+              <label>Beschreibung</label>
+              <textarea
+                name="description"
+                rows="3"
+                placeholder="Details zum Event..."
+              ></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Datum & Uhrzeit *</label>
+                <input type="datetime-local" name="event_date" required />
+              </div>
+              <div class="form-group">
+                <label>Dauer (Minuten)</label>
+                <input type="number" name="duration_minutes" value="120" />
+              </div>
+            </div>
+            <button type="submit">Event erstellen</button>
+          </form>
+        </div>
+
+        <h3 style="margin-top: 40px">Kommende Open Mats</h3>
+        <div id="openmats-list" class="calendar"></div>
+      </div>
+
+      <!-- NEUER TAB: Freunde -->
+      <div id="friends-tab" class="tab-content">
+        <h2>👥 Freunde</h2>
+
+        <div id="friend-requests-section">
+          <h3>Freundschaftsanfragen</h3>
+          <div id="friend-requests-list"></div>
+        </div>
+
+        <div id="friends-list-section" style="margin-top: 40px">
+          <h3>Meine Freunde</h3>
+          <div id="friends-list" class="profiles-grid"></div>
+        </div>
+      </div>
+
+      <!-- NEUER TAB: Nachrichten -->
+      <div id="messages-tab" class="tab-content">
+        <h2>💬 Nachrichten</h2>
+        <div class="messages-container">
+          <div class="chat-list">
+            <h3>Chats</h3>
+            <div id="chat-list"></div>
+          </div>
+          <div class="chat-window" id="chat-window">
+            <p style="text-align: center; color: #999; padding: 40px">
+              Wähle einen Chat aus der Liste
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div id="map-tab" class="tab-content">
+        <h2>Gyms & Open Mats auf der Karte</h2>
+        <div id="map"></div>
+      </div>
     </div>
 
-    <!-- Notification -->
-    <div id="notification" class="notification"></div>
+    <div class="notification" id="notification"></div>
 
-    <!-- Core Scripts (Reihenfolge wichtig!) -->
-    <script src="js/config.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/render.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/navigation.js"></script>
-    <script src="js/mobilemenu.js"></script>
-    <script src="js/profile.js"></script>
-    <script src="js/athletes.js"></script>
-    <script src="js/gyms.js"></script>
-    <script src="js/openmats.js"></script>
-    <script src="js/friends.js"></script>
-    <script src="js/messages.js"></script>
-    <script src="js/map.js"></script>
-    <script src="js/dashboard.js"></script>
+    <!-- Auth Modal -->
+    <div class="modal" id="auth-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modal-title">Login</h2>
+          <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <form id="auth-form">
+          <div class="form-group">
+            <label>E-Mail</label>
+            <input type="email" name="email" required />
+          </div>
+          <div class="form-group">
+            <label>Passwort</label>
+            <input type="password" name="password" required minlength="6" />
+          </div>
+          <button type="submit" id="auth-submit-btn">Anmelden</button>
+          <p style="margin-top: 15px; text-align: center">
+            <a href="#" id="toggle-auth" onclick="toggleAuthMode(event)"
+              >Noch kein Konto? Registrieren</a
+            >
+          </p>
+        </form>
+      </div>
+    </div>
 
-    <!-- App Initialisierung -->
-    <script>
-      // Warte bis alles geladen ist
-      document.addEventListener("DOMContentLoaded", async () => {
-        console.log("🚀 App wird initialisiert...");
+    <!-- Open Mat Chat Modal -->
+    <div class="modal" id="openmat-chat-modal">
+      <div class="modal-content" style="max-width: 800px">
+        <div class="modal-header">
+          <h2 id="openmat-chat-title">Event Chat</h2>
+          <button class="modal-close" onclick="closeOpenMatChat()">
+            &times;
+          </button>
+        </div>
+        <div class="openmat-chat-container">
+          <div id="openmat-messages" class="chat-messages"></div>
+          <form id="openmat-message-form" class="chat-input-form">
+            <input
+              type="text"
+              name="message"
+              placeholder="Nachricht schreiben..."
+              required
+            />
+            <button type="submit">Senden</button>
+          </form>
+        </div>
+      </div>
+    </div>
 
-        try {
-          // Prüfe ob render.js geladen wurde
-          if (typeof window.renderApp !== "function") {
-            throw new Error("render.js nicht geladen");
-          }
-
-          // Rendere App
-          await window.renderApp();
-          console.log("✅ App erfolgreich geladen");
-        } catch (error) {
-          console.error("❌ Fehler beim Laden der App:", error);
-          document.getElementById("app-root").innerHTML = `
-            <div style="padding: 40px; text-align: center;">
-              <h1>⚠️ Fehler beim Laden</h1>
-              <p>Die Anwendung konnte nicht geladen werden.</p>
-              <p style="color: #666; font-size: 0.9em;">${error.message}</p>
-            </div>
-          `;
-        }
-      });
-    </script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
   </body>
 </html>

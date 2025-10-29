@@ -1,36 +1,8 @@
 {
-  "name": "bjj-community-platform",
-  "version": "2.0.0",
-  "description": "BJJ Community Platform mit modularer Architektur",
-  "main": "dist/index.html",
+  "name": "bjj-community",
+  "version": "1.0.0",
   "scripts": {
-    "build": "node build.js",
-    "build:bundle": "CREATE_BUNDLE=true node build.js",
-    "build:production": "npm run clean && CREATE_BUNDLE=true node build.js",
-    "clean": "node -e \"require('fs').rmSync('dist', {recursive: true, force: true})\" && echo 🧹 Cleaned dist directory",
-    "watch": "nodemon --watch js --watch css --watch index.html --watch styles.css --ext js,css,html --exec 'npm run build'",
-    "dev": "npm run build && npm run serve",
-    "serve": "npx http-server dist -p 8080 -o",
-    "test:build": "node build.js && node -e \"console.log('\\n🧪 Testing build...');const fs=require('fs');const files=['index.html','styles.css','mobile-menu.js','js/config.js'];files.forEach(f=>{if(fs.existsSync('dist/'+f)){console.log('✅',f)}else{console.error('❌',f);process.exit(1)}});console.log('\\n✅ All files present!')\"",
-    "lint:js": "echo '🔍 Checking JavaScript files...' && find js -name '*.js' -type f | xargs -I {} sh -c 'node -c {} && echo ✅ {}'",
-    "validate:env": "node -e \"if(!process.env.SUPABASE_URL||!process.env.SUPABASE_ANON_KEY){console.error('❌ Environment variables missing!');process.exit(1)}else{console.log('✅ Environment variables set')}\"",
-    "prebuild": "npm run validate:env || echo '⚠️  Warning: Environment variables not set'",
-    "postbuild": "echo '\\n✅ Build completed! Run: cd dist && npx http-server'"
-  },
-  "keywords": [
-    "bjj",
-    "community",
-    "platform",
-    "supabase",
-    "modular"
-  ],
-  "author": "",
-  "license": "MIT",
-  "devDependencies": {
-    "nodemon": "^3.0.0",
-    "http-server": "^14.1.0"
-  },
-  "engines": {
-    "node": ">=16.0.0"
+    "build": "node build.js"
   }
 }
+
