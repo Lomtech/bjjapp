@@ -414,14 +414,14 @@
       <div id="messages-tab" class="tab-content">
         <h2>💬 Nachrichten</h2>
         <div class="messages-container">
-          <div class="chat-list">
-            <h3>Chats</h3>
-            <div id="chat-list"></div>
+          <div class="chat-sidebar">
+            <div class="chat-sidebar-header"><h3>Chats</h3></div>
+            <div class="chat-list" id="chat-list"></div>
           </div>
-          <div class="chat-window" id="chat-window">
-            <p style="text-align: center; color: #999; padding: 40px">
-              Wähle einen Chat aus der Liste
-            </p>
+          <div class="chat-main">
+            <div class="chat-window" id="chat-window">
+              <div class="chat-empty-state">Wähle einen Chat...</div>
+            </div>
           </div>
         </div>
       </div>
@@ -470,7 +470,7 @@
           </button>
         </div>
         <div class="openmat-chat-container">
-          <div id="openmat-messages" class="chat-messages"></div>
+          <div id="openmat-messages" class="chat-messages-container"></div>
           <form id="openmat-message-form" class="chat-input-form">
             <input
               type="text"

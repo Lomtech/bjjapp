@@ -693,7 +693,7 @@ button[type="submit"]:hover,
   color: var(--success);
 }
 
-.messages-container {
+.chat-messages-container {
   flex: 1;
   padding: 16px;
   overflow-y: auto;
