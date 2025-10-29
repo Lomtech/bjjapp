@@ -791,8 +791,13 @@ function filterAthletes() {
   let filtered = allAthletes;
 
   if (searchTerm) {
-    filtered = filtered.filter((a) =>
-      a.name.toLowerCase().includes(searchTerm)
+    filtered = filtered.filter(
+      (a) =>
+        a.name?.toLowerCase().includes(searchTerm) ||
+        a.bio?.toLowerCase().includes(searchTerm) ||
+        a.gyms?.name?.toLowerCase().includes(searchTerm) ||
+        a.gyms?.city?.toLowerCase().includes(searchTerm) ||
+        a.belt_rank?.toLowerCase().includes(searchTerm)
     );
   }
   if (beltFilter) {
@@ -975,140 +980,152 @@ async function submitGymCreationForm(e) {
   const originalText = submitBtn.textContent;
   submitBtn.textContent = "Wird gespeichert...";
 
-  const formData = new FormData(e.target);
-  const gymId = formData.get("gym_id");
-  const isEditing = !!gymId;
+  try {
+    const formData = new FormData(e.target);
+    const gymId = formData.get("gym_id");
+    const isEditing = !!gymId;
 
-  console.log("Form Data:");
-  console.log("- gym_id:", gymId);
-  console.log("- isEditing:", isEditing);
-  console.log("- name:", formData.get("name"));
+    console.log("Form Data:");
+    console.log("- gym_id:", gymId);
+    console.log("- isEditing:", isEditing);
+    console.log("- name:", formData.get("name"));
 
-  const name = formData.get("name");
-  const street = formData.get("street");
-  const postalCode = formData.get("postal_code");
-  const city = formData.get("city");
+    const name = formData.get("name");
+    const street = formData.get("street");
+    const postalCode = formData.get("postal_code");
+    const city = formData.get("city");
 
-  // Duplikat-Check
-  const isDuplicate = await checkGymDuplicate(name, street, gymId);
-  if (isDuplicate) {
-    showNotification(
-      "Ein Gym mit diesem Namen und dieser Straße existiert bereits!",
-      "error"
-    );
+    // Duplikat-Check
+    const isDuplicate = await checkGymDuplicate(name, street, gymId);
+    if (isDuplicate) {
+      showNotification(
+        "Ein Gym mit diesem Namen und dieser Straße existiert bereits!",
+        "error"
+      );
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+      return;
+    }
+
+    const statusDiv = document.getElementById("gym-geocoding-status");
+    statusDiv.textContent = "🔄 Geocodiere Adresse...";
+    statusDiv.className = "geocoding-status";
+
+    const geoResult = await geocodeAddress(street, postalCode, city);
+    console.log("Geocoding Result:", geoResult);
+
+    if (geoResult.fallback) {
+      statusDiv.textContent = "⚠️ Adresse approximiert (München als Fallback)";
+      statusDiv.className = "geocoding-status warning";
+    } else {
+      statusDiv.textContent = "✅ Adresse erfolgreich gefunden";
+      statusDiv.className = "geocoding-status success";
+    }
+
+    const imageFile = formData.get("image");
+    let imageUrl = null;
+
+    // Wenn bearbeitet wird, hole die existierende URL
+    if (isEditing && gymId) {
+      console.log("Loading existing gym image...");
+      const { data: existingGym } = await supabase
+        .from("gyms")
+        .select("image_url")
+        .eq("id", gymId)
+        .single();
+      imageUrl = existingGym?.image_url;
+      console.log("Existing image URL:", imageUrl);
+    }
+
+    if (imageFile && imageFile.size > 0) {
+      console.log("Uploading new image...");
+      const fileExt = imageFile.name.split(".").pop();
+      const fileName = `gym_${currentUser.id}_${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("profile-images")
+        .upload(fileName, imageFile, { upsert: true });
+
+      if (!uploadError) {
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("profile-images").getPublicUrl(fileName);
+        imageUrl = publicUrl;
+        console.log("New image URL:", imageUrl);
+      } else {
+        console.error("Image upload error:", uploadError);
+      }
+    }
+
+    const data = {
+      name: name,
+      description: formData.get("description") || null,
+      email: formData.get("email") || null,
+      phone: formData.get("phone") || null,
+      website: formData.get("website") || null,
+      street: street,
+      postal_code: postalCode,
+      city: city,
+      address: `${street}, ${postalCode} ${city}`,
+      latitude: geoResult.latitude,
+      longitude: geoResult.longitude,
+      image_url: imageUrl,
+      user_id: currentUser.id,
+    };
+
+    console.log("Data to save:", data);
+
+    if (isEditing) {
+      console.log("UPDATING gym with ID:", gymId);
+      const { error } = await supabase
+        .from("gyms")
+        .update(data)
+        .eq("id", gymId);
+
+      if (error) {
+        console.error("Update error:", error);
+        showNotification("Fehler: " + error.message, "error");
+      } else {
+        console.log("Update successful!");
+        showNotification("Gym aktualisiert!");
+        cancelGymCreation();
+        await loadGyms();
+        await loadGymsForAthleteSelect();
+        await loadGymsForFilter();
+        await loadGymsForOpenMatSelect();
+        if (map) await initMap();
+      }
+    } else {
+      console.log("CREATING new gym");
+      const { error } = await supabase.from("gyms").insert([data]);
+
+      if (error) {
+        console.error("Insert error:", error);
+        showNotification("Fehler: " + error.message, "error");
+      } else {
+        console.log("Insert successful!");
+        showNotification("Gym erstellt!");
+        cancelGymCreation();
+        await loadGyms();
+        await loadGymsForAthleteSelect();
+        await loadGymsForFilter();
+        await loadGymsForOpenMatSelect();
+        await loadDashboard();
+        if (map) await initMap();
+      }
+    }
+  } catch (error) {
+    console.error("Unexpected error in submitGymCreationForm:", error);
+    showNotification("Ein unerwarteter Fehler ist aufgetreten: " + error.message, "error");
+  } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = originalText;
-    return;
+    const statusDiv = document.getElementById("gym-geocoding-status");
+    setTimeout(() => {
+      statusDiv.textContent = "";
+    }, 3000);
   }
 
-  const statusDiv = document.getElementById("gym-geocoding-status");
-  statusDiv.textContent = "🔄 Geocodiere Adresse...";
-  statusDiv.className = "geocoding-status";
-
-  const geoResult = await geocodeAddress(street, postalCode, city);
-  console.log("Geocoding Result:", geoResult);
-
-  if (geoResult.fallback) {
-    statusDiv.textContent = "⚠️ Adresse approximiert (München als Fallback)";
-    statusDiv.className = "geocoding-status warning";
-  } else {
-    statusDiv.textContent = "✅ Adresse erfolgreich gefunden";
-    statusDiv.className = "geocoding-status success";
-  }
-
-  const imageFile = formData.get("image");
-  let imageUrl = null;
-
-  // Wenn bearbeitet wird, hole die existierende URL
-  if (isEditing && gymId) {
-    console.log("Loading existing gym image...");
-    const { data: existingGym } = await supabase
-      .from("gyms")
-      .select("image_url")
-      .eq("id", gymId)
-      .single();
-    imageUrl = existingGym?.image_url;
-    console.log("Existing image URL:", imageUrl);
-  }
-
-  if (imageFile && imageFile.size > 0) {
-    console.log("Uploading new image...");
-    const fileExt = imageFile.name.split(".").pop();
-    const fileName = `gym_${currentUser.id}_${Date.now()}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("profile-images")
-      .upload(fileName, imageFile, { upsert: true });
-
-    if (!uploadError) {
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("profile-images").getPublicUrl(fileName);
-      imageUrl = publicUrl;
-      console.log("New image URL:", imageUrl);
-    } else {
-      console.error("Image upload error:", uploadError);
-    }
-  }
-
-  const data = {
-    name: name,
-    description: formData.get("description") || null,
-    email: formData.get("email") || null,
-    phone: formData.get("phone") || null,
-    website: formData.get("website") || null,
-    street: street,
-    postal_code: postalCode,
-    city: city,
-    address: `${street}, ${postalCode} ${city}`,
-    latitude: geoResult.latitude,
-    longitude: geoResult.longitude,
-    image_url: imageUrl,
-    user_id: currentUser.id,
-  };
-
-  console.log("Data to save:", data);
-
-  if (isEditing) {
-    console.log("UPDATING gym with ID:", gymId);
-    const { error } = await supabase.from("gyms").update(data).eq("id", gymId);
-
-    if (error) {
-      console.error("Update error:", error);
-      showNotification("Fehler: " + error.message, "error");
-    } else {
-      console.log("Update successful!");
-      showNotification("Gym aktualisiert!");
-      cancelGymCreation();
-      loadGyms();
-      loadGymsForAthleteSelect();
-      loadGymsForFilter();
-      loadGymsForOpenMatSelect();
-      if (map) initMap();
-    }
-  } else {
-    console.log("CREATING new gym");
-    const { error } = await supabase.from("gyms").insert([data]);
-
-    if (error) {
-      console.error("Insert error:", error);
-      showNotification("Fehler: " + error.message, "error");
-    } else {
-      console.log("Insert successful!");
-      showNotification("Gym erstellt!");
-      cancelGymCreation();
-      loadGyms();
-      loadGymsForAthleteSelect();
-      loadGymsForFilter();
-      loadGymsForOpenMatSelect();
-      loadDashboard();
-      if (map) initMap();
-    }
-  }
-
-  submitBtn.disabled = false;
-  submitBtn.textContent = originalText;
-  statusDiv.textContent = "";
   console.log("=== GYM FORM SUBMIT END ===");
 }
 
@@ -1119,8 +1136,12 @@ function filterGyms() {
   if (searchTerm) {
     filtered = filtered.filter(
       (g) =>
-        g.name.toLowerCase().includes(searchTerm) ||
-        g.city?.toLowerCase().includes(searchTerm)
+        g.name?.toLowerCase().includes(searchTerm) ||
+        g.city?.toLowerCase().includes(searchTerm) ||
+        g.street?.toLowerCase().includes(searchTerm) ||
+        g.postal_code?.toLowerCase().includes(searchTerm) ||
+        g.description?.toLowerCase().includes(searchTerm) ||
+        g.address?.toLowerCase().includes(searchTerm)
     );
   }
 

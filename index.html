@@ -306,7 +306,8 @@
               <input
                 type="text"
                 id="search-athlete"
-                placeholder="Name suchen..."
+                placeholder="Name, Bio, Gym, Stadt, Gürtelgrad..."
+                onkeypress="if(event.key === 'Enter') { event.preventDefault(); filterAthletes(); }"
               />
             </div>
             <div class="form-group">
@@ -462,7 +463,8 @@
               <input
                 type="text"
                 id="search-gym"
-                placeholder="Gym Name oder Stadt..."
+                placeholder="Name, Stadt, Straße, PLZ, Beschreibung..."
+                onkeypress="if(event.key === 'Enter') { event.preventDefault(); filterGyms(); }"
               />
             </div>
             <div></div>
