@@ -413,32 +413,36 @@ button:disabled {
   color: var(--black);
 }
 
+/* === GÜRTEL-BADGES – KORREKTE FARBEN === */
 .belt-weiß {
-  background: var(--gray-lightest);
-  border-color: var(--gray-light);
-  color: var(--gray-dark);
-}
-.belt-blau {
-  background: var(--black);
-  color: var(--white);
-  border-color: var(--black);
-}
-.belt-lila {
-  background: var(--black-soft);
-  color: var(--white);
-  border-color: var(--black-soft);
-}
-.belt-braun {
-  background: var(--gray-dark);
-  color: var(--white);
-  border-color: var(--gray-dark);
-}
-.belt-schwarz {
-  background: var(--black);
-  color: var(--white);
-  border-color: var(--black);
+  background: #f8f9fa;
+  border: 2px solid #dee2e6;
+  color: #495057;
 }
 
+.belt-blau {
+  background: #0d6efd; /* ECHTES BLAU */
+  color: white;
+  border: 2px solid #0d6efd;
+}
+
+.belt-lila {
+  background: #6f42c1; /* LILA / PURPLE */
+  color: white;
+  border: 2px solid #6f42c1;
+}
+
+.belt-braun {
+  background: #8b4513; /* BRAUN */
+  color: white;
+  border: 2px solid #8b4513;
+}
+
+.belt-schwarz {
+  background: #212529; /* TIEFSCHWARZ */
+  color: white;
+  border: 2px solid #212529;
+}
 /* Calendar & Events */
 .calendar {
   margin-top: 20px;
@@ -1018,7 +1022,7 @@ button:disabled {
     font-size: 1rem;
     border-radius: 28px;
   }
-  
+
   .chat-input-form button span {
     display: none; /* Falls Text im Button ist */
   }
