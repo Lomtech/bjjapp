@@ -962,12 +962,20 @@ button:disabled {
 
   /* Chat Mobile */
   .messages-container {
+    height: calc(100vh - 120px); /* Vollbild minus Header + Tabs */
+    max-height: none; /* Entfernt 400px-Limit */
     grid-template-columns: 1fr;
-    height: calc(100vh - 100px);
-    max-height: none;
     border-radius: 0;
     border: none;
     box-shadow: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .chat-window {
+    height: 100vh; /* Nutzt gesamte Viewport-Höhe */
+    max-height: none;
+    border-radius: 0;
   }
 
   .chat-list {
@@ -982,8 +990,15 @@ button:disabled {
   }
 
   .chat-messages {
+    flex: 1; /* Nimmt ALLEN verfügbaren Platz */
+    max-height: none; /* Entfernt Limit */
     padding: 16px;
-    gap: 14px;
+    overflow-y: auto;
+    background: var(--gray-lightest);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    /* Keine festen Höhen mehr – dynamisch */
   }
 
   .message {
@@ -996,8 +1011,11 @@ button:disabled {
   }
 
   .chat-input-form {
-    padding: 12px 14px;
-    gap: 8px; /* Weniger Abstand → mehr Platz für Input */
+    position: sticky;
+    bottom: 0;
+    background: var(--white);
+    border-top: 1px solid var(--gray-lighter);
+    z-index: 5;
   }
 
   .chat-input-form input {
@@ -1019,10 +1037,6 @@ button:disabled {
     border-radius: 28px;
   }
 
-  .chat-input-form button::after {
-    content: "➤"; /* oder "Senden" → ersetzen Sie im HTML mit <span>▶</span> */
-    font-size: 1.2em;
-  }
   .chat-input-form button span {
     display: none; /* Falls Text im Button ist */
   }
