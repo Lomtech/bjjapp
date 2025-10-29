@@ -18,22 +18,46 @@
           <div class="auth-section" id="auth-section"></div>
         </div>
         <div class="tabs">
-          <button class="tab-btn active" onclick="switchTab('dashboard', this)">
+          <button
+            class="tab-btn active"
+            data-tab="dashboard"
+            onclick="switchTab('dashboard', this)"
+          >
             Dashboard
           </button>
-          <button class="tab-btn" onclick="switchTab('profile', this)">
+          <button
+            class="tab-btn"
+            data-tab="profile"
+            onclick="switchTab('profile', this)"
+          >
             Mein Profil
           </button>
-          <button class="tab-btn" onclick="switchTab('athletes', this)">
+          <button
+            class="tab-btn"
+            data-tab="athletes"
+            onclick="switchTab('athletes', this)"
+          >
             Athleten
           </button>
-          <button class="tab-btn" onclick="switchTab('gyms', this)">
+          <button
+            class="tab-btn"
+            data-tab="gyms"
+            onclick="switchTab('gyms', this)"
+          >
             Gyms
           </button>
-          <button class="tab-btn" onclick="switchTab('openmats', this)">
+          <button
+            class="tab-btn"
+            data-tab="openmats"
+            onclick="switchTab('openmats', this)"
+          >
             Open Mats
           </button>
-          <button class="tab-btn" onclick="switchTab('friends', this)">
+          <button
+            class="tab-btn"
+            data-tab="friends"
+            onclick="switchTab('friends', this)"
+          >
             Freunde
             <span
               id="friend-requests-badge"
@@ -41,7 +65,11 @@
               style="display: none"
             ></span>
           </button>
-          <button class="tab-btn" onclick="switchTab('messages', this)">
+          <button
+            class="tab-btn"
+            data-tab="messages"
+            onclick="switchTab('messages', this)"
+          >
             Nachrichten
             <span
               id="messages-badge"
@@ -49,12 +77,15 @@
               style="display: none"
             ></span>
           </button>
-          <button class="tab-btn" onclick="switchTab('map', this)">
+          <button
+            class="tab-btn"
+            data-tab="map"
+            onclick="switchTab('map', this)"
+          >
             Karte
           </button>
         </div>
       </header>
-
       <!-- Welcome Screen für nicht-angemeldete User -->
       <div id="welcome-screen" class="tab-content">
         <div style="text-align: center; padding: 60px 20px">
@@ -90,14 +121,12 @@
           </div>
         </div>
       </div>
-
       <div id="dashboard-tab" class="tab-content">
         <h2>📊 Dashboard</h2>
         <div class="stats-grid" id="stats-grid"></div>
         <h3>Neueste Aktivitäten</h3>
         <div id="recent-activities"></div>
       </div>
-
       <!-- NEUER TAB: Mein Profil -->
       <div id="profile-tab" class="tab-content">
         <h2>👤 Mein Profil</h2>
@@ -122,7 +151,6 @@
             </button>
           </div>
         </div>
-
         <!-- Athleten-Formular -->
         <div id="athlete-profile-form" style="display: none">
           <h3 id="athlete-form-title">Athleten-Profil anlegen</h3>
@@ -203,7 +231,6 @@
             </div>
           </form>
         </div>
-
         <!-- Gym-Formular -->
         <div id="gym-profile-form" style="display: none">
           <h3 id="gym-form-title">Gym-Profil anlegen</h3>
@@ -291,11 +318,9 @@
             </div>
           </form>
         </div>
-
         <!-- Anzeige des eigenen Profils -->
         <div id="my-profile-display" style="display: none"></div>
       </div>
-
       <div id="athletes-tab" class="tab-content">
         <div class="search-filter">
           <h3>🔍 Athleten suchen</h3>
@@ -327,11 +352,9 @@
             </button>
           </div>
         </div>
-
         <h3>Athleten</h3>
         <div id="athletes-list" class="profiles-grid"></div>
       </div>
-
       <div id="gyms-tab" class="tab-content">
         <div class="search-filter">
           <h3>🔍 Gyms suchen</h3>
@@ -350,11 +373,9 @@
             </button>
           </div>
         </div>
-
         <h3>Gyms</h3>
         <div id="gyms-list" class="profiles-grid"></div>
       </div>
-
       <div id="openmats-tab" class="tab-content">
         <h2>Open Mat Events</h2>
         <div id="create-openmat-section" style="display: none">
@@ -390,26 +411,21 @@
             <button type="submit">Event erstellen</button>
           </form>
         </div>
-
         <h3 style="margin-top: 40px">Kommende Open Mats</h3>
         <div id="openmats-list" class="calendar"></div>
       </div>
-
       <!-- NEUER TAB: Freunde -->
       <div id="friends-tab" class="tab-content">
         <h2>👥 Freunde</h2>
-
         <div id="friend-requests-section">
           <h3>Freundschaftsanfragen</h3>
           <div id="friend-requests-list"></div>
         </div>
-
         <div id="friends-list-section" style="margin-top: 40px">
           <h3>Meine Freunde</h3>
           <div id="friends-list" class="profiles-grid"></div>
         </div>
       </div>
-
       <!-- NEUER TAB: Nachrichten -->
       <div id="messages-tab" class="tab-content">
         <h2>💬 Nachrichten</h2>
@@ -425,15 +441,12 @@
           </div>
         </div>
       </div>
-
       <div id="map-tab" class="tab-content">
         <h2>Gyms & Open Mats auf der Karte</h2>
         <div id="map"></div>
       </div>
     </div>
-
     <div class="notification" id="notification"></div>
-
     <!-- Auth Modal -->
     <div class="modal" id="auth-modal">
       <div class="modal-content">
@@ -459,7 +472,6 @@
         </form>
       </div>
     </div>
-
     <!-- Open Mat Chat Modal -->
     <div class="modal" id="openmat-chat-modal">
       <div class="modal-content" style="max-width: 800px">
@@ -483,9 +495,24 @@
         </div>
       </div>
     </div>
-
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js"></script>
+
+    <!-- Mobile Menu (muss vor anderen Scripts geladen werden) -->
+    <script src="mobile-menu.js"></script>
+
+    <!-- Core Scripts (in dieser Reihenfolge laden!) -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/athletes.js"></script>
+    <script src="js/gyms.js"></script>
+    <script src="js/openmats.js"></script>
+    <script src="js/friends.js"></script>
+    <script src="js/messages.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/dashboard.js"></script>
   </body>
 </html>
