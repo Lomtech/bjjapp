@@ -3,367 +3,455 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BJJ Open Mat Finder</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>BJJ Community Platform</title>
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <!-- HEADER -->
-    <header>
-      <div class="header-content container">
-        <div class="logo">🥋 BJJ Finder</div>
-        <div class="auth-section" id="auth-section"></div>
-      </div>
-    </header>
+    <div class="container">
+      <header>
+        <div class="header-top">
+          <h1>🥋 BJJ Community</h1>
+          <div class="auth-section" id="auth-section"></div>
+        </div>
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('dashboard', this)">
+            Dashboard
+          </button>
+          <button class="tab-btn" onclick="switchTab('profile', this)">
+            Mein Profil
+          </button>
+          <button class="tab-btn" onclick="switchTab('athletes', this)">
+            Athleten
+          </button>
+          <button class="tab-btn" onclick="switchTab('gyms', this)">
+            Gyms
+          </button>
+          <button class="tab-btn" onclick="switchTab('openmats', this)">
+            Open Mats
+          </button>
+          <button class="tab-btn" onclick="switchTab('friends', this)">
+            Freunde
+            <span
+              id="friend-requests-badge"
+              class="notification-badge"
+              style="display: none"
+            ></span>
+          </button>
+          <button class="tab-btn" onclick="switchTab('messages', this)">
+            Nachrichten
+            <span
+              id="messages-badge"
+              class="notification-badge"
+              style="display: none"
+            ></span>
+          </button>
+          <button class="tab-btn" onclick="switchTab('map', this)">
+            Karte
+          </button>
+        </div>
+      </header>
 
-    <!-- WELCOME SCREEN -->
-    <div id="welcome-screen" class="container active">
-      <div style="text-align: center; padding: 60px 20px">
-        <h1>Willkommen beim BJJ Open Mat Finder</h1>
-        <p>Melde dich an, um loszulegen!</p>
-      </div>
-    </div>
-
-    <!-- TABS -->
-    <div class="container app-only" style="display: none">
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('dashboard', this)">
-          Dashboard
-        </button>
-        <button class="tab-btn" onclick="switchTab('profile', this)">
-          Mein Profil
-        </button>
-        <button class="tab-btn" onclick="switchTab('athletes', this)">
-          Athleten
-        </button>
-        <button class="tab-btn" onclick="switchTab('gyms', this)">Gyms</button>
-        <button class="tab-btn" onclick="switchTab('openmats', this)">
-          Open Mats
-        </button>
-        <button class="tab-btn" onclick="switchTab('friends', this)">
-          Freunde
-          <span
-            id="friend-requests-badge"
-            class="badge"
-            style="display: none"
-          ></span>
-        </button>
-        <button class="tab-btn" onclick="switchTab('messages', this)">
-          Nachrichten
-          <span id="messages-badge" class="badge" style="display: none"></span>
-        </button>
-        <button class="tab-btn" onclick="switchTab('map', this)">Karte</button>
+      <!-- Welcome Screen für nicht-angemeldete User -->
+      <div id="welcome-screen" class="tab-content">
+        <div style="text-align: center; padding: 60px 20px">
+          <h2 style="font-size: 3em; margin-bottom: 20px">
+            Willkommen bei der BJJ Community! 🥋
+          </h2>
+          <p style="font-size: 1.3em; margin-bottom: 30px; color: #666">
+            Entdecke Gyms, vernetze dich mit Athleten und finde Open Mats in
+            deiner Nähe.
+          </p>
+          <div
+            style="
+              display: flex;
+              gap: 20px;
+              justify-content: center;
+              flex-wrap: wrap;
+            "
+          >
+            <button
+              class="btn"
+              onclick="openAuthModal('signup')"
+              style="font-size: 1.2em; padding: 15px 40px"
+            >
+              Jetzt registrieren
+            </button>
+            <button
+              class="btn btn-secondary"
+              onclick="openAuthModal('login')"
+              style="font-size: 1.2em; padding: 15px 40px"
+            >
+              Anmelden
+            </button>
+          </div>
+        </div>
       </div>
 
-      <!-- DASHBOARD -->
-      <div id="dashboard-tab" class="tab-content active">
-        <h2>Dashboard</h2>
-        <div
-          id="stats-grid"
-          style="
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-          "
-        ></div>
-        <h3>Kürzliche Aktivitäten</h3>
+      <div id="dashboard-tab" class="tab-content">
+        <h2>📊 Dashboard</h2>
+        <div class="stats-grid" id="stats-grid"></div>
+        <h3>Neueste Aktivitäten</h3>
         <div id="recent-activities"></div>
       </div>
 
-      <!-- PROFIL -->
+      <!-- NEUER TAB: Mein Profil -->
       <div id="profile-tab" class="tab-content">
-        <div
-          id="profile-type-selector"
-          style="text-align: center; padding: 40px"
-        >
-          <h2>Profiltyp wählen</h2>
-          <button
-            class="btn"
-            onclick="showProfileForm('athlete')"
-            style="margin: 10px"
-          >
-            🥋 Athlet
-          </button>
-          <button
-            class="btn"
-            onclick="showProfileForm('gym')"
-            style="margin: 10px"
-          >
-            🏋️ Gym
-          </button>
-        </div>
-        <div id="my-profile-display"></div>
-      </div>
-
-      <!-- ATHLETEN -->
-      <div id="athletes-tab" class="tab-content">
-        <h2>Athleten</h2>
-        <div
-          style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap"
-        >
-          <input
-            type="text"
-            id="search-athlete"
-            placeholder="Suche..."
-            oninput="filterAthletes()"
-            style="
-              flex: 1;
-              min-width: 200px;
-              padding: 10px;
-              border: 1px solid #ddd;
-              border-radius: 8px;
-            "
-          />
-          <select
-            id="filter-belt"
-            onchange="filterAthletes()"
-            style="padding: 10px; border: 1px solid #ddd; border-radius: 8px"
-          >
-            <option value="">Alle Gürtel</option>
-            <option value="white">Weiß</option>
-            <option value="blue">Blau</option>
-            <option value="purple">Lila</option>
-            <option value="brown">Braun</option>
-            <option value="black">Schwarz</option>
-          </select>
-          <select
-            id="filter-gym"
-            onchange="filterAthletes()"
-            style="padding: 10px; border: 1px solid #ddd; border-radius: 8px"
-          ></select>
-        </div>
-        <div
-          id="athletes-list"
-          style="
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 16px;
-          "
-        ></div>
-      </div>
-
-      <!-- GYMS -->
-      <div id="gyms-tab" class="tab-content">
-        <h2>Gyms</h2>
-        <input
-          type="text"
-          id="search-gym"
-          placeholder="Suche nach Name oder Stadt..."
-          oninput="filterGyms()"
-          style="
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 16px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-          "
-        />
-        <div
-          id="gyms-list"
-          style="
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 16px;
-          "
-        ></div>
-      </div>
-
-      <!-- OPEN MATS -->
-      <div id="openmats-tab" class="tab-content">
-        <h2>Open Mats</h2>
-        <div
-          id="create-openmat-section"
-          style="display: none; margin-bottom: 24px"
-        >
-          <form id="openmat-form">
-            <input
-              type="text"
-              name="title"
-              placeholder="Titel"
-              required
-              style="
-                width: 100%;
-                padding: 10px;
-                margin-bottom: 8px;
-                border: 1px solid #ddd;
-                border-radius: 8px;
-              "
-            />
-            <textarea
-              name="description"
-              placeholder="Beschreibung (optional)"
-              style="
-                width: 100%;
-                padding: 10px;
-                margin-bottom: 8px;
-                border: 1px solid #ddd;
-                border-radius: 8px;
-              "
-            ></textarea>
-            <input
-              type="datetime-local"
-              name="event_date"
-              required
-              style="
-                width: 100%;
-                padding: 10px;
-                margin-bottom: 8px;
-                border: 1px solid #ddd;
-                border-radius: 8px;
-              "
-            />
-            <input
-              type="number"
-              name="duration_minutes"
-              placeholder="Dauer in Minuten"
-              required
-              style="
-                width: 100%;
-                padding: 10px;
-                margin-bottom: 8px;
-                border: 1px solid #ddd;
-                border-radius: 8px;
-              "
-            />
-            <button type="submit" class="btn" style="width: 100%">
-              Open Mat erstellen
+        <h2>👤 Mein Profil</h2>
+        <div id="profile-type-selector">
+          <p style="margin-bottom: 20px">
+            Du hast noch kein Profil. Was möchtest du erstellen?
+          </p>
+          <div style="display: flex; gap: 20px; flex-wrap: wrap">
+            <button
+              class="btn"
+              onclick="showProfileForm('athlete')"
+              style="flex: 1"
+            >
+              🥋 Athleten-Profil
             </button>
+            <button
+              class="btn btn-secondary"
+              onclick="showProfileForm('gym')"
+              style="flex: 1"
+            >
+              🏋️ Gym-Profil
+            </button>
+          </div>
+        </div>
+
+        <!-- Athleten-Formular -->
+        <div id="athlete-profile-form" style="display: none">
+          <h3 id="athlete-form-title">Athleten-Profil anlegen</h3>
+          <form id="athlete-form">
+            <input type="hidden" name="athlete_id" id="athlete-id" />
+            <div class="form-group">
+              <label>Name *</label>
+              <input type="text" name="name" id="athlete-name" required />
+            </div>
+            <div class="form-group">
+              <label>Bio</label>
+              <textarea
+                name="bio"
+                id="athlete-bio"
+                rows="3"
+                placeholder="Erzähle etwas über dich..."
+              ></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Alter</label>
+                <input
+                  type="number"
+                  name="age"
+                  id="athlete-age"
+                  min="1"
+                  max="120"
+                />
+              </div>
+              <div class="form-group">
+                <label>Gewicht (kg)</label>
+                <input
+                  type="number"
+                  name="weight"
+                  id="athlete-weight"
+                  step="0.1"
+                />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Gürtelgrad *</label>
+              <select name="belt_rank" id="athlete-belt" required>
+                <option value="">Bitte wählen</option>
+                <option value="weiß">Weiß</option>
+                <option value="blau">Blau</option>
+                <option value="lila">Lila</option>
+                <option value="braun">Braun</option>
+                <option value="schwarz">Schwarz</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Gym Zugehörigkeit</label>
+              <select name="gym_id" id="athlete-gym-select">
+                <option value="">Kein Gym zugeordnet</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Profilbild</label>
+              <input
+                type="file"
+                name="image"
+                id="athlete-image"
+                accept="image/*"
+              />
+              <div id="current-image-preview"></div>
+            </div>
+            <div style="display: flex; gap: 10px">
+              <button type="submit" id="athlete-submit-btn">
+                Profil anlegen
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                onclick="cancelProfileEdit()"
+              >
+                Abbrechen
+              </button>
+            </div>
           </form>
         </div>
-        <div
-          id="openmats-list"
-          style="
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 16px;
-          "
-        ></div>
-      </div>
 
-      <!-- FREUNDE -->
-      <div id="friends-tab" class="tab-content">
-        <h2>Freundschaftsanfragen</h2>
-        <div id="friend-requests-list"></div>
-        <h2>Meine Freunde</h2>
-        <div
-          id="friends-list"
-          style="
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 16px;
-          "
-        ></div>
-      </div>
-
-      <!-- NACHRIHTEN -->
-      <div id="messages-tab" class="tab-content">
-        <h2>Nachrichten</h2>
-        <div class="messages-container">
-          <!-- Sidebar -->
-          <div class="chat-sidebar">
-            <div class="chat-sidebar-header">
-              <h3>Chats</h3>
+        <!-- Gym-Formular -->
+        <div id="gym-profile-form" style="display: none">
+          <h3 id="gym-form-title">Gym-Profil anlegen</h3>
+          <form id="gym-form">
+            <input type="hidden" name="gym_id" id="gym-id" />
+            <div class="form-group">
+              <label>Gym Name *</label>
+              <input type="text" name="name" id="gym-name" required />
             </div>
-            <div class="chat-list" id="chat-list">
-              <!-- Wird per JS gefüllt -->
+            <div class="form-group">
+              <label>Beschreibung</label>
+              <textarea
+                name="description"
+                id="gym-description"
+                rows="3"
+                placeholder="Beschreibe dein Gym..."
+              ></textarea>
             </div>
-          </div>
-
-          <!-- Haupt-Chatbereich -->
-          <div class="chat-main">
-            <div class="chat-window" id="chat-window">
-              <!-- Chat-Header -->
-              <div class="chat-header">
-                <button class="back-btn" onclick="closeActiveChat()">←</button>
-                <div class="chat-avatar">
-                  <div class="avatar-placeholder">A</div>
-                </div>
-                <div class="chat-info">
-                  <div class="chat-name">Chat-Partner</div>
-                  <div class="chat-status">Online</div>
-                </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>E-Mail</label>
+                <input type="email" name="email" id="gym-email" />
               </div>
-
-              <!-- Nachrichtenbereich -->
-              <div class="chat-messages-container" id="chat-messages">
-                <div class="chat-empty-state">
-                  <div class="chat-empty-icon">💬</div>
-                  <div class="chat-empty-text">
-                    Wähle einen Chat aus der Liste
-                  </div>
-                </div>
+              <div class="form-group">
+                <label>Telefon</label>
+                <input type="tel" name="phone" id="gym-phone" />
               </div>
-
-              <!-- Input-Leiste -->
-              <form class="message-input-form" id="message-input-form">
-                <button type="button" class="attach-btn">📎</button>
+            </div>
+            <div class="form-group">
+              <label>Website</label>
+              <input
+                type="url"
+                name="website"
+                id="gym-website"
+                placeholder="https://..."
+              />
+            </div>
+            <div class="form-group">
+              <label>Straße & Hausnummer *</label>
+              <input
+                type="text"
+                name="street"
+                id="gym-street"
+                required
+                placeholder="z.B. Hauptstraße 123"
+              />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Postleitzahl *</label>
                 <input
                   type="text"
-                  id="message-input"
-                  placeholder="Nachricht schreiben..."
-                  autocomplete="off"
+                  name="postal_code"
+                  id="gym-postal"
+                  required
+                  placeholder="z.B. 80331"
                 />
-                <button type="submit" id="send-btn">Senden</button>
-              </form>
+              </div>
+              <div class="form-group">
+                <label>Stadt *</label>
+                <input
+                  type="text"
+                  name="city"
+                  id="gym-city"
+                  required
+                  placeholder="z.B. München"
+                />
+              </div>
             </div>
+            <div id="geocoding-status" class="geocoding-status"></div>
+            <div class="form-group">
+              <label>Gym Bild</label>
+              <input type="file" name="image" id="gym-image" accept="image/*" />
+              <div id="gym-image-preview"></div>
+            </div>
+            <div style="display: flex; gap: 10px">
+              <button type="submit" id="gym-submit-btn">Gym anlegen</button>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                onclick="cancelProfileEdit()"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Anzeige des eigenen Profils -->
+        <div id="my-profile-display" style="display: none"></div>
+      </div>
+
+      <div id="athletes-tab" class="tab-content">
+        <div class="search-filter">
+          <h3>🔍 Athleten suchen</h3>
+          <div class="search-row">
+            <div class="form-group">
+              <input
+                type="text"
+                id="search-athlete"
+                placeholder="Name suchen..."
+              />
+            </div>
+            <div class="form-group">
+              <select id="filter-belt">
+                <option value="">Alle Gürtelgrade</option>
+                <option value="weiß">Weiß</option>
+                <option value="blau">Blau</option>
+                <option value="lila">Lila</option>
+                <option value="braun">Braun</option>
+                <option value="schwarz">Schwarz</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <select id="filter-gym">
+                <option value="">Alle Gyms</option>
+              </select>
+            </div>
+            <button onclick="filterAthletes()" class="btn btn-small">
+              Filtern
+            </button>
+          </div>
+        </div>
+
+        <h3>Athleten</h3>
+        <div id="athletes-list" class="profiles-grid"></div>
+      </div>
+
+      <div id="gyms-tab" class="tab-content">
+        <div class="search-filter">
+          <h3>🔍 Gyms suchen</h3>
+          <div class="search-row">
+            <div class="form-group">
+              <input
+                type="text"
+                id="search-gym"
+                placeholder="Gym Name oder Stadt..."
+              />
+            </div>
+            <div></div>
+            <div></div>
+            <button onclick="filterGyms()" class="btn btn-small">
+              Filtern
+            </button>
+          </div>
+        </div>
+
+        <h3>Gyms</h3>
+        <div id="gyms-list" class="profiles-grid"></div>
+      </div>
+
+      <div id="openmats-tab" class="tab-content">
+        <h2>Open Mat Events</h2>
+        <div id="create-openmat-section" style="display: none">
+          <h3>Event erstellen</h3>
+          <form id="openmat-form">
+            <div class="form-group">
+              <label>Event Titel *</label>
+              <input
+                type="text"
+                name="title"
+                required
+                placeholder="z.B. Samstag Open Mat"
+              />
+            </div>
+            <div class="form-group">
+              <label>Beschreibung</label>
+              <textarea
+                name="description"
+                rows="3"
+                placeholder="Details zum Event..."
+              ></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Datum & Uhrzeit *</label>
+                <input type="datetime-local" name="event_date" required />
+              </div>
+              <div class="form-group">
+                <label>Dauer (Minuten)</label>
+                <input type="number" name="duration_minutes" value="120" />
+              </div>
+            </div>
+            <button type="submit">Event erstellen</button>
+          </form>
+        </div>
+
+        <h3 style="margin-top: 40px">Kommende Open Mats</h3>
+        <div id="openmats-list" class="calendar"></div>
+      </div>
+
+      <!-- NEUER TAB: Freunde -->
+      <div id="friends-tab" class="tab-content">
+        <h2>👥 Freunde</h2>
+
+        <div id="friend-requests-section">
+          <h3>Freundschaftsanfragen</h3>
+          <div id="friend-requests-list"></div>
+        </div>
+
+        <div id="friends-list-section" style="margin-top: 40px">
+          <h3>Meine Freunde</h3>
+          <div id="friends-list" class="profiles-grid"></div>
+        </div>
+      </div>
+
+      <!-- NEUER TAB: Nachrichten -->
+      <div id="messages-tab" class="tab-content">
+        <h2>💬 Nachrichten</h2>
+        <div class="messages-container">
+          <div class="chat-list">
+            <h3>Chats</h3>
+            <div id="chat-list"></div>
+          </div>
+          <div class="chat-window" id="chat-window">
+            <p style="text-align: center; color: #999; padding: 40px">
+              Wähle einen Chat aus der Liste
+            </p>
           </div>
         </div>
       </div>
 
-      <!-- KARTE -->
       <div id="map-tab" class="tab-content">
-        <h2>Karte</h2>
-        <div
-          id="map"
-          style="height: 600px; border-radius: 12px; overflow: hidden"
-        ></div>
+        <h2>Gyms & Open Mats auf der Karte</h2>
+        <div id="map"></div>
       </div>
     </div>
 
-    <!-- MODALS -->
-    <div id="auth-modal" class="modal">
+    <div class="notification" id="notification"></div>
+
+    <!-- Auth Modal -->
+    <div class="modal" id="auth-modal">
       <div class="modal-content">
-        <span class="close-modal" onclick="closeModalForce()">×</span>
-        <h2 id="modal-title">Login</h2>
+        <div class="modal-header">
+          <h2 id="modal-title">Login</h2>
+          <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
         <form id="auth-form">
-          <input
-            type="email"
-            name="email"
-            placeholder="E-Mail"
-            required
-            style="
-              width: 100%;
-              padding: 10px;
-              margin-bottom: 12px;
-              border: 1px solid #ddd;
-              border-radius: 8px;
-            "
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="Passwort"
-            required
-            style="
-              width: 100%;
-              padding: 10px;
-              margin-bottom: 12px;
-              border: 1px solid #ddd;
-              border-radius: 8px;
-            "
-          />
-          <button
-            type="submit"
-            id="auth-submit-btn"
-            class="btn"
-            style="width: 100%"
-          >
-            Anmelden
-          </button>
-          <p style="text-align: center; margin-top: 16px">
+          <div class="form-group">
+            <label>E-Mail</label>
+            <input type="email" name="email" required />
+          </div>
+          <div class="form-group">
+            <label>Passwort</label>
+            <input type="password" name="password" required minlength="6" />
+          </div>
+          <button type="submit" id="auth-submit-btn">Anmelden</button>
+          <p style="margin-top: 15px; text-align: center">
             <a href="#" id="toggle-auth" onclick="toggleAuthMode(event)"
               >Noch kein Konto? Registrieren</a
             >
@@ -372,168 +460,32 @@
       </div>
     </div>
 
-    <!-- OPEN MAT CHAT MODAL -->
-    <div id="openmat-chat-modal" class="modal">
-      <div
-        class="modal-content"
-        style="
-          max-width: 500px;
-          height: 80vh;
-          display: flex;
-          flex-direction: column;
-        "
-      >
-        <span class="close-modal" onclick="closeOpenMatChat()">×</span>
-        <h3 id="openmat-chat-title"></h3>
-        <div
-          id="openmat-messages"
-          style="flex: 1; overflow-y: auto; padding: 16px; background: #f0f2f5"
-        ></div>
-        <form
-          id="openmat-message-form"
-          style="
-            display: flex;
-            padding: 12px;
-            background: white;
-            border-top: 1px solid #ddd;
-          "
-        >
-          <input
-            type="text"
-            name="message"
-            placeholder="Nachricht..."
-            required
-            style="
-              flex: 1;
-              padding: 10px;
-              border: 1px solid #ddd;
-              border-radius: 25px;
-            "
-          />
-          <button
-            type="submit"
-            class="btn"
-            style="margin-left: 8px; border-radius: 25px"
-          >
-            Senden
+    <!-- Open Mat Chat Modal -->
+    <div class="modal" id="openmat-chat-modal">
+      <div class="modal-content" style="max-width: 800px">
+        <div class="modal-header">
+          <h2 id="openmat-chat-title">Event Chat</h2>
+          <button class="modal-close" onclick="closeOpenMatChat()">
+            &times;
           </button>
-        </form>
+        </div>
+        <div class="openmat-chat-container">
+          <div id="openmat-messages" class="chat-messages"></div>
+          <form id="openmat-message-form" class="chat-input-form">
+            <input
+              type="text"
+              name="message"
+              placeholder="Nachricht schreiben..."
+              required
+            />
+            <button type="submit">Senden</button>
+          </form>
+        </div>
       </div>
     </div>
 
-    <!-- PROFILFORMEN (versteckt) -->
-    <div id="athlete-profile-form" style="display: none">
-      <form id="athlete-form">
-        <input type="hidden" id="athlete-id" name="athlete_id" />
-        <h3 id="athlete-form-title">Athleten-Profil anlegen</h3>
-        <input
-          type="text"
-          id="athlete-name"
-          name="name"
-          placeholder="Name"
-          required
-        />
-        <textarea id="athlete-bio" name="bio" placeholder="Bio"></textarea>
-        <input type="number" id="athlete-age" name="age" placeholder="Alter" />
-        <input
-          type="number"
-          step="0.1"
-          id="athlete-weight"
-          name="weight"
-          placeholder="Gewicht (kg)"
-        />
-        <select id="athlete-belt" name="belt_rank">
-          <option value="">Gürtel</option>
-          <option value="white">Weiß</option>
-          <option value="blue">Blau</option>
-          <option value="purple">Lila</option>
-          <option value="brown">Braun</option>
-          <option value="black">Schwarz</option>
-        </select>
-        <select id="athlete-gym-select" name="gym_id"></select>
-        <input type="file" name="image" accept="image/*" />
-        <div id="current-image-preview"></div>
-        <button type="submit" id="athlete-submit-btn" class="btn">
-          Profil anlegen
-        </button>
-        <button
-          type="button"
-          onclick="cancelProfileEdit()"
-          class="btn"
-          style="background: #666; margin-left: 8px"
-        >
-          Abbrechen
-        </button>
-      </form>
-    </div>
-
-    <div id="gym-profile-form" style="display: none">
-      <form id="gym-form">
-        <input type="hidden" id="gym-id" name="gym_id" />
-        <h3 id="gym-form-title">Gym-Profil anlegen</h3>
-        <input
-          type="text"
-          id="gym-name"
-          name="name"
-          placeholder="Name"
-          required
-        />
-        <textarea
-          id="gym-description"
-          name="description"
-          placeholder="Beschreibung"
-        ></textarea>
-        <input type="email" id="gym-email" name="email" placeholder="E-Mail" />
-        <input type="tel" id="gym-phone" name="phone" placeholder="Telefon" />
-        <input
-          type="url"
-          id="gym-website"
-          name="website"
-          placeholder="Website"
-        />
-        <input
-          type="text"
-          id="gym-street"
-          name="street"
-          placeholder="Straße"
-          required
-        />
-        <input
-          type="text"
-          id="gym-postal"
-          name="postal_code"
-          placeholder="PLZ"
-          required
-        />
-        <input
-          type="text"
-          id="gym-city"
-          name="city"
-          placeholder="Stadt"
-          required
-        />
-        <div id="geocoding-status"></div>
-        <input type="file" name="image" accept="image/*" />
-        <div id="gym-image-preview"></div>
-        <button type="submit" id="gym-submit-btn" class="btn">
-          Gym anlegen
-        </button>
-        <button
-          type="button"
-          onclick="cancelProfileEdit()"
-          class="btn"
-          style="background: #666; margin-left: 8px"
-        >
-          Abbrechen
-        </button>
-      </form>
-    </div>
-
-    <!-- NOTIFICATION -->
-    <div id="notification" class="notification"></div>
-
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
   </body>
 </html>
