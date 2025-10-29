@@ -64,6 +64,7 @@ async function initSupabase(url, key) {
 async function initializeData() {
   loadGymsForAthleteSelect();
   loadGymsForFilter();
+  loadGymsForOpenMatSelect();
   loadAthletes();
   loadGyms();
   loadOpenMats();
@@ -623,6 +624,7 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
       loadGyms();
       loadGymsForAthleteSelect();
       loadGymsForFilter();
+      loadGymsForOpenMatSelect();
       if (map) initMap();
     }
   } else {
@@ -636,6 +638,7 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
       loadGyms();
       loadGymsForAthleteSelect();
       loadGymsForFilter();
+      loadGymsForOpenMatSelect();
       loadDashboard();
       if (map) initMap();
     }
@@ -681,6 +684,27 @@ async function loadGymsForFilter() {
   if (gyms && select) {
     select.innerHTML =
       '<option value="">Alle Gyms</option>' +
+      gyms
+        .map(
+          (g) =>
+            `<option value="${g.id}">${g.name}${
+              g.city ? ` (${g.city})` : ""
+            }</option>`
+        )
+        .join("");
+  }
+}
+
+async function loadGymsForOpenMatSelect() {
+  if (!supabase) return;
+  const { data: gyms } = await supabase
+    .from("gyms")
+    .select("id, name, city")
+    .order("name");
+  const select = document.getElementById("openmat-gym-select");
+  if (gyms && select) {
+    select.innerHTML =
+      '<option value="">Gym auswählen</option>' +
       gyms
         .map(
           (g) =>
@@ -798,8 +822,12 @@ async function loadGyms() {
 function displayGyms(gyms) {
   const list = document.getElementById("gyms-list");
   list.innerHTML = gyms
-    .map(
-      (g) => `
+    .map((g) => {
+      const isMyGym =
+        myProfile && myProfile.type === "gym" && myProfile.id === g.id;
+      const canEdit = currentUser && g.user_id === currentUser.id;
+
+      return `
         <div class="profile-card">
             ${
               g.image_url
@@ -820,10 +848,55 @@ function displayGyms(gyms) {
                 ? `<p><a href="${g.website}" target="_blank">🌐 Website</a></p>`
                 : ""
             }
+            ${
+              canEdit
+                ? `<button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="editGym('${g.id}')">✏️ Bearbeiten</button>`
+                : ""
+            }
         </div>
-    `
-    )
+      `;
+    })
     .join("");
+}
+
+async function editGym(gymId) {
+  const { data: gym } = await supabase
+    .from("gyms")
+    .select("*")
+    .eq("id", gymId)
+    .single();
+
+  if (gym) {
+    document.getElementById("gym-id").value = gym.id;
+    document.getElementById("gym-name").value = gym.name || "";
+    document.getElementById("gym-description").value = gym.description || "";
+    document.getElementById("gym-email").value = gym.email || "";
+    document.getElementById("gym-phone").value = gym.phone || "";
+    document.getElementById("gym-website").value = gym.website || "";
+    document.getElementById("gym-street").value = gym.street || "";
+    document.getElementById("gym-postal").value = gym.postal_code || "";
+    document.getElementById("gym-city").value = gym.city || "";
+
+    if (gym.image_url) {
+      document.getElementById("gym-image-preview").innerHTML = `
+        <div style="margin-top: 10px;">
+          <img src="${gym.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
+          <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
+        </div>
+      `;
+    }
+
+    document.getElementById("gym-form-title").textContent = "Gym bearbeiten";
+    document.getElementById("gym-submit-btn").textContent =
+      "Änderungen speichern";
+
+    switchTab("gyms");
+
+    document.getElementById("athlete-profile-form").style.display = "none";
+    document.getElementById("gym-profile-form").style.display = "block";
+    document.getElementById("profile-type-selector").style.display = "none";
+    document.getElementById("my-profile-display").style.display = "none";
+  }
 }
 
 function filterGyms() {
@@ -849,7 +922,9 @@ async function loadOpenMats() {
   if (!supabase) return;
   const { data } = await supabase
     .from("open_mats")
-    .select("*, gyms(name, city, street, postal_code, user_id)")
+    .select(
+      "*, gyms(name, city, street, postal_code, user_id), creator:created_by(email)"
+    )
     .gte("event_date", new Date().toISOString())
     .order("event_date", { ascending: true });
 
@@ -858,14 +933,13 @@ async function loadOpenMats() {
     list.innerHTML = data
       .map((om) => {
         const date = new Date(om.event_date);
-        const isOwner =
-          myProfile &&
-          myProfile.type === "gym" &&
-          om.gyms?.user_id === currentUser.id;
+        // Jeder kann sein eigenes Open Mat bearbeiten/löschen
+        const canEdit = currentUser && om.created_by === currentUser.id;
+
         return `
                 <div class="event-card">
                     ${
-                      isOwner
+                      canEdit
                         ? `
                         <div class="event-actions">
                             <button class="btn btn-small btn-danger" onclick="deleteOpenMat('${om.id}')">🗑️</button>
@@ -908,11 +982,10 @@ async function loadOpenMats() {
       .join("");
   }
 
-  // Zeige/Verstecke Event-Erstellungs-Formular
+  // Event-Erstellungs-Formular für alle eingeloggten Benutzer anzeigen
   const createSection = document.getElementById("create-openmat-section");
   if (createSection) {
-    createSection.style.display =
-      myProfile && myProfile.type === "gym" ? "block" : "none";
+    createSection.style.display = currentUser ? "block" : "none";
   }
 }
 
@@ -920,25 +993,31 @@ document
   .getElementById("openmat-form")
   .addEventListener("submit", async (e) => {
     e.preventDefault();
-    console.log("OpenMat Form Submit");
-    console.log("supabase:", !!supabase);
-    console.log("myProfile:", myProfile);
 
-    if (!supabase || !myProfile || myProfile.type !== "gym") {
-      showNotification("Nur Gym-Besitzer können Open Mats erstellen!", "error");
+    if (!supabase || !currentUser) {
+      showNotification(
+        "Bitte melde dich an, um Open Mats zu erstellen!",
+        "error"
+      );
       return;
     }
 
     const formData = new FormData(e.target);
+    const gymId = formData.get("gym_id");
+
+    if (!gymId) {
+      showNotification("Bitte wähle ein Gym aus!", "error");
+      return;
+    }
+
     const data = {
-      gym_id: myProfile.id,
+      gym_id: gymId,
       title: formData.get("title"),
       description: formData.get("description") || null,
       event_date: formData.get("event_date"),
       duration_minutes: parseInt(formData.get("duration_minutes")),
+      created_by: currentUser.id,
     };
-
-    console.log("Creating OpenMat:", data);
 
     const { error } = await supabase.from("open_mats").insert([data]);
     if (error) {
