@@ -36,50 +36,27 @@ async function initSupabase(url, key) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
-
   if (session) {
     currentUser = session.user;
     await loadUserProfile();
     updateAuthUI();
     await initializeData();
   } else {
-    currentUser = null;
     updateAuthUI();
   }
 
   supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log("Auth Event:", event, !!session?.user);
-
-    if (event === "SIGNED_OUT") {
-      // Cleanup bei Logout
-      currentUser = null;
-      myProfile = null;
-      allAthletes = [];
-      allGyms = [];
-      currentChatPartner = null;
-      currentOpenMatChat = null;
-
-      if (messagePollingInterval) {
-        clearInterval(messagePollingInterval);
-        messagePollingInterval = null;
-      }
-
-      if (map) {
-        map.remove();
-        map = null;
-      }
-
-      updateAuthUI();
-      switchToAuthMode();
-    } else if (event === "SIGNED_IN" && session) {
-      // Vollständige Initialisierung bei Login
-      currentUser = session.user;
+    currentUser = session?.user || null;
+    if (event === "SIGNED_IN") {
       await loadUserProfile();
       updateAuthUI();
       await initializeData();
-    } else if (event === "INITIAL_SESSION" && !session) {
-      currentUser = null;
+    } else if (event === "SIGNED_OUT") {
+      myProfile = null;
       updateAuthUI();
+      if (messagePollingInterval) {
+        clearInterval(messagePollingInterval);
+      }
     }
   });
 }
@@ -99,9 +76,6 @@ async function initializeData() {
     updateNotificationBadges();
 
     // Polling für neue Nachrichten (alle 5 Sekunden)
-    if (messagePollingInterval) {
-      clearInterval(messagePollingInterval);
-    }
     messagePollingInterval = setInterval(() => {
       updateNotificationBadges();
       if (currentChatPartner) {
@@ -189,70 +163,8 @@ function toggleAuthMode(e) {
 }
 
 async function logout() {
-  try {
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      console.error("Supabase signOut error:", error);
-      showNotification("Abmeldung fehlgeschlagen: " + error.message, "error");
-      return;
-    }
-
-    showNotification("Erfolgreich abgemeldet", "info");
-
-    // Auth State Change Handler wird automatisch aufgerufen
-    // Kein manueller Reload mehr nötig
-  } catch (err) {
-    console.error("Unerwarteter Fehler beim Logout:", err);
-    showNotification("Abmeldung fehlgeschlagen.", "error");
-  }
-}
-
-function switchToAuthMode() {
-  // UI wechseln
-  document
-    .querySelectorAll(".app-only")
-    .forEach((el) => (el.style.display = "none"));
-  document
-    .querySelectorAll(".auth-only")
-    .forEach((el) => (el.style.display = "block"));
-
-  // URL & Titel
-  history.pushState({ mode: "auth" }, "", "/login");
-  document.title = "Anmelden | BJJ Open Mat Finder";
-
-  // Realtime stoppen
-  if (window.realtimeChannel) {
-    window.realtimeChannel.unsubscribe();
-    window.realtimeChannel = null;
-  }
-}
-
-async function switchToAppMode() {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session?.user) {
-    switchToAuthMode();
-    return;
-  }
-
-  window.currentUser = session.user;
-
-  document
-    .querySelectorAll(".auth-only")
-    .forEach((el) => (el.style.display = "none"));
-  document
-    .querySelectorAll(".app-only")
-    .forEach((el) => (el.style.display = "block"));
-
-  history.pushState({ mode: "app" }, "", "/dashboard");
-  document.title = "Dashboard | BJJ Open Mat Finder";
-
-  await Promise.all([loadUserProfile(), loadMapWithOpenMats()]);
-
-  setupRealtimeSubscriptions();
+  await supabase.auth.signOut();
+  showNotification("Erfolgreich abgemeldet", "info");
 }
 
 document.getElementById("auth-form").addEventListener("submit", async (e) => {
@@ -264,11 +176,6 @@ document.getElementById("auth-form").addEventListener("submit", async (e) => {
   const email = formData.get("email");
   const password = formData.get("password");
 
-  const submitBtn = document.getElementById("auth-submit-btn");
-  submitBtn.disabled = true;
-  const originalText = submitBtn.textContent;
-  submitBtn.textContent = "Lädt...";
-
   try {
     if (isLogin) {
       const { error } = await supabase.auth.signInWithPassword({
@@ -278,7 +185,6 @@ document.getElementById("auth-form").addEventListener("submit", async (e) => {
       if (error) throw error;
       showNotification("Erfolgreich angemeldet!");
       closeModalForce();
-      // Auth State Change Handler wird automatisch aufgerufen
     } else {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
@@ -290,9 +196,6 @@ document.getElementById("auth-form").addEventListener("submit", async (e) => {
     }
   } catch (error) {
     showNotification("Fehler: " + error.message, "error");
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = originalText;
   }
 });
 
@@ -1345,26 +1248,19 @@ async function openChat(friendId) {
 
   const chatWindow = document.getElementById("chat-window");
   chatWindow.innerHTML = `
-      <div class="chat-header">
-          <button class="back-btn" onclick="closeCurrentChat()">← Zurück</button>
-          <h3>${friend.name}</h3>
-      </div>
-      <div class="chat-messages" id="current-chat-messages"></div>
-      <form class="chat-input-form" onsubmit="sendPrivateMessage(event, '${friendId}')">
-          <input type="text" name="message" placeholder="Nachricht schreiben..." required />
-          <button type="submit">Senden</button>
-      </form>
+        <div class="chat-header">
+            <h3>${friend.name}</h3>
+        </div>
+        <div class="chat-messages" id="current-chat-messages"></div>
+        <form class="chat-input-form" onsubmit="sendPrivateMessage(event, '${friendId}')">
+            <input type="text" name="message" placeholder="Nachricht schreiben..." required />
+            <button type="submit">Senden</button>
+        </form>
     `;
 
   await loadMessages(friendId);
   loadChats(); // Aktualisiere Chat-Liste
 }
-
-window.closeCurrentChat = function () {
-  currentChatPartner = null;
-  switchTab("messages");
-  loadChats(); // Aktualisiert die Chat-Liste
-};
 
 async function loadMessages(friendId) {
   if (!supabase || !myProfile || myProfile.type !== "athlete") return;
@@ -1384,18 +1280,18 @@ async function loadMessages(friendId) {
         const isOwn = m.sender_id === myProfile.id;
         const date = new Date(m.created_at);
         return `
-        <div class="message ${isOwn ? "own" : "other"}">
-            ${
-              !isOwn ? `<div class="message-sender">${m.sender.name}</div>` : ""
-            }
-            <div class="message-bubble">
-                <div class="message-content">${m.message}</div>
-                <div class="message-time">${date.toLocaleTimeString("de-DE", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}</div>
-            </div>
-        </div>
+                <div class="message ${isOwn ? "own" : "other"}">
+                    ${
+                      !isOwn
+                        ? `<div class="message-sender">${m.sender.name}</div>`
+                        : ""
+                    }
+                    <div class="message-content">${m.message}</div>
+                    <div class="message-time">${date.toLocaleTimeString(
+                      "de-DE",
+                      { hour: "2-digit", minute: "2-digit" }
+                    )}</div>
+                </div>
             `;
       })
       .join("");
