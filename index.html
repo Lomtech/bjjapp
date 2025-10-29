@@ -414,13 +414,25 @@
       <div id="messages-tab" class="tab-content">
         <h2>💬 Nachrichten</h2>
         <div class="messages-container">
+          <!-- Sidebar -->
           <div class="chat-sidebar">
-            <div class="chat-sidebar-header"><h3>Chats</h3></div>
-            <div class="chat-list" id="chat-list"></div>
+            <div class="chat-sidebar-header">
+              <h3>Chats</h3>
+            </div>
+            <div class="chat-list" id="chat-list">
+              <!-- Wird per JS gefüllt -->
+            </div>
           </div>
+
+          <!-- Haupt-Chatbereich -->
           <div class="chat-main">
             <div class="chat-window" id="chat-window">
-              <div class="chat-empty-state">Wähle einen Chat...</div>
+              <div class="chat-empty-state">
+                <div class="chat-empty-icon">💬</div>
+                <div class="chat-empty-text">
+                  Wähle einen Chat aus der Liste
+                </div>
+              </div>
             </div>
           </div>
         </div>
