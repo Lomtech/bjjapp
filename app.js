@@ -885,19 +885,33 @@ function showCreateGymForm() {
 
 // Bearbeite Gym im Gyms-Tab
 async function editGymInTab(gymId) {
-  const { data: gym } = await supabase
+  console.log("Bearbeite Gym:", gymId);
+
+  const { data: gym, error } = await supabase
     .from("gyms")
     .select("*")
     .eq("id", gymId)
     .single();
 
+  if (error) {
+    console.error("Fehler beim Laden:", error);
+    showNotification("Fehler beim Laden des Gyms", "error");
+    return;
+  }
+
   if (gym) {
+    console.log("Gym geladen:", gym);
+
     const form = document.getElementById("gym-creation-form");
     const title = document.getElementById("gym-creation-title");
     const submitBtn = document.getElementById("gym-create-submit-btn");
 
+    // WICHTIG: Setze gym_id im hidden field
+    const hiddenIdField = document.getElementById("gym-edit-id");
+    hiddenIdField.value = gym.id;
+    console.log("Hidden ID gesetzt:", hiddenIdField.value);
+
     // Fill form
-    document.getElementById("gym-edit-id").value = gym.id;
     document.getElementById("gym-create-name").value = gym.name || "";
     document.getElementById("gym-create-description").value =
       gym.description || "";
@@ -908,14 +922,21 @@ async function editGymInTab(gymId) {
     document.getElementById("gym-create-postal").value = gym.postal_code || "";
     document.getElementById("gym-create-city").value = gym.city || "";
 
+    // Clear previous image preview
+    const imagePreview = document.getElementById("gym-create-image-preview");
     if (gym.image_url) {
-      document.getElementById("gym-create-image-preview").innerHTML = `
+      imagePreview.innerHTML = `
         <div style="margin-top: 10px;">
           <img src="${gym.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
           <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
         </div>
       `;
+    } else {
+      imagePreview.innerHTML = "";
     }
+
+    // Clear geocoding status
+    document.getElementById("gym-geocoding-status").textContent = "";
 
     // Update title and button
     title.textContent = "Gym bearbeiten";
@@ -942,6 +963,8 @@ function cancelGymCreation() {
 // Submit Handler für Gym-Erstellungsformular
 async function submitGymCreationForm(e) {
   e.preventDefault();
+  console.log("=== GYM FORM SUBMIT ===");
+
   if (!supabase || !currentUser) {
     showNotification("Bitte melde dich an!", "error");
     return;
@@ -955,6 +978,12 @@ async function submitGymCreationForm(e) {
   const formData = new FormData(e.target);
   const gymId = formData.get("gym_id");
   const isEditing = !!gymId;
+
+  console.log("Form Data:");
+  console.log("- gym_id:", gymId);
+  console.log("- isEditing:", isEditing);
+  console.log("- name:", formData.get("name"));
+
   const name = formData.get("name");
   const street = formData.get("street");
   const postalCode = formData.get("postal_code");
@@ -977,6 +1006,7 @@ async function submitGymCreationForm(e) {
   statusDiv.className = "geocoding-status";
 
   const geoResult = await geocodeAddress(street, postalCode, city);
+  console.log("Geocoding Result:", geoResult);
 
   if (geoResult.fallback) {
     statusDiv.textContent = "⚠️ Adresse approximiert (München als Fallback)";
@@ -991,15 +1021,18 @@ async function submitGymCreationForm(e) {
 
   // Wenn bearbeitet wird, hole die existierende URL
   if (isEditing && gymId) {
+    console.log("Loading existing gym image...");
     const { data: existingGym } = await supabase
       .from("gyms")
       .select("image_url")
       .eq("id", gymId)
       .single();
     imageUrl = existingGym?.image_url;
+    console.log("Existing image URL:", imageUrl);
   }
 
   if (imageFile && imageFile.size > 0) {
+    console.log("Uploading new image...");
     const fileExt = imageFile.name.split(".").pop();
     const fileName = `gym_${currentUser.id}_${Date.now()}.${fileExt}`;
 
@@ -1012,6 +1045,9 @@ async function submitGymCreationForm(e) {
         data: { publicUrl },
       } = supabase.storage.from("profile-images").getPublicUrl(fileName);
       imageUrl = publicUrl;
+      console.log("New image URL:", imageUrl);
+    } else {
+      console.error("Image upload error:", uploadError);
     }
   }
 
@@ -1031,12 +1067,17 @@ async function submitGymCreationForm(e) {
     user_id: currentUser.id,
   };
 
+  console.log("Data to save:", data);
+
   if (isEditing) {
+    console.log("UPDATING gym with ID:", gymId);
     const { error } = await supabase.from("gyms").update(data).eq("id", gymId);
 
     if (error) {
+      console.error("Update error:", error);
       showNotification("Fehler: " + error.message, "error");
     } else {
+      console.log("Update successful!");
       showNotification("Gym aktualisiert!");
       cancelGymCreation();
       loadGyms();
@@ -1046,11 +1087,14 @@ async function submitGymCreationForm(e) {
       if (map) initMap();
     }
   } else {
+    console.log("CREATING new gym");
     const { error } = await supabase.from("gyms").insert([data]);
 
     if (error) {
+      console.error("Insert error:", error);
       showNotification("Fehler: " + error.message, "error");
     } else {
+      console.log("Insert successful!");
       showNotification("Gym erstellt!");
       cancelGymCreation();
       loadGyms();
@@ -1065,6 +1109,7 @@ async function submitGymCreationForm(e) {
   submitBtn.disabled = false;
   submitBtn.textContent = originalText;
   statusDiv.textContent = "";
+  console.log("=== GYM FORM SUBMIT END ===");
 }
 
 function filterGyms() {
