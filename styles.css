@@ -17,7 +17,7 @@
   --white: #ffffff;
   --primary: #000000;
   --success: #10b981;
-  --accent: #ff6b35; /* Beibehalten für Akzente (z. B. Buttons) */
+  --accent: #001eff; /* Beibehalten für Akzente (z. B. Buttons) */
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
@@ -298,8 +298,8 @@ button[type="submit"],
 
 button[type="submit"]:hover,
 .btn:hover {
-  background: #ff8555;
-  border-color: #ff8555;
+  background: hsl(0, 0%, 0%);
+  border-color: #000000;
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
@@ -839,7 +839,7 @@ button:disabled {
 }
 
 .chat-input-form button:hover {
-  background: #ff8555;
+  background: #000000;
 }
 
 /* Friend Request Cards */
