@@ -77,14 +77,21 @@ async function renderApp() {
     const openmatChatModal = await loadTemplate("openmat-chat");
     appRoot.insertAdjacentHTML("beforeend", authModal + openmatChatModal);
 
-    // Initialisiere Event Listeners
-    if (typeof initializeApp === "function") {
-      initializeApp();
+    // Warte kurz damit DOM bereit ist
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Initialisiere Auth-Buttons
+    if (typeof initAuth === "function") {
+      initAuth();
     }
 
-    // Tab-System initialisieren
-    if (isAuthenticated && typeof initializeTabs === "function") {
-      initializeTabs();
+    // Tab-System initialisieren (nur wenn eingeloggt)
+    if (isAuthenticated) {
+      if (typeof initializeTabs === "function") {
+        initializeTabs();
+      } else {
+        console.warn("⚠️ initializeTabs nicht gefunden");
+      }
     }
 
     console.log("✅ Render abgeschlossen");
