@@ -1356,14 +1356,14 @@ async function openChat(friendId) {
       </form>
     `;
 
+  function closeCurrentChat() {
+    currentChatPartner = null;
+    switchTab("messages");
+    loadChats(); // Aktualisiert die Chat-Liste
+  }
+
   await loadMessages(friendId);
   loadChats(); // Aktualisiere Chat-Liste
-}
-
-function closeCurrentChat() {
-  currentChatPartner = null;
-  switchTab("messages");
-  loadChats(); // Aktualisiert die Chat-Liste
 }
 
 async function loadMessages(friendId) {
