@@ -1345,14 +1345,15 @@ async function openChat(friendId) {
 
   const chatWindow = document.getElementById("chat-window");
   chatWindow.innerHTML = `
-        <div class="chat-header">
-            <h3>${friend.name}</h3>
-        </div>
-        <div class="chat-messages" id="current-chat-messages"></div>
-        <form class="chat-input-form" onsubmit="sendPrivateMessage(event, '${friendId}')">
-            <input type="text" name="message" placeholder="Nachricht schreiben..." required />
-            <button type="submit">Senden</button>
-        </form>
+      <div class="chat-header">
+          <button class="back-btn" onclick="closeCurrentChat()">← Zurück</button>
+          <h3>${friend.name}</h3>
+      </div>
+      <div class="chat-messages" id="current-chat-messages"></div>
+      <form class="chat-input-form" onsubmit="sendPrivateMessage(event, '${friendId}')">
+          <input type="text" name="message" placeholder="Nachricht schreiben..." required />
+          <button type="submit">Senden</button>
+      </form>
     `;
 
   await loadMessages(friendId);
