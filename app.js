@@ -939,142 +939,133 @@ function cancelGymCreation() {
   document.getElementById("gym-geocoding-status").textContent = "";
 }
 
-// Event Listener für Gym-Erstellungsformular
-document.addEventListener("DOMContentLoaded", function () {
-  const gymCreationForm = document.getElementById("gym-creation-form-element");
-  if (gymCreationForm) {
-    gymCreationForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      if (!supabase || !currentUser) {
-        showNotification("Bitte melde dich an!", "error");
-        return;
-      }
-
-      const submitBtn = document.getElementById("gym-create-submit-btn");
-      submitBtn.disabled = true;
-      const originalText = submitBtn.textContent;
-      submitBtn.textContent = "Wird gespeichert...";
-
-      const formData = new FormData(e.target);
-      const gymId = formData.get("gym_id");
-      const isEditing = !!gymId;
-      const name = formData.get("name");
-      const street = formData.get("street");
-      const postalCode = formData.get("postal_code");
-      const city = formData.get("city");
-
-      // Duplikat-Check
-      const isDuplicate = await checkGymDuplicate(name, street, gymId);
-      if (isDuplicate) {
-        showNotification(
-          "Ein Gym mit diesem Namen und dieser Straße existiert bereits!",
-          "error"
-        );
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-        return;
-      }
-
-      const statusDiv = document.getElementById("gym-geocoding-status");
-      statusDiv.textContent = "🔄 Geocodiere Adresse...";
-      statusDiv.className = "geocoding-status";
-
-      const geoResult = await geocodeAddress(street, postalCode, city);
-
-      if (geoResult.fallback) {
-        statusDiv.textContent =
-          "⚠️ Adresse approximiert (München als Fallback)";
-        statusDiv.className = "geocoding-status warning";
-      } else {
-        statusDiv.textContent = "✅ Adresse erfolgreich gefunden";
-        statusDiv.className = "geocoding-status success";
-      }
-
-      const imageFile = formData.get("image");
-      let imageUrl = null;
-
-      // Wenn bearbeitet wird, hole die existierende URL
-      if (isEditing && gymId) {
-        const { data: existingGym } = await supabase
-          .from("gyms")
-          .select("image_url")
-          .eq("id", gymId)
-          .single();
-        imageUrl = existingGym?.image_url;
-      }
-
-      if (imageFile && imageFile.size > 0) {
-        const fileExt = imageFile.name.split(".").pop();
-        const fileName = `gym_${currentUser.id}_${Date.now()}.${fileExt}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("profile-images")
-          .upload(fileName, imageFile, { upsert: true });
-
-        if (!uploadError) {
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from("profile-images").getPublicUrl(fileName);
-          imageUrl = publicUrl;
-        }
-      }
-
-      const data = {
-        name: name,
-        description: formData.get("description") || null,
-        email: formData.get("email") || null,
-        phone: formData.get("phone") || null,
-        website: formData.get("website") || null,
-        street: street,
-        postal_code: postalCode,
-        city: city,
-        address: `${street}, ${postalCode} ${city}`,
-        latitude: geoResult.latitude,
-        longitude: geoResult.longitude,
-        image_url: imageUrl,
-        user_id: currentUser.id,
-      };
-
-      if (isEditing) {
-        const { error } = await supabase
-          .from("gyms")
-          .update(data)
-          .eq("id", gymId);
-
-        if (error) {
-          showNotification("Fehler: " + error.message, "error");
-        } else {
-          showNotification("Gym aktualisiert!");
-          cancelGymCreation();
-          loadGyms();
-          loadGymsForAthleteSelect();
-          loadGymsForFilter();
-          loadGymsForOpenMatSelect();
-          if (map) initMap();
-        }
-      } else {
-        const { error } = await supabase.from("gyms").insert([data]);
-
-        if (error) {
-          showNotification("Fehler: " + error.message, "error");
-        } else {
-          showNotification("Gym erstellt!");
-          cancelGymCreation();
-          loadGyms();
-          loadGymsForAthleteSelect();
-          loadGymsForFilter();
-          loadGymsForOpenMatSelect();
-          loadDashboard();
-          if (map) initMap();
-        }
-      }
-
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
-      statusDiv.textContent = "";
-    });
+// Submit Handler für Gym-Erstellungsformular
+async function submitGymCreationForm(e) {
+  e.preventDefault();
+  if (!supabase || !currentUser) {
+    showNotification("Bitte melde dich an!", "error");
+    return;
   }
-});
+
+  const submitBtn = document.getElementById("gym-create-submit-btn");
+  submitBtn.disabled = true;
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = "Wird gespeichert...";
+
+  const formData = new FormData(e.target);
+  const gymId = formData.get("gym_id");
+  const isEditing = !!gymId;
+  const name = formData.get("name");
+  const street = formData.get("street");
+  const postalCode = formData.get("postal_code");
+  const city = formData.get("city");
+
+  // Duplikat-Check
+  const isDuplicate = await checkGymDuplicate(name, street, gymId);
+  if (isDuplicate) {
+    showNotification(
+      "Ein Gym mit diesem Namen und dieser Straße existiert bereits!",
+      "error"
+    );
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
+    return;
+  }
+
+  const statusDiv = document.getElementById("gym-geocoding-status");
+  statusDiv.textContent = "🔄 Geocodiere Adresse...";
+  statusDiv.className = "geocoding-status";
+
+  const geoResult = await geocodeAddress(street, postalCode, city);
+
+  if (geoResult.fallback) {
+    statusDiv.textContent = "⚠️ Adresse approximiert (München als Fallback)";
+    statusDiv.className = "geocoding-status warning";
+  } else {
+    statusDiv.textContent = "✅ Adresse erfolgreich gefunden";
+    statusDiv.className = "geocoding-status success";
+  }
+
+  const imageFile = formData.get("image");
+  let imageUrl = null;
+
+  // Wenn bearbeitet wird, hole die existierende URL
+  if (isEditing && gymId) {
+    const { data: existingGym } = await supabase
+      .from("gyms")
+      .select("image_url")
+      .eq("id", gymId)
+      .single();
+    imageUrl = existingGym?.image_url;
+  }
+
+  if (imageFile && imageFile.size > 0) {
+    const fileExt = imageFile.name.split(".").pop();
+    const fileName = `gym_${currentUser.id}_${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("profile-images")
+      .upload(fileName, imageFile, { upsert: true });
+
+    if (!uploadError) {
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("profile-images").getPublicUrl(fileName);
+      imageUrl = publicUrl;
+    }
+  }
+
+  const data = {
+    name: name,
+    description: formData.get("description") || null,
+    email: formData.get("email") || null,
+    phone: formData.get("phone") || null,
+    website: formData.get("website") || null,
+    street: street,
+    postal_code: postalCode,
+    city: city,
+    address: `${street}, ${postalCode} ${city}`,
+    latitude: geoResult.latitude,
+    longitude: geoResult.longitude,
+    image_url: imageUrl,
+    user_id: currentUser.id,
+  };
+
+  if (isEditing) {
+    const { error } = await supabase.from("gyms").update(data).eq("id", gymId);
+
+    if (error) {
+      showNotification("Fehler: " + error.message, "error");
+    } else {
+      showNotification("Gym aktualisiert!");
+      cancelGymCreation();
+      loadGyms();
+      loadGymsForAthleteSelect();
+      loadGymsForFilter();
+      loadGymsForOpenMatSelect();
+      if (map) initMap();
+    }
+  } else {
+    const { error } = await supabase.from("gyms").insert([data]);
+
+    if (error) {
+      showNotification("Fehler: " + error.message, "error");
+    } else {
+      showNotification("Gym erstellt!");
+      cancelGymCreation();
+      loadGyms();
+      loadGymsForAthleteSelect();
+      loadGymsForFilter();
+      loadGymsForOpenMatSelect();
+      loadDashboard();
+      if (map) initMap();
+    }
+  }
+
+  submitBtn.disabled = false;
+  submitBtn.textContent = originalText;
+  statusDiv.textContent = "";
+}
 
 function filterGyms() {
   const searchTerm = document.getElementById("search-gym").value.toLowerCase();

@@ -349,7 +349,10 @@
         <div id="gym-creation-form" style="display: none; margin-bottom: 30px">
           <div class="profile-card">
             <h3 id="gym-creation-title">Neues Gym erstellen</h3>
-            <form id="gym-creation-form-element">
+            <form
+              id="gym-creation-form-element"
+              onsubmit="submitGymCreationForm(event); return false;"
+            >
               <input type="hidden" id="gym-edit-id" name="gym_id" />
 
               <div class="form-group">
