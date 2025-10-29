@@ -190,7 +190,7 @@
               <div id="current-image-preview"></div>
             </div>
             <div style="display: flex; gap: 10px">
-              <button type="submit" id="athlete-submit-btn">
+              <button type="submit" id="athlete-submit-btn" class="btn">
                 Profil anlegen
               </button>
               <button
@@ -280,7 +280,9 @@
               <div id="gym-image-preview"></div>
             </div>
             <div style="display: flex; gap: 10px">
-              <button type="submit" id="gym-submit-btn">Gym anlegen</button>
+              <button type="submit" id="gym-submit-btn" class="btn">
+                Gym anlegen
+              </button>
               <button
                 type="button"
                 class="btn btn-secondary"
@@ -332,7 +334,124 @@
         <div id="athletes-list" class="profiles-grid"></div>
       </div>
 
+      <!-- GYMS TAB - MIT NEUEM ERSTELLUNGS-FORMULAR -->
       <div id="gyms-tab" class="tab-content">
+        <h2>🏋️ Gyms</h2>
+
+        <!-- NEU: Button zum Erstellen eines neuen Gyms -->
+        <div style="margin-bottom: 20px">
+          <button class="btn" onclick="showCreateGymForm()" id="create-gym-btn">
+            ➕ Neues Gym erstellen
+          </button>
+        </div>
+
+        <!-- NEU: Gym-Erstellungs-Formular (initial versteckt) -->
+        <div id="gym-creation-form" style="display: none; margin-bottom: 30px">
+          <div class="profile-card">
+            <h3 id="gym-creation-title">Neues Gym erstellen</h3>
+            <form id="gym-creation-form-element">
+              <input type="hidden" id="gym-edit-id" name="gym_id" />
+
+              <div class="form-group">
+                <label>Gym Name *</label>
+                <input type="text" id="gym-create-name" name="name" required />
+              </div>
+
+              <div class="form-group">
+                <label>Beschreibung</label>
+                <textarea
+                  id="gym-create-description"
+                  name="description"
+                  rows="4"
+                  placeholder="Beschreibe dein Gym..."
+                ></textarea>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>E-Mail</label>
+                  <input type="email" id="gym-create-email" name="email" />
+                </div>
+                <div class="form-group">
+                  <label>Telefon</label>
+                  <input type="tel" id="gym-create-phone" name="phone" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Website</label>
+                <input
+                  type="url"
+                  id="gym-create-website"
+                  name="website"
+                  placeholder="https://..."
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Straße & Hausnummer *</label>
+                <input
+                  type="text"
+                  id="gym-create-street"
+                  name="street"
+                  required
+                  placeholder="z.B. Hauptstraße 123"
+                />
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>PLZ *</label>
+                  <input
+                    type="text"
+                    id="gym-create-postal"
+                    name="postal_code"
+                    required
+                    placeholder="z.B. 80331"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>Stadt *</label>
+                  <input
+                    type="text"
+                    id="gym-create-city"
+                    name="city"
+                    required
+                    placeholder="z.B. München"
+                  />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Bild</label>
+                <input
+                  type="file"
+                  id="gym-create-image"
+                  name="image"
+                  accept="image/*"
+                />
+                <div id="gym-create-image-preview"></div>
+              </div>
+
+              <div id="gym-geocoding-status" class="geocoding-status"></div>
+
+              <div style="display: flex; gap: 10px; margin-top: 20px">
+                <button type="submit" class="btn" id="gym-create-submit-btn">
+                  Gym erstellen
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-danger"
+                  onclick="cancelGymCreation()"
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Bestehende Such- und Filterfunktionen -->
         <div class="search-filter">
           <h3>🔍 Gyms suchen</h3>
           <div class="search-row">
@@ -355,11 +474,21 @@
         <div id="gyms-list" class="profiles-grid"></div>
       </div>
 
+      <!-- OPEN MATS TAB - MIT ANGEPASSTEM FORMULAR -->
       <div id="openmats-tab" class="tab-content">
-        <h2>Open Mat Events</h2>
+        <h2>📅 Open Mat Events</h2>
+
         <div id="create-openmat-section" style="display: none">
-          <h3>Event erstellen</h3>
+          <h3>Neues Event erstellen</h3>
           <form id="openmat-form">
+            <!-- NEU: Gym-Auswahl Dropdown -->
+            <div class="form-group">
+              <label>Gym auswählen *</label>
+              <select id="openmat-gym-select" name="gym_id" required>
+                <option value="">Gym auswählen...</option>
+              </select>
+            </div>
+
             <div class="form-group">
               <label>Event Titel *</label>
               <input
@@ -369,6 +498,7 @@
                 placeholder="z.B. Samstag Open Mat"
               />
             </div>
+
             <div class="form-group">
               <label>Beschreibung</label>
               <textarea
@@ -377,17 +507,26 @@
                 placeholder="Details zum Event..."
               ></textarea>
             </div>
+
             <div class="form-row">
               <div class="form-group">
                 <label>Datum & Uhrzeit *</label>
                 <input type="datetime-local" name="event_date" required />
               </div>
               <div class="form-group">
-                <label>Dauer (Minuten)</label>
-                <input type="number" name="duration_minutes" value="120" />
+                <label>Dauer (Minuten) *</label>
+                <input
+                  type="number"
+                  name="duration_minutes"
+                  value="120"
+                  min="30"
+                  step="15"
+                  required
+                />
               </div>
             </div>
-            <button type="submit">Event erstellen</button>
+
+            <button type="submit" class="btn">Event erstellen</button>
           </form>
         </div>
 
@@ -427,7 +566,7 @@
       </div>
 
       <div id="map-tab" class="tab-content">
-        <h2>Gyms & Open Mats auf der Karte</h2>
+        <h2>🗺️ Gyms & Open Mats auf der Karte</h2>
         <div id="map"></div>
       </div>
     </div>
@@ -450,7 +589,9 @@
             <label>Passwort</label>
             <input type="password" name="password" required minlength="6" />
           </div>
-          <button type="submit" id="auth-submit-btn">Anmelden</button>
+          <button type="submit" id="auth-submit-btn" class="btn">
+            Anmelden
+          </button>
           <p style="margin-top: 15px; text-align: center">
             <a href="#" id="toggle-auth" onclick="toggleAuthMode(event)"
               >Noch kein Konto? Registrieren</a
@@ -478,7 +619,7 @@
               placeholder="Nachricht schreiben..."
               required
             />
-            <button type="submit">Senden</button>
+            <button type="submit" class="btn">Senden</button>
           </form>
         </div>
       </div>
