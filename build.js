@@ -13,7 +13,7 @@ const JS_DIR = "js";
 const CSS_DIR = "css";
 const HTML_DIR = "html";
 
-// HTML Templates zum Kopieren
+// HTML Templates zum Kopieren (außer index.html, das kommt separat)
 const HTML_FILES = [
   "athletes.html",
   "auth.html",
@@ -73,7 +73,7 @@ function ensureDir(dir) {
 function copyFile(src, dest) {
   try {
     fs.copyFileSync(src, dest);
-    console.log(`✅ Copied: ${src} → ${dest}`);
+    console.log(`✅ Copied: ${path.basename(src)}`);
     return true;
   } catch (error) {
     console.error(`❌ Error copying ${src}:`, error.message);
@@ -93,6 +93,12 @@ function replaceEnvVars(content) {
 
 console.log("📦 Creating dist directory structure...\n");
 
+// Lösche alten dist/ Ordner
+if (fs.existsSync(DIST_DIR)) {
+  fs.rmSync(DIST_DIR, { recursive: true });
+  console.log("🗑️  Removed old dist/ directory\n");
+}
+
 // Erstelle Ordnerstruktur
 ensureDir(DIST_DIR);
 ensureDir(path.join(DIST_DIR, JS_DIR));
@@ -105,7 +111,12 @@ ensureDir(path.join(DIST_DIR, HTML_DIR));
 
 console.log("\n📄 Copying main index.html...\n");
 
-const indexSrc = path.join(SOURCE_DIR, HTML_DIR, "index.html");
+// Suche index.html entweder im Root oder im html/ Ordner
+let indexSrc = path.join(SOURCE_DIR, "index.html");
+if (!fs.existsSync(indexSrc)) {
+  indexSrc = path.join(SOURCE_DIR, HTML_DIR, "index.html");
+}
+
 const indexDest = path.join(DIST_DIR, "index.html");
 
 let copyErrors = 0;
@@ -116,6 +127,8 @@ if (fs.existsSync(indexSrc)) {
   }
 } else {
   console.error("❌ CRITICAL: index.html not found!");
+  console.error(`   Checked: ${path.join(SOURCE_DIR, "index.html")}`);
+  console.error(`   Checked: ${path.join(SOURCE_DIR, HTML_DIR, "index.html")}`);
   copyErrors++;
 }
 
@@ -204,33 +217,32 @@ CSS_MODULES.forEach((cssFile) => {
 const createBundle = process.env.CREATE_BUNDLE === "true";
 
 if (createBundle) {
-  console.log("\n📦 Creating bundled app.js...\n");
+  console.log("\n📦 Creating bundles...\n");
 
   try {
-    let bundleContent = "";
+    // JavaScript Bundle
+    let jsBundleContent = "";
+    jsBundleContent += "// ================================================\n";
+    jsBundleContent += "// BJJ Community Platform - Bundled Version\n";
+    jsBundleContent += `// Build Date: ${new Date().toISOString()}\n`;
+    jsBundleContent +=
+      "// ================================================\n\n";
 
-    // Header
-    bundleContent += "// ================================================\n";
-    bundleContent += "// BJJ Community Platform - Bundled Version\n";
-    bundleContent += `// Build Date: ${new Date().toISOString()}\n`;
-    bundleContent += "// ================================================\n\n";
-
-    // Kombiniere alle Module
     JS_MODULES.forEach((module) => {
       const srcPath = path.join(SOURCE_DIR, JS_DIR, module);
       if (fs.existsSync(srcPath)) {
-        bundleContent += `// === ${module} ===\n`;
+        jsBundleContent += `// === ${module} ===\n`;
         let content = fs.readFileSync(srcPath, "utf8");
 
         if (module === "config.js") {
           content = replaceEnvVars(content);
         }
 
-        bundleContent += content + "\n\n";
+        jsBundleContent += content + "\n\n";
       }
     });
 
-    fs.writeFileSync(path.join(DIST_DIR, "app.bundle.js"), bundleContent);
+    fs.writeFileSync(path.join(DIST_DIR, "app.bundle.js"), jsBundleContent);
     console.log("✅ Created app.bundle.js");
 
     // CSS Bundle
@@ -265,36 +277,30 @@ const totalErrors = copyErrors + htmlErrors + jsErrors + cssErrors;
 
 console.log("\n📁 Structure:");
 console.log(`   dist/`);
-console.log(`   ├── index.html`);
-console.log(`   ├── html/`);
-HTML_FILES.slice(0, 3).forEach((h) => console.log(`   │   ├── ${h}`));
-console.log(`   │   └── ... (${HTML_FILES.length} total)`);
-console.log(`   ├── js/`);
-JS_MODULES.slice(0, 3).forEach((m) => console.log(`   │   ├── ${m}`));
-console.log(`   │   └── ... (${JS_MODULES.length} total)`);
-console.log(`   └── css/`);
-CSS_MODULES.slice(0, 3).forEach((c) => console.log(`       ├── ${c}`));
-console.log(`       └── ... (${CSS_MODULES.length} total)`);
+console.log(`   ├── index.html ✓`);
+console.log(`   ├── html/ (${HTML_FILES.length} files)`);
+console.log(`   ├── js/ (${JS_MODULES.length} files)`);
+console.log(`   └── css/ (${CSS_MODULES.length} files)`);
 
 console.log("\n🔧 Environment Variables:");
 console.log(
-  `   SUPABASE_URL: ${process.env.SUPABASE_URL ? "✅ gesetzt" : "❌ fehlt"}`
+  `   SUPABASE_URL: ${process.env.SUPABASE_URL ? "✅ SET" : "❌ MISSING"}`
 );
 console.log(
   `   SUPABASE_ANON_KEY: ${
-    process.env.SUPABASE_ANON_KEY ? "✅ gesetzt" : "❌ fehlt"
+    process.env.SUPABASE_ANON_KEY ? "✅ SET" : "❌ MISSING"
   }`
 );
 
 if (createBundle) {
-  console.log("\n📦 Bundle:");
-  console.log("   ✅ app.bundle.js created");
-  console.log("   ✅ styles.bundle.css created");
+  console.log("\n📦 Bundles:");
+  console.log("   ✅ app.bundle.js");
+  console.log("   ✅ styles.bundle.css");
 }
 
 console.log("\n📈 Results:");
 console.log(
-  `   HTML files: ${HTML_FILES.length + 1 - htmlErrors}/${
+  `   HTML files: ${HTML_FILES.length + 1 - htmlErrors - copyErrors}/${
     HTML_FILES.length + 1
   }`
 );
@@ -308,13 +314,14 @@ console.log(`   Total errors: ${totalErrors}`);
 
 if (totalErrors === 0) {
   console.log("\n✅ BUILD COMPLETED SUCCESSFULLY! 🎉");
-  console.log("\n💡 Next steps:");
-  console.log("   1. Deploy dist/ folder");
-  console.log("   2. Test the application");
+  console.log("\n💡 Test locally:");
+  console.log("   cd dist && python3 -m http.server 8000");
+  console.log("   Open: http://localhost:8000");
   process.exit(0);
 } else {
   console.log("\n⚠️  BUILD COMPLETED WITH WARNINGS");
   console.log(`   ${totalErrors} error(s) occurred`);
+  console.log("\n📝 Check the errors above and fix them.");
   process.exit(1);
 }
 

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BJJ Community Platform</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/main.css" />
+  </head>
+  <body>
+    <div class="container" id="app-root">
+      <!-- Content wird dynamisch geladen -->
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification"></div>
+
+    <!-- Core Scripts (Reihenfolge wichtig!) -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/render.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/mobilemenu.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/athletes.js"></script>
+    <script src="js/gyms.js"></script>
+    <script src="js/openmats.js"></script>
+    <script src="js/friends.js"></script>
+    <script src="js/messages.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/dashboard.js"></script>
+
+    <!-- App Initialisierung -->
+    <script>
+      // Warte bis alles geladen ist
+      document.addEventListener("DOMContentLoaded", async () => {
+        console.log("🚀 App wird initialisiert...");
+
+        try {
+          // Prüfe ob render.js geladen wurde
+          if (typeof window.renderApp !== "function") {
+            throw new Error("render.js nicht geladen");
+          }
+
+          // Rendere App
+          await window.renderApp();
+          console.log("✅ App erfolgreich geladen");
+        } catch (error) {
+          console.error("❌ Fehler beim Laden der App:", error);
+          document.getElementById("app-root").innerHTML = `
+            <div style="padding: 40px; text-align: center;">
+              <h1>⚠️ Fehler beim Laden</h1>
+              <p>Die Anwendung konnte nicht geladen werden.</p>
+              <p style="color: #666; font-size: 0.9em;">${error.message}</p>
+            </div>
+          `;
+        }
+      });
+    </script>
+  </body>
+</html>

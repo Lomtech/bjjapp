@@ -1,65 +1,103 @@
 // ================================================
-// HTML RENDER ENGINE
+// RENDER ENGINE
+// Lädt und kombiniert HTML Templates
 // ================================================
 
-async function loadHTMLPartial(path) {
+async function loadTemplate(templateName) {
   try {
-    const response = await fetch(path);
-    if (!response.ok) throw new Error(`Failed to load ${path}`);
+    const response = await fetch(`html/${templateName}.html`);
+    if (!response.ok) {
+      throw new Error(`Template ${templateName} nicht gefunden`);
+    }
     return await response.text();
   } catch (error) {
-    console.error(`Error loading HTML partial: ${path}`, error);
-    return "";
+    console.error(`Fehler beim Laden von ${templateName}:`, error);
+    return `<div>Fehler: ${templateName} konnte nicht geladen werden</div>`;
   }
 }
 
 async function renderApp() {
-  const container = document.getElementById("app-container");
-  if (!container) return;
+  const appRoot = document.getElementById("app-root");
 
-  const [
-    header,
-    welcome,
-    dashboard,
-    profile,
-    athletes,
-    gyms,
-    openmats,
-    friends,
-    messages,
-    map,
-    authModal,
-    openmatChatModal,
-  ] = await Promise.all([
-    loadHTMLPartial("html/partials/header.html"),
-    loadHTMLPartial("html/tabs/welcome.html"),
-    loadHTMLPartial("html/tabs/dashboard.html"),
-    loadHTMLPartial("html/tabs/profile.html"),
-    loadHTMLPartial("html/tabs/athletes.html"),
-    loadHTMLPartial("html/tabs/gyms.html"),
-    loadHTMLPartial("html/tabs/openmats.html"),
-    loadHTMLPartial("html/tabs/friends.html"),
-    loadHTMLPartial("html/tabs/messages.html"),
-    loadHTMLPartial("html/tabs/map.html"),
-    loadHTMLPartial("html/modals/auth.html"),
-    loadHTMLPartial("html/modals/openmat-chat.html"),
-  ]);
+  if (!appRoot) {
+    console.error("app-root nicht gefunden!");
+    return;
+  }
 
-  container.innerHTML = `
-    ${header}
-    ${welcome}
-    ${dashboard}
-    ${profile}
-    ${athletes}
-    ${gyms}
-    ${openmats}
-    ${friends}
-    ${messages}
-    ${map}
-  `;
+  try {
+    // Prüfe Auth-Status
+    const session = supabase?.auth?.getSession
+      ? await supabase.auth.getSession()
+      : null;
+    const isAuthenticated = session?.data?.session !== null;
 
-  document.body.insertAdjacentHTML("beforeend", authModal);
-  document.body.insertAdjacentHTML("beforeend", openmatChatModal);
+    console.log(
+      "Auth Status:",
+      isAuthenticated ? "Eingeloggt" : "Nicht eingeloggt"
+    );
+
+    // Lade entsprechendes Template
+    let mainContent;
+
+    if (!isAuthenticated) {
+      // Nicht eingeloggt -> Welcome Screen
+      mainContent = await loadTemplate("welcome");
+    } else {
+      // Eingeloggt -> Header + Dashboard
+      const header = await loadTemplate("header");
+      const dashboard = await loadTemplate("dashboard");
+      const profile = await loadTemplate("profile");
+      const athletes = await loadTemplate("athletes");
+      const gyms = await loadTemplate("gyms");
+      const openmats = await loadTemplate("openmats");
+      const friends = await loadTemplate("friends");
+      const messages = await loadTemplate("messages");
+      const map = await loadTemplate("map");
+
+      mainContent = `
+        ${header}
+        <div id="tab-content-container">
+          ${dashboard}
+          ${profile}
+          ${athletes}
+          ${gyms}
+          ${openmats}
+          ${friends}
+          ${messages}
+          ${map}
+        </div>
+      `;
+    }
+
+    // Rendere Content
+    appRoot.innerHTML = mainContent;
+
+    // Lade Modals
+    const authModal = await loadTemplate("auth");
+    const openmatChatModal = await loadTemplate("openmat-chat");
+    appRoot.insertAdjacentHTML("beforeend", authModal + openmatChatModal);
+
+    // Initialisiere Event Listeners
+    if (typeof initializeApp === "function") {
+      initializeApp();
+    }
+
+    // Tab-System initialisieren
+    if (isAuthenticated && typeof initializeTabs === "function") {
+      initializeTabs();
+    }
+
+    console.log("✅ Render abgeschlossen");
+  } catch (error) {
+    console.error("❌ Render Fehler:", error);
+    appRoot.innerHTML = `
+      <div style="padding: 40px; text-align: center;">
+        <h1>⚠️ Ladefehler</h1>
+        <p>${error.message}</p>
+      </div>
+    `;
+  }
 }
 
-document.addEventListener("DOMContentLoaded", renderApp);
+// Exportiere Funktion global
+window.renderApp = renderApp;
