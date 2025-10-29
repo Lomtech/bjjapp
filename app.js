@@ -1360,6 +1360,12 @@ async function openChat(friendId) {
   loadChats(); // Aktualisiere Chat-Liste
 }
 
+function closeCurrentChat() {
+  currentChatPartner = null;
+  switchTab("messages");
+  loadChats(); // Aktualisiert die Chat-Liste
+}
+
 async function loadMessages(friendId) {
   if (!supabase || !myProfile || myProfile.type !== "athlete") return;
 
@@ -1378,18 +1384,18 @@ async function loadMessages(friendId) {
         const isOwn = m.sender_id === myProfile.id;
         const date = new Date(m.created_at);
         return `
-                <div class="message ${isOwn ? "own" : "other"}">
-                    ${
-                      !isOwn
-                        ? `<div class="message-sender">${m.sender.name}</div>`
-                        : ""
-                    }
-                    <div class="message-content">${m.message}</div>
-                    <div class="message-time">${date.toLocaleTimeString(
-                      "de-DE",
-                      { hour: "2-digit", minute: "2-digit" }
-                    )}</div>
-                </div>
+        <div class="message ${isOwn ? "own" : "other"}">
+            ${
+              !isOwn ? `<div class="message-sender">${m.sender.name}</div>` : ""
+            }
+            <div class="message-bubble">
+                <div class="message-content">${m.message}</div>
+                <div class="message-time">${date.toLocaleTimeString("de-DE", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}</div>
+            </div>
+        </div>
             `;
       })
       .join("");
