@@ -1360,6 +1360,12 @@ async function openChat(friendId) {
   loadChats(); // Aktualisiere Chat-Liste
 }
 
+window.closeCurrentChat = function () {
+  currentChatPartner = null;
+  switchTab("messages");
+  loadChats(); // Aktualisiert die Chat-Liste
+};
+
 async function loadMessages(friendId) {
   if (!supabase || !myProfile || myProfile.type !== "athlete") return;
 
