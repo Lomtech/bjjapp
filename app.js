@@ -1278,15 +1278,13 @@ async function sendFriendRequest(athleteId) {
     return;
   }
 
-  const { error } = await supabase
-    .from("friendships")
-    .insert([
-      {
-        requester_id: myProfile.id,
-        addressee_id: athleteId,
-        status: "pending",
-      },
-    ]);
+  const { error } = await supabase.from("friendships").insert([
+    {
+      requester_id: myProfile.id,
+      addressee_id: athleteId,
+      status: "pending",
+    },
+  ]);
   if (error) showNotification("Fehler: " + error.message, "error");
   else showNotification("Freundschaftsanfrage gesendet!");
 }
@@ -1411,45 +1409,56 @@ async function openChat(friendId) {
   currentChatPartner = friendId;
   switchTab("messages");
 
+  // 1. Freund-Info laden
   const { data: friend } = await supabase
     .from("athletes")
     .select("id, name, image_url")
     .eq("id", friendId)
     .single();
 
-  const chatWindow = document.getElementById("chat-window");
-  const messagesContainer = document.getElementById("messages-container");
-  const chatHeader =
-    chatWindow.querySelector(".chat-header") || document.createElement("div");
-  chatHeader.className = "chat-header";
+  // 2. Chat-Header aktualisieren (falls nicht existiert, erstellen)
+  let chatHeader = document.querySelector("#chat-window .chat-header");
+  if (!chatHeader) {
+    chatHeader = document.createElement("div");
+    chatHeader.className = "chat-header";
+    document.getElementById("chat-window").prepend(chatHeader);
+  }
   chatHeader.innerHTML = `
-        <button class="back-to-list" onclick="exitFullscreenChat()">Zurück</button>
-        <h3 id="chat-partner-name">${friend.name}</h3>
-    `;
+    <button class="back-to-list" onclick="exitFullscreenChat()">←</button>
+    <h3>${friend.name}</h3>
+  `;
 
-  // Dynamisches Rendering des Chat-Fensters
-  chatWindow.innerHTML = "";
-  chatWindow.appendChild(chatHeader);
-  const messagesDiv = document.createElement("div");
-  messagesDiv.className = "chat-messages";
-  messagesDiv.id = "chat-messages";
-  chatWindow.appendChild(messagesDiv);
+  // 3. Nachrichten-Container sicherstellen
+  let messagesDiv = document.getElementById("current-chat-messages");
+  if (!messagesDiv) {
+    messagesDiv = document.createElement("div");
+    messagesDiv.id = "current-chat-messages";
+    messagesDiv.className = "chat-messages";
+    document.getElementById("chat-window").appendChild(messagesDiv);
+  }
+  messagesDiv.innerHTML = ""; // Nur Inhalt leeren
 
-  const inputForm = document.createElement("form");
-  inputForm.className = "chat-input-form";
-  inputForm.id = "chat-input-form";
-  inputForm.innerHTML = `
-        <input type="text" name="message" placeholder="Nachricht schreiben..." autocomplete="off" required />
-        <button type="submit">Senden</button>
+  // 4. Input-Form sicherstellen (wichtig!)
+  let inputForm = document.getElementById("chat-input-form");
+  if (!inputForm) {
+    inputForm = document.createElement("form");
+    inputForm.id = "chat-input-form";
+    inputForm.className = "chat-input-form";
+    inputForm.innerHTML = `
+      <input type="text" name="message" placeholder="Nachricht schreiben..." autocomplete="off" required />
+      <button type="submit">Senden</button>
     `;
+    document.getElementById("chat-window").appendChild(inputForm);
+  }
   inputForm.onsubmit = (e) => sendPrivateMessage(e, friendId);
-  chatWindow.appendChild(inputForm);
 
+  // 5. Nachrichten laden
   await loadMessages(friendId);
   loadChats();
 
-  // Vollbild-Modus aktivieren (nur auf kleinen Bildschirmen)
+  // 6. Vollbild-Modus auf Mobilgeräten
   if (window.innerWidth <= 768 && !fullscreenChatActive) {
+    const messagesContainer = document.getElementById("messages-container");
     messagesContainer.classList.add("fullscreen-chat");
     document.body.classList.add("chat-fullscreen");
     fullscreenChatActive = true;
@@ -1471,42 +1480,42 @@ async function loadMessages(friendId) {
     .from("private_messages")
     .select("*, sender:athletes!private_messages_sender_id_fkey(name)")
     .or(
-      `and(sender_id.eq.${myProfile.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${myProfile.id})`
+      `and(sender_id.eq.${myProfile.id},receiver_id.eq.${friendId}),` +
+        `and(sender_id.eq.${friendId},receiver_id.eq.${myProfile.id})`
     )
     .order("created_at", { ascending: true });
 
-  const messagesDiv = document.getElementById("chat-messages");
-  if (messagesDiv) {
-    messagesDiv.innerHTML = messages
-      .map((m) => {
-        const isOwn = m.sender_id === myProfile.id;
-        const date = new Date(m.created_at);
-        return `
-                <div class="message ${isOwn ? "own" : "other"}">
-                    ${
-                      !isOwn
-                        ? `<div class="message-sender">${m.sender.name}</div>`
-                        : ""
-                    }
-                    <div class="message-content">${m.message}</div>
-                    <div class="message-time">${date.toLocaleTimeString(
-                      "de-DE",
-                      { hour: "2-digit", minute: "2-digit" }
-                    )}</div>
-                </div>
-            `;
-      })
-      .join("");
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  const messagesDiv = document.getElementById("current-chat-messages");
+  if (!messagesDiv) return;
 
-    await supabase
-      .from("private_messages")
-      .update({ read: true })
-      .eq("receiver_id", myProfile.id)
-      .eq("sender_id", friendId)
-      .eq("read", false);
-    updateNotificationBadges();
-  }
+  messagesDiv.innerHTML = messages
+    .map((m) => {
+      const isOwn = m.sender_id === myProfile.id;
+      const date = new Date(m.created_at);
+      return `
+        <div class="message ${isOwn ? "own" : "other"}">
+          ${!isOwn ? `<div class="message-sender">${m.sender.name}</div>` : ""}
+          <div class="message-content">${m.message}</div>
+          <div class="message-time">${date.toLocaleTimeString("de-DE", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}</div>
+        </div>
+      `;
+    })
+    .join("");
+
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+  // Als gelesen markieren
+  await supabase
+    .from("private_messages")
+    .update({ read: true })
+    .eq("receiver_id", myProfile.id)
+    .eq("sender_id", friendId)
+    .eq("read", false);
+
+  updateNotificationBadges();
 }
 
 async function sendPrivateMessage(event, receiverId) {
