@@ -1,22 +1,34 @@
 <!DOCTYPE html>
 <html lang="de">
   <head>
+    <!-- ==========================================================================
+       1. METADATEN & EXTERNE RESSOURCEN
+       ========================================================================== -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BJJ Community Platform</title>
+
+    <!-- Externe Stylesheets -->
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
+
   <body>
+    <!-- ==========================================================================
+       2. HAUPTCONTAINER & HEADER
+       ========================================================================== -->
     <div class="container">
       <header>
+        <!-- Header-Top: Logo + Auth-Bereich -->
         <div class="header-top">
-          <h1>🥋 BJJ Community</h1>
+          <h1>BJJ Community</h1>
           <div class="auth-section" id="auth-section"></div>
         </div>
+
+        <!-- Navigation: Tabs -->
         <div class="tabs">
           <button class="tab-btn active" onclick="switchTab('dashboard', this)">
             Dashboard
@@ -30,7 +42,7 @@
           <button class="tab-btn" onclick="switchTab('gyms', this)">
             Gyms
           </button>
-          <button class="tab-btn" onclick="switchTab('openmats', this)">
+          <button class="tab-btn" onclick="switchTab('openm nearlyats', this)">
             Open Mats
           </button>
           <button class="tab-btn" onclick="switchTab('friends', this)">
@@ -55,11 +67,13 @@
         </div>
       </header>
 
-      <!-- Welcome Screen für nicht-angemeldete User -->
+      <!-- ==========================================================================
+         3. WELCOME SCREEN (Nicht angemeldet)
+         ========================================================================== -->
       <div id="welcome-screen" class="tab-content">
         <div style="text-align: center; padding: 60px 20px">
           <h2 style="font-size: 3em; margin-bottom: 20px">
-            Willkommen bei der BJJ Community! 🥋
+            Willkommen bei der BJJ Community!
           </h2>
           <p style="font-size: 1.3em; margin-bottom: 30px; color: #666">
             Entdecke Gyms, vernetze dich mit Athleten und finde Open Mats in
@@ -91,16 +105,23 @@
         </div>
       </div>
 
+      <!-- ==========================================================================
+         4. DASHBOARD TAB
+         ========================================================================== -->
       <div id="dashboard-tab" class="tab-content">
-        <h2>📊 Dashboard</h2>
+        <h2>Dashboard</h2>
         <div class="stats-grid" id="stats-grid"></div>
         <h3>Neueste Aktivitäten</h3>
         <div id="recent-activities"></div>
       </div>
 
-      <!-- NEUER TAB: Mein Profil -->
+      <!-- ==========================================================================
+         5. MEIN PROFIL TAB
+         ========================================================================== -->
       <div id="profile-tab" class="tab-content">
-        <h2>👤 Mein Profil</h2>
+        <h2>Mein Profil</h2>
+
+        <!-- Profil-Typ Auswahl -->
         <div id="profile-type-selector">
           <p style="margin-bottom: 20px">
             Du hast noch kein Profil. Was möchtest du erstellen?
@@ -111,14 +132,14 @@
               onclick="showProfileForm('athlete')"
               style="flex: 1"
             >
-              🥋 Athleten-Profil
+              Athleten-Profil
             </button>
             <button
               class="btn btn-secondary"
               onclick="showProfileForm('gym')"
               style="flex: 1"
             >
-              🏋️ Gym-Profil
+              Gym-Profil
             </button>
           </div>
         </div>
@@ -294,13 +315,16 @@
           </form>
         </div>
 
-        <!-- Anzeige des eigenen Profils -->
+        <!-- Profil-Anzeige (nach Erstellung) -->
         <div id="my-profile-display" style="display: none"></div>
       </div>
 
+      <!-- ==========================================================================
+         6. ATHLETEN TAB
+         ========================================================================== -->
       <div id="athletes-tab" class="tab-content">
         <div class="search-filter">
-          <h3>🔍 Athleten suchen</h3>
+          <h3>Athleten suchen</h3>
           <div class="search-row">
             <div class="form-group">
               <input
@@ -335,18 +359,20 @@
         <div id="athletes-list" class="profiles-grid"></div>
       </div>
 
-      <!-- GYMS TAB - MIT NEUEM ERSTELLUNGS-FORMULAR -->
+      <!-- ==========================================================================
+         7. GYMS TAB
+         ========================================================================== -->
       <div id="gyms-tab" class="tab-content">
-        <h2>🏋️ Gyms</h2>
+        <h2>Gyms</h2>
 
-        <!-- NEU: Button zum Erstellen eines neuen Gyms -->
+        <!-- Button: Neues Gym erstellen -->
         <div style="margin-bottom: 20px">
           <button class="btn" onclick="showCreateGymForm()" id="create-gym-btn">
-            ➕ Neues Gym erstellen
+            Neues Gym erstellen
           </button>
         </div>
 
-        <!-- NEU: Gym-Erstellungs-Formular (initial versteckt) -->
+        <!-- Formular: Gym erstellen (versteckt) -->
         <div id="gym-creation-form" style="display: none; margin-bottom: 30px">
           <div class="profile-card">
             <h3 id="gym-creation-title">Neues Gym erstellen</h3>
@@ -360,7 +386,6 @@
                 <label>Gym Name *</label>
                 <input type="text" id="gym-create-name" name="name" required />
               </div>
-
               <div class="form-group">
                 <label>Beschreibung</label>
                 <textarea
@@ -370,7 +395,6 @@
                   placeholder="Beschreibe dein Gym..."
                 ></textarea>
               </div>
-
               <div class="form-row">
                 <div class="form-group">
                   <label>E-Mail</label>
@@ -381,7 +405,6 @@
                   <input type="tel" id="gym-create-phone" name="phone" />
                 </div>
               </div>
-
               <div class="form-group">
                 <label>Website</label>
                 <input
@@ -391,7 +414,6 @@
                   placeholder="https://..."
                 />
               </div>
-
               <div class="form-group">
                 <label>Straße & Hausnummer *</label>
                 <input
@@ -402,7 +424,6 @@
                   placeholder="z.B. Hauptstraße 123"
                 />
               </div>
-
               <div class="form-row">
                 <div class="form-group">
                   <label>PLZ *</label>
@@ -425,7 +446,6 @@
                   />
                 </div>
               </div>
-
               <div class="form-group">
                 <label>Bild</label>
                 <input
@@ -436,7 +456,6 @@
                 />
                 <div id="gym-create-image-preview"></div>
               </div>
-
               <div id="gym-geocoding-status" class="geocoding-status"></div>
 
               <div style="display: flex; gap: 10px; margin-top: 20px">
@@ -455,9 +474,9 @@
           </div>
         </div>
 
-        <!-- Bestehende Such- und Filterfunktionen -->
+        <!-- Suche & Filter -->
         <div class="search-filter">
-          <h3>🔍 Gyms suchen</h3>
+          <h3>Gyms suchen</h3>
           <div class="search-row">
             <div class="form-group">
               <input
@@ -479,21 +498,22 @@
         <div id="gyms-list" class="profiles-grid"></div>
       </div>
 
-      <!-- OPEN MATS TAB - MIT ANGEPASSTEM FORMULAR -->
+      <!-- ==========================================================================
+         8. OPEN MATS TAB
+         ========================================================================== -->
       <div id="openmats-tab" class="tab-content">
-        <h2>📅 Open Mat Events</h2>
+        <h2>Open Mat Events</h2>
 
+        <!-- Formular: Neues Event (versteckt) -->
         <div id="create-openmat-section" style="display: none">
           <h3>Neues Event erstellen</h3>
           <form id="openmat-form">
-            <!-- NEU: Gym-Auswahl Dropdown -->
             <div class="form-group">
               <label>Gym auswählen *</label>
               <select id="openmat-gym-select" name="gym_id" required>
                 <option value="">Gym auswählen...</option>
               </select>
             </div>
-
             <div class="form-group">
               <label>Event Titel *</label>
               <input
@@ -503,7 +523,6 @@
                 placeholder="z.B. Samstag Open Mat"
               />
             </div>
-
             <div class="form-group">
               <label>Beschreibung</label>
               <textarea
@@ -512,7 +531,6 @@
                 placeholder="Details zum Event..."
               ></textarea>
             </div>
-
             <div class="form-row">
               <div class="form-group">
                 <label>Datum & Uhrzeit *</label>
@@ -530,7 +548,6 @@
                 />
               </div>
             </div>
-
             <button type="submit" class="btn">Event erstellen</button>
           </form>
         </div>
@@ -539,9 +556,11 @@
         <div id="openmats-list" class="calendar"></div>
       </div>
 
-      <!-- NEUER TAB: Freunde -->
+      <!-- ==========================================================================
+         9. FREUNDE TAB
+         ========================================================================== -->
       <div id="friends-tab" class="tab-content">
-        <h2>👥 Freunde</h2>
+        <h2>Freunde</h2>
 
         <div id="friend-requests-section">
           <h3>Freundschaftsanfragen</h3>
@@ -554,31 +573,65 @@
         </div>
       </div>
 
-      <!-- NEUER TAB: Nachrichten -->
+      <!-- ==========================================================================
+         10. NACHRIHTEN TAB (mit Vollbild-Chat-Unterstützung)
+         ========================================================================== -->
       <div id="messages-tab" class="tab-content">
-        <h2>💬 Nachrichten</h2>
-        <div class="messages-container">
+        <h2>Nachrichten</h2>
+        <div class="messages-container" id="messages-container">
           <div class="chat-list">
             <h3>Chats</h3>
             <div id="chat-list"></div>
           </div>
           <div class="chat-window" id="chat-window">
-            <p style="text-align: center; color: #999; padding: 40px">
-              Wähle einen Chat aus der Liste
-            </p>
+            <!-- Header mit Zurück-Button (nur mobil sichtbar im Vollbild) -->
+            <div class="chat-header">
+              <button class="back-to-list" onclick="exitFullscreenChat()">
+                Zurück
+              </button>
+              <h3 id="chat-partner-name">Chat</h3>
+            </div>
+            <!-- Nachrichtenbereich -->
+            <div class="chat-messages" id="chat-messages">
+              <p style="text-align: center; color: #999; padding: 40px">
+                Wähle einen Chat aus der Liste
+              </p>
+            </div>
+            <!-- Eingabeformular -->
+            <form
+              class="chat-input-form"
+              id="chat-input-form"
+              style="display: none"
+            >
+              <input
+                type="text"
+                name="message"
+                placeholder="Nachricht schreiben..."
+                autocomplete="off"
+              />
+              <button type="submit">Senden</button>
+            </form>
           </div>
         </div>
       </div>
 
+      <!-- ==========================================================================
+         11. KARTE TAB
+         ========================================================================== -->
       <div id="map-tab" class="tab-content">
-        <h2>🗺️ Gyms & Open Mats auf der Karte</h2>
+        <h2>Gyms & Open Mats auf der Karte</h2>
         <div id="map"></div>
       </div>
     </div>
 
+    <!-- ==========================================================================
+       12. GLOBALE BENACHRICHTIGUNG
+       ========================================================================== -->
     <div class="notification" id="notification"></div>
 
-    <!-- Auth Modal -->
+    <!-- ==========================================================================
+       13. AUTH MODAL
+       ========================================================================== -->
     <div class="modal" id="auth-modal">
       <div class="modal-content">
         <div class="modal-header">
@@ -606,7 +659,9 @@
       </div>
     </div>
 
-    <!-- Open Mat Chat Modal -->
+    <!-- ==========================================================================
+       14. OPEN MAT CHAT MODAL
+       ========================================================================== -->
     <div class="modal" id="openmat-chat-modal">
       <div class="modal-content" style="max-width: 800px">
         <div class="modal-header">
@@ -630,6 +685,9 @@
       </div>
     </div>
 
+    <!-- ==========================================================================
+       15. SCRIPTS (am Ende für Performance)
+       ========================================================================== -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>

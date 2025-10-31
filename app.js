@@ -12,6 +12,7 @@ let myProfile = null; // { type: 'athlete'|'gym', id: uuid, data: {...} }
 let currentChatPartner = null;
 let currentOpenMatChat = null;
 let messagePollingInterval = null;
+let fullscreenChatActive = false; // Zustand für Vollbild-Chat
 
 // ================================================
 // INITIALISIERUNG
@@ -26,7 +27,7 @@ let messagePollingInterval = null;
   ) {
     initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
   } else {
-    showNotification("⚠️ Umgebungsvariablen nicht gefunden", "warning");
+    showNotification("Umgebungsvariablen nicht gefunden", "warning");
   }
 })();
 
@@ -57,6 +58,9 @@ async function initSupabase(url, key) {
       if (messagePollingInterval) {
         clearInterval(messagePollingInterval);
       }
+      // Reset Vollbild-Chat
+      fullscreenChatActive = false;
+      document.body.classList.remove("chat-fullscreen");
     }
   });
 }
@@ -95,7 +99,7 @@ function updateAuthUI() {
   if (currentUser) {
     authSection.innerHTML = `
             <div class="user-info">
-                <span>👤 ${currentUser.email}</span>
+                <span>${currentUser.email}</span>
             </div>
             <button class="auth-btn logout" onclick="logout()">Logout</button>
         `;
@@ -266,7 +270,6 @@ function cancelProfileEdit() {
     displayProfileSelector();
   }
 
-  // Reset forms
   document.getElementById("athlete-form").reset();
   document.getElementById("gym-form").reset();
   document.getElementById("current-image-preview").innerHTML = "";
@@ -288,7 +291,7 @@ function displayMyProfile() {
                 ${
                   a.image_url
                     ? `<img src="${a.image_url}" class="profile-image" alt="${a.name}">`
-                    : '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
+                    : '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;"></div>'
                 }
                 <h2>${a.name}</h2>
                 ${
@@ -296,8 +299,8 @@ function displayMyProfile() {
                     ? `<p style="color: #666; margin: 10px 0;">${a.bio}</p>`
                     : ""
                 }
-                ${a.age ? `<p>📅 ${a.age} Jahre</p>` : ""}
-                ${a.weight ? `<p>⚖️ ${a.weight} kg</p>` : ""}
+                ${a.age ? `<p>${a.age} Jahre</p>` : ""}
+                ${a.weight ? `<p>${a.weight} kg</p>` : ""}
                 ${
                   a.belt_rank
                     ? `<span class="belt-badge belt-${
@@ -307,7 +310,7 @@ function displayMyProfile() {
                 }
                 ${
                   a.gyms
-                    ? `<p style="margin-top: 10px;">🏋️ <strong>${
+                    ? `<p style="margin-top: 10px;"><strong>${
                         a.gyms.name
                       }</strong>${a.gyms.city ? ` (${a.gyms.city})` : ""}</p>`
                     : ""
@@ -330,13 +333,13 @@ function displayMyProfile() {
                     ? `<p style="color: #666;">${g.description}</p>`
                     : ""
                 }
-                <p>📍 ${g.street || ""}</p>
-                <p>🏙️ ${g.postal_code || ""} ${g.city || ""}</p>
-                ${g.phone ? `<p>📞 ${g.phone}</p>` : ""}
-                ${g.email ? `<p>📧 ${g.email}</p>` : ""}
+                <p>${g.street || ""}</p>
+                <p>${g.postal_code || ""} ${g.city || ""}</p>
+                ${g.phone ? `<p>${g.phone}</p>` : ""}
+                ${g.email ? `<p>${g.email}</p>` : ""}
                 ${
                   g.website
-                    ? `<p><a href="${g.website}" target="_blank">🌐 Website</a></p>`
+                    ? `<p><a href="${g.website}" target="_blank">Website</a></p>`
                     : ""
                 }
                 <button class="btn" style="width: 100%; margin-top: 20px;" onclick="editMyProfile()">Profil bearbeiten</button>
@@ -415,7 +418,6 @@ document
 
     let imageUrl = myProfile?.data?.image_url || null;
 
-    // Bild hochladen wenn vorhanden
     if (imageFile && imageFile.size > 0) {
       const fileExt = imageFile.name.split(".").pop();
       const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
@@ -456,7 +458,6 @@ document
         .from("athletes")
         .update(data)
         .eq("id", athleteId);
-
       if (error) {
         showNotification("Fehler: " + error.message, "error");
       } else {
@@ -466,7 +467,6 @@ document
       }
     } else {
       const { error } = await supabase.from("athletes").insert([data]);
-
       if (error) {
         showNotification("Fehler: " + error.message, "error");
       } else {
@@ -502,7 +502,6 @@ async function geocodeAddress(street, postalCode, city) {
       };
     }
 
-    console.warn("Geocoding failed, using fallback");
     return {
       latitude: 48.1351,
       longitude: 11.582,
@@ -526,11 +525,7 @@ async function checkGymDuplicate(name, street, gymId = null) {
     .select("id")
     .eq("name", name)
     .eq("street", street);
-
-  if (gymId) {
-    query = query.neq("id", gymId);
-  }
-
+  if (gymId) query = query.neq("id", gymId);
   const { data } = await query;
   return data && data.length > 0;
 }
@@ -552,7 +547,6 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
   const postalCode = formData.get("postal_code");
   const city = formData.get("city");
 
-  // Duplikat-Check
   const isDuplicate = await checkGymDuplicate(name, street, gymId);
   if (isDuplicate) {
     showNotification(
@@ -565,16 +559,16 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
   }
 
   const statusDiv = document.getElementById("geocoding-status");
-  statusDiv.textContent = "🔄 Geocodiere Adresse...";
+  statusDiv.textContent = "Geocodiere Adresse...";
   statusDiv.className = "geocoding-status";
 
   const geoResult = await geocodeAddress(street, postalCode, city);
 
   if (geoResult.fallback) {
-    statusDiv.textContent = "⚠️ Adresse approximiert (München als Fallback)";
+    statusDiv.textContent = "Adresse approximiert (München als Fallback)";
     statusDiv.className = "geocoding-status warning";
   } else {
-    statusDiv.textContent = "✅ Adresse erfolgreich gefunden";
+    statusDiv.textContent = "Adresse erfolgreich gefunden";
     statusDiv.className = "geocoding-status success";
   }
 
@@ -584,11 +578,9 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
   if (imageFile && imageFile.size > 0) {
     const fileExt = imageFile.name.split(".").pop();
     const fileName = `gym_${currentUser.id}_${Date.now()}.${fileExt}`;
-
     const { error: uploadError } = await supabase.storage
       .from("profile-images")
       .upload(fileName, imageFile, { upsert: true });
-
     if (!uploadError) {
       const {
         data: { publicUrl },
@@ -598,14 +590,14 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
   }
 
   const data = {
-    name: name,
+    name,
     description: formData.get("description") || null,
     email: formData.get("email") || null,
     phone: formData.get("phone") || null,
     website: formData.get("website") || null,
-    street: street,
+    street,
     postal_code: postalCode,
-    city: city,
+    city,
     address: `${street}, ${postalCode} ${city}`,
     latitude: geoResult.latitude,
     longitude: geoResult.longitude,
@@ -615,10 +607,8 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
 
   if (isEditing) {
     const { error } = await supabase.from("gyms").update(data).eq("id", gymId);
-
-    if (error) {
-      showNotification("Fehler: " + error.message, "error");
-    } else {
+    if (error) showNotification("Fehler: " + error.message, "error");
+    else {
       showNotification("Profil aktualisiert!");
       await loadUserProfile();
       loadGyms();
@@ -629,10 +619,8 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
     }
   } else {
     const { error } = await supabase.from("gyms").insert([data]);
-
-    if (error) {
-      showNotification("Fehler: " + error.message, "error");
-    } else {
+    if (error) showNotification("Fehler: " + error.message, "error");
+    else {
       showNotification("Gym erstellt!");
       await loadUserProfile();
       loadGyms();
@@ -722,7 +710,6 @@ async function loadAthletes() {
     .from("athletes")
     .select("*, gyms(name, city)")
     .order("created_at", { ascending: false });
-
   if (data) {
     allAthletes = data;
     displayAthletes(data);
@@ -735,14 +722,12 @@ function displayAthletes(athletes) {
     .map((a) => {
       const isMyProfile =
         myProfile && myProfile.type === "athlete" && myProfile.id === a.id;
-      const isFriend = false; // Wird später implementiert mit loadFriendships
-
       return `
             <div class="profile-card">
                 ${
                   a.image_url
                     ? `<img src="${a.image_url}" class="profile-image" alt="${a.name}">`
-                    : '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
+                    : '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;"></div>'
                 }
                 <h3>${a.name}</h3>
                 ${
@@ -750,8 +735,8 @@ function displayAthletes(athletes) {
                     ? `<p style="font-size: 0.9em; color: #666; margin: 10px 0;">${a.bio}</p>`
                     : ""
                 }
-                ${a.age ? `<p>📅 ${a.age} Jahre</p>` : ""}
-                ${a.weight ? `<p>⚖️ ${a.weight} kg</p>` : ""}
+                ${a.age ? `<p>${a.age} Jahre</p>` : ""}
+                ${a.weight ? `<p>${a.weight} kg</p>` : ""}
                 ${
                   a.belt_rank
                     ? `<span class="belt-badge belt-${
@@ -761,18 +746,14 @@ function displayAthletes(athletes) {
                 }
                 ${
                   a.gyms
-                    ? `<p style="margin-top: 10px;">🏋️ <strong>${
+                    ? `<p style="margin-top: 10px;"><strong>${
                         a.gyms.name
                       }</strong>${a.gyms.city ? ` (${a.gyms.city})` : ""}</p>`
                     : ""
                 }
                 ${
                   !isMyProfile && myProfile?.type === "athlete"
-                    ? `
-                    <button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="sendFriendRequest('${a.id}')">
-                        👥 Freundschaftsanfrage senden
-                    </button>
-                `
+                    ? `<button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="sendFriendRequest('${a.id}')">Freundschaftsanfrage senden</button>`
                     : ""
                 }
             </div>
@@ -789,7 +770,6 @@ function filterAthletes() {
   const gymFilter = document.getElementById("filter-gym").value;
 
   let filtered = allAthletes;
-
   if (searchTerm) {
     filtered = filtered.filter(
       (a) =>
@@ -800,13 +780,8 @@ function filterAthletes() {
         a.belt_rank?.toLowerCase().includes(searchTerm)
     );
   }
-  if (beltFilter) {
-    filtered = filtered.filter((a) => a.belt_rank === beltFilter);
-  }
-  if (gymFilter) {
-    filtered = filtered.filter((a) => a.gym_id === gymFilter);
-  }
-
+  if (beltFilter) filtered = filtered.filter((a) => a.belt_rank === beltFilter);
+  if (gymFilter) filtered = filtered.filter((a) => a.gym_id === gymFilter);
   displayAthletes(filtered);
 }
 
@@ -817,7 +792,6 @@ function filterAthletes() {
 async function loadGyms() {
   if (!supabase) return;
   const { data: gyms } = await supabase.from("gyms").select("*");
-
   if (gyms) {
     allGyms = gyms;
     displayGyms(gyms);
@@ -828,10 +802,7 @@ function displayGyms(gyms) {
   const list = document.getElementById("gyms-list");
   list.innerHTML = gyms
     .map((g) => {
-      const isMyGym =
-        myProfile && myProfile.type === "gym" && myProfile.id === g.id;
       const canEdit = currentUser && g.user_id === currentUser.id;
-
       return `
         <div class="profile-card">
             ${
@@ -845,17 +816,17 @@ function displayGyms(gyms) {
                 ? `<p style="font-size: 0.9em; color: #666;">${g.description}</p>`
                 : ""
             }
-            <p>📍 ${g.street || ""}</p>
-            <p>🏙️ ${g.postal_code || ""} ${g.city || ""}</p>
-            ${g.phone ? `<p>📞 ${g.phone}</p>` : ""}
+            <p>${g.street || ""}</p>
+            <p>${g.postal_code || ""} ${g.city || ""}</p>
+            ${g.phone ? `<p>${g.phone}</p>` : ""}
             ${
               g.website
-                ? `<p><a href="${g.website}" target="_blank">🌐 Website</a></p>`
+                ? `<p><a href="${g.website}" target="_blank">Website</a></p>`
                 : ""
             }
             ${
               canEdit
-                ? `<button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="editGymInTab('${g.id}')">✏️ Bearbeiten</button>`
+                ? `<button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="editGymInTab('${g.id}')">Bearbeiten</button>`
                 : ""
             }
         </div>
@@ -864,98 +835,69 @@ function displayGyms(gyms) {
     .join("");
 }
 
-// Zeige Gym-Erstellungsformular im Gyms-Tab
 function showCreateGymForm() {
   const form = document.getElementById("gym-creation-form");
   const formElement = document.getElementById("gym-creation-form-element");
   const title = document.getElementById("gym-creation-title");
   const submitBtn = document.getElementById("gym-create-submit-btn");
 
-  // Reset form
   formElement.reset();
   document.getElementById("gym-edit-id").value = "";
   document.getElementById("gym-create-image-preview").innerHTML = "";
   document.getElementById("gym-geocoding-status").textContent = "";
 
-  // Set title
   title.textContent = "Neues Gym erstellen";
   submitBtn.textContent = "Gym erstellen";
-
-  // Show form
   form.style.display = "block";
-
-  // Scroll to form
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-// Bearbeite Gym im Gyms-Tab
 async function editGymInTab(gymId) {
-  console.log("Bearbeite Gym:", gymId);
-
   const { data: gym, error } = await supabase
     .from("gyms")
     .select("*")
     .eq("id", gymId)
     .single();
-
   if (error) {
-    console.error("Fehler beim Laden:", error);
     showNotification("Fehler beim Laden des Gyms", "error");
     return;
   }
 
-  if (gym) {
-    console.log("Gym geladen:", gym);
+  const form = document.getElementById("gym-creation-form");
+  const title = document.getElementById("gym-creation-title");
+  const submitBtn = document.getElementById("gym-create-submit-btn");
+  const hiddenIdField = document.getElementById("gym-edit-id");
 
-    const form = document.getElementById("gym-creation-form");
-    const title = document.getElementById("gym-creation-title");
-    const submitBtn = document.getElementById("gym-create-submit-btn");
+  hiddenIdField.value = gym.id;
+  document.getElementById("gym-create-name").value = gym.name || "";
+  document.getElementById("gym-create-description").value =
+    gym.description || "";
+  document.getElementById("gym-create-email").value = gym.email || "";
+  document.getElementById("gym-create-phone").value = gym.phone || "";
+  document.getElementById("gym-create-website").value = gym.website || "";
+  document.getElementById("gym-create-street").value = gym.street || "";
+  document.getElementById("gym-create-postal").value = gym.postal_code || "";
+  document.getElementById("gym-create-city").value = gym.city || "";
 
-    // WICHTIG: Setze gym_id im hidden field
-    const hiddenIdField = document.getElementById("gym-edit-id");
-    hiddenIdField.value = gym.id;
-    console.log("Hidden ID gesetzt:", hiddenIdField.value);
-
-    // Fill form
-    document.getElementById("gym-create-name").value = gym.name || "";
-    document.getElementById("gym-create-description").value =
-      gym.description || "";
-    document.getElementById("gym-create-email").value = gym.email || "";
-    document.getElementById("gym-create-phone").value = gym.phone || "";
-    document.getElementById("gym-create-website").value = gym.website || "";
-    document.getElementById("gym-create-street").value = gym.street || "";
-    document.getElementById("gym-create-postal").value = gym.postal_code || "";
-    document.getElementById("gym-create-city").value = gym.city || "";
-
-    // Clear previous image preview
-    const imagePreview = document.getElementById("gym-create-image-preview");
-    if (gym.image_url) {
-      imagePreview.innerHTML = `
+  const imagePreview = document.getElementById("gym-create-image-preview");
+  if (gym.image_url) {
+    imagePreview.innerHTML = `
         <div style="margin-top: 10px;">
           <img src="${gym.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
           <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
         </div>
       `;
-    } else {
-      imagePreview.innerHTML = "";
-    }
-
-    // Clear geocoding status
-    document.getElementById("gym-geocoding-status").textContent = "";
-
-    // Update title and button
-    title.textContent = "Gym bearbeiten";
-    submitBtn.textContent = "Änderungen speichern";
-
-    // Show form
-    form.style.display = "block";
-
-    // Scroll to form
-    form.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else {
+    imagePreview.innerHTML = "";
   }
+
+  document.getElementById("gym-geocoding-status").textContent = "";
+  title.textContent = "Gym bearbeiten";
+  submitBtn.textContent = "Änderungen speichern";
+  form.style.display = "block";
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-// Abbrechen der Gym-Erstellung
 function cancelGymCreation() {
   const form = document.getElementById("gym-creation-form");
   form.style.display = "none";
@@ -965,11 +907,8 @@ function cancelGymCreation() {
   document.getElementById("gym-geocoding-status").textContent = "";
 }
 
-// Submit Handler für Gym-Erstellungsformular
 async function submitGymCreationForm(e) {
   e.preventDefault();
-  console.log("=== GYM FORM SUBMIT ===");
-
   if (!supabase || !currentUser) {
     showNotification("Bitte melde dich an!", "error");
     return;
@@ -984,18 +923,11 @@ async function submitGymCreationForm(e) {
     const formData = new FormData(e.target);
     const gymId = formData.get("gym_id");
     const isEditing = !!gymId;
-
-    console.log("Form Data:");
-    console.log("- gym_id:", gymId);
-    console.log("- isEditing:", isEditing);
-    console.log("- name:", formData.get("name"));
-
     const name = formData.get("name");
     const street = formData.get("street");
     const postalCode = formData.get("postal_code");
     const city = formData.get("city");
 
-    // Duplikat-Check
     const isDuplicate = await checkGymDuplicate(name, street, gymId);
     if (isDuplicate) {
       showNotification(
@@ -1008,64 +940,52 @@ async function submitGymCreationForm(e) {
     }
 
     const statusDiv = document.getElementById("gym-geocoding-status");
-    statusDiv.textContent = "🔄 Geocodiere Adresse...";
+    statusDiv.textContent = "Geocodiere Adresse...";
     statusDiv.className = "geocoding-status";
 
     const geoResult = await geocodeAddress(street, postalCode, city);
-    console.log("Geocoding Result:", geoResult);
-
     if (geoResult.fallback) {
-      statusDiv.textContent = "⚠️ Adresse approximiert (München als Fallback)";
+      statusDiv.textContent = "Adresse approximiert (München als Fallback)";
       statusDiv.className = "geocoding-status warning";
     } else {
-      statusDiv.textContent = "✅ Adresse erfolgreich gefunden";
+      statusDiv.textContent = "Adresse erfolgreich gefunden";
       statusDiv.className = "geocoding-status success";
     }
 
-    const imageFile = formData.get("image");
     let imageUrl = null;
-
-    // Wenn bearbeitet wird, hole die existierende URL
     if (isEditing && gymId) {
-      console.log("Loading existing gym image...");
       const { data: existingGym } = await supabase
         .from("gyms")
         .select("image_url")
         .eq("id", gymId)
         .single();
       imageUrl = existingGym?.image_url;
-      console.log("Existing image URL:", imageUrl);
     }
 
+    const imageFile = formData.get("image");
     if (imageFile && imageFile.size > 0) {
-      console.log("Uploading new image...");
       const fileExt = imageFile.name.split(".").pop();
       const fileName = `gym_${currentUser.id}_${Date.now()}.${fileExt}`;
-
       const { error: uploadError } = await supabase.storage
         .from("profile-images")
         .upload(fileName, imageFile, { upsert: true });
-
       if (!uploadError) {
         const {
           data: { publicUrl },
         } = supabase.storage.from("profile-images").getPublicUrl(fileName);
         imageUrl = publicUrl;
-        console.log("New image URL:", imageUrl);
-      } else {
-        console.error("Image upload error:", uploadError);
       }
     }
 
     const data = {
-      name: name,
+      name,
       description: formData.get("description") || null,
       email: formData.get("email") || null,
       phone: formData.get("phone") || null,
       website: formData.get("website") || null,
-      street: street,
+      street,
       postal_code: postalCode,
-      city: city,
+      city,
       address: `${street}, ${postalCode} ${city}`,
       latitude: geoResult.latitude,
       longitude: geoResult.longitude,
@@ -1073,20 +993,13 @@ async function submitGymCreationForm(e) {
       user_id: currentUser.id,
     };
 
-    console.log("Data to save:", data);
-
     if (isEditing) {
-      console.log("UPDATING gym with ID:", gymId);
       const { error } = await supabase
         .from("gyms")
         .update(data)
         .eq("id", gymId);
-
-      if (error) {
-        console.error("Update error:", error);
-        showNotification("Fehler: " + error.message, "error");
-      } else {
-        console.log("Update successful!");
+      if (error) showNotification("Fehler: " + error.message, "error");
+      else {
         showNotification("Gym aktualisiert!");
         cancelGymCreation();
         await loadGyms();
@@ -1096,14 +1009,9 @@ async function submitGymCreationForm(e) {
         if (map) await initMap();
       }
     } else {
-      console.log("CREATING new gym");
       const { error } = await supabase.from("gyms").insert([data]);
-
-      if (error) {
-        console.error("Insert error:", error);
-        showNotification("Fehler: " + error.message, "error");
-      } else {
-        console.log("Insert successful!");
+      if (error) showNotification("Fehler: " + error.message, "error");
+      else {
         showNotification("Gym erstellt!");
         cancelGymCreation();
         await loadGyms();
@@ -1115,24 +1023,22 @@ async function submitGymCreationForm(e) {
       }
     }
   } catch (error) {
-    console.error("Unexpected error in submitGymCreationForm:", error);
-    showNotification("Ein unerwarteter Fehler ist aufgetreten: " + error.message, "error");
+    showNotification(
+      "Ein unerwarteter Fehler ist aufgetreten: " + error.message,
+      "error"
+    );
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = originalText;
-    const statusDiv = document.getElementById("gym-geocoding-status");
     setTimeout(() => {
-      statusDiv.textContent = "";
+      document.getElementById("gym-geocoding-status").textContent = "";
     }, 3000);
   }
-
-  console.log("=== GYM FORM SUBMIT END ===");
 }
 
 function filterGyms() {
   const searchTerm = document.getElementById("search-gym").value.toLowerCase();
   let filtered = allGyms;
-
   if (searchTerm) {
     filtered = filtered.filter(
       (g) =>
@@ -1144,7 +1050,6 @@ function filterGyms() {
         g.address?.toLowerCase().includes(searchTerm)
     );
   }
-
   displayGyms(filtered);
 }
 
@@ -1167,18 +1072,12 @@ async function loadOpenMats() {
     list.innerHTML = data
       .map((om) => {
         const date = new Date(om.event_date);
-        // Jeder kann sein eigenes Open Mat bearbeiten/löschen
         const canEdit = currentUser && om.created_by === currentUser.id;
-
         return `
                 <div class="event-card">
                     ${
                       canEdit
-                        ? `
-                        <div class="event-actions">
-                            <button class="btn btn-small btn-danger" onclick="deleteOpenMat('${om.id}')">🗑️</button>
-                        </div>
-                    `
+                        ? `<div class="event-actions"><button class="btn btn-small btn-danger" onclick="deleteOpenMat('${om.id}')"></button></div>`
                         : ""
                     }
                     <div class="event-date">${date.toLocaleDateString("de-DE", {
@@ -1191,23 +1090,17 @@ async function loadOpenMats() {
                     })}</div>
                     <h3>${om.title}</h3>
                     <p><strong>${om.gyms?.name || ""}</strong></p>
-                    ${om.gyms?.street ? `<p>📍 ${om.gyms.street}</p>` : ""}
+                    ${om.gyms?.street ? `<p>${om.gyms.street}</p>` : ""}
                     ${
                       om.gyms?.city
-                        ? `<p>🏙️ ${om.gyms.postal_code || ""} ${
-                            om.gyms.city
-                          }</p>`
+                        ? `<p>${om.gyms.postal_code || ""} ${om.gyms.city}</p>`
                         : ""
                     }
                     ${om.description ? `<p>${om.description}</p>` : ""}
-                    <p>⏱️ Dauer: ${om.duration_minutes} Minuten</p>
+                    <p>Dauer: ${om.duration_minutes} Minuten</p>
                     ${
                       myProfile?.type === "athlete"
-                        ? `
-                        <button class="btn event-chat-btn" onclick="openOpenMatChat('${om.id}', '${om.title}')">
-                            💬 Chat beitreten
-                        </button>
-                    `
+                        ? `<button class="btn event-chat-btn" onclick="openOpenMatChat('${om.id}', '${om.title}')">Chat beitreten</button>`
                         : ""
                     }
                 </div>
@@ -1216,18 +1109,15 @@ async function loadOpenMats() {
       .join("");
   }
 
-  // Event-Erstellungs-Formular für alle eingeloggten Benutzer anzeigen
   const createSection = document.getElementById("create-openmat-section");
-  if (createSection) {
+  if (createSection)
     createSection.style.display = currentUser ? "block" : "none";
-  }
 }
 
 document
   .getElementById("openmat-form")
   .addEventListener("submit", async (e) => {
     e.preventDefault();
-
     if (!supabase || !currentUser) {
       showNotification(
         "Bitte melde dich an, um Open Mats zu erstellen!",
@@ -1238,7 +1128,6 @@ document
 
     const formData = new FormData(e.target);
     const gymId = formData.get("gym_id");
-
     if (!gymId) {
       showNotification("Bitte wähle ein Gym aus!", "error");
       return;
@@ -1254,10 +1143,8 @@ document
     };
 
     const { error } = await supabase.from("open_mats").insert([data]);
-    if (error) {
-      console.error("OpenMat Error:", error);
-      showNotification("Fehler: " + error.message, "error");
-    } else {
+    if (error) showNotification("Fehler: " + error.message, "error");
+    else {
       showNotification("Event erstellt!");
       e.target.reset();
       loadOpenMats();
@@ -1269,9 +1156,8 @@ document
 async function deleteOpenMat(id) {
   if (!confirm("Event wirklich löschen?")) return;
   const { error } = await supabase.from("open_mats").delete().eq("id", id);
-  if (error) {
-    showNotification("Fehler beim Löschen", "error");
-  } else {
+  if (error) showNotification("Fehler beim Löschen", "error");
+  else {
     showNotification("Event gelöscht");
     loadOpenMats();
     loadDashboard();
@@ -1300,15 +1186,14 @@ async function loadFriendRequests() {
   if (data && data.length > 0) {
     badge.textContent = data.length;
     badge.style.display = "inline-block";
-
     list.innerHTML = data
       .map(
         (fr) => `
             <div class="friend-request">
                 <p><strong>${fr.requester.name}</strong> möchte mit dir befreundet sein</p>
                 <div class="actions">
-                    <button class="btn btn-small" onclick="acceptFriendRequest('${fr.id}')">✅ Annehmen</button>
-                    <button class="btn btn-small btn-danger" onclick="rejectFriendRequest('${fr.id}')">❌ Ablehnen</button>
+                    <button class="btn btn-small" onclick="acceptFriendRequest('${fr.id}')">Annehmen</button>
+                    <button class="btn btn-small btn-danger" onclick="rejectFriendRequest('${fr.id}')">Ablehnen</button>
                 </div>
             </div>
         `
@@ -1327,9 +1212,7 @@ async function loadFriends() {
     .from("friendships")
     .select(
       `
-            id,
-            requester_id,
-            addressee_id,
+            id, requester_id, addressee_id,
             requester:athletes!friendships_requester_id_fkey(id, name, image_url, belt_rank),
             addressee:athletes!friendships_addressee_id_fkey(id, name, image_url, belt_rank)
         `
@@ -1338,7 +1221,6 @@ async function loadFriends() {
     .eq("status", "accepted");
 
   const list = document.getElementById("friends-list");
-
   if (data && data.length > 0) {
     list.innerHTML = data
       .map((f) => {
@@ -1349,7 +1231,7 @@ async function loadFriends() {
                     ${
                       friend.image_url
                         ? `<img src="${friend.image_url}" class="profile-image" alt="${friend.name}">`
-                        : '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
+                        : '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;"></div>'
                     }
                     <h3>${friend.name}</h3>
                     ${
@@ -1361,14 +1243,10 @@ async function loadFriends() {
                     }
                     <button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="openChat('${
                       friend.id
-                    }')">
-                        💬 Chat öffnen
-                    </button>
+                    }')">Chat öffnen</button>
                     <button class="btn btn-small btn-danger" style="margin-top: 5px; width: 100%;" onclick="endFriendship('${
                       f.id
-                    }')">
-                        Freundschaft beenden
-                    </button>
+                    }')">Freundschaft beenden</button>
                 </div>
             `;
       })
@@ -1388,7 +1266,6 @@ async function sendFriendRequest(athleteId) {
     return;
   }
 
-  // Prüfe ob bereits Anfrage existiert
   const { data: existing } = await supabase
     .from("friendships")
     .select("id")
@@ -1401,19 +1278,17 @@ async function sendFriendRequest(athleteId) {
     return;
   }
 
-  const { error } = await supabase.from("friendships").insert([
-    {
-      requester_id: myProfile.id,
-      addressee_id: athleteId,
-      status: "pending",
-    },
-  ]);
-
-  if (error) {
-    showNotification("Fehler: " + error.message, "error");
-  } else {
-    showNotification("Freundschaftsanfrage gesendet!");
-  }
+  const { error } = await supabase
+    .from("friendships")
+    .insert([
+      {
+        requester_id: myProfile.id,
+        addressee_id: athleteId,
+        status: "pending",
+      },
+    ]);
+  if (error) showNotification("Fehler: " + error.message, "error");
+  else showNotification("Freundschaftsanfrage gesendet!");
 }
 
 async function acceptFriendRequest(friendshipId) {
@@ -1421,10 +1296,8 @@ async function acceptFriendRequest(friendshipId) {
     .from("friendships")
     .update({ status: "accepted" })
     .eq("id", friendshipId);
-
-  if (error) {
-    showNotification("Fehler: " + error.message, "error");
-  } else {
+  if (error) showNotification("Fehler: " + error.message, "error");
+  else {
     showNotification("Freundschaft akzeptiert!");
     loadFriendRequests();
     loadFriends();
@@ -1437,10 +1310,8 @@ async function rejectFriendRequest(friendshipId) {
     .from("friendships")
     .delete()
     .eq("id", friendshipId);
-
-  if (error) {
-    showNotification("Fehler: " + error.message, "error");
-  } else {
+  if (error) showNotification("Fehler: " + error.message, "error");
+  else {
     showNotification("Anfrage abgelehnt");
     loadFriendRequests();
   }
@@ -1448,15 +1319,12 @@ async function rejectFriendRequest(friendshipId) {
 
 async function endFriendship(friendshipId) {
   if (!confirm("Freundschaft wirklich beenden?")) return;
-
   const { error } = await supabase
     .from("friendships")
     .delete()
     .eq("id", friendshipId);
-
-  if (error) {
-    showNotification("Fehler: " + error.message, "error");
-  } else {
+  if (error) showNotification("Fehler: " + error.message, "error");
+  else {
     showNotification("Freundschaft beendet");
     loadFriends();
     loadChats();
@@ -1474,9 +1342,7 @@ async function loadChats() {
     .from("friendships")
     .select(
       `
-            id,
-            requester_id,
-            addressee_id,
+            id, requester_id, addressee_id,
             requester:athletes!friendships_requester_id_fkey(id, name, image_url),
             addressee:athletes!friendships_addressee_id_fkey(id, name, image_url)
         `
@@ -1485,14 +1351,11 @@ async function loadChats() {
     .eq("status", "accepted");
 
   const list = document.getElementById("chat-list");
-
   if (friendships && friendships.length > 0) {
     const chatItems = await Promise.all(
       friendships.map(async (f) => {
         const friend =
           f.requester_id === myProfile.id ? f.addressee : f.requester;
-
-        // Lade letzte Nachricht
         const { data: lastMsg } = await supabase
           .from("private_messages")
           .select("message, created_at")
@@ -1503,7 +1366,6 @@ async function loadChats() {
           .limit(1)
           .single();
 
-        // Zähle ungelesene
         const { count: unreadCount } = await supabase
           .from("private_messages")
           .select("id", { count: "exact", head: true })
@@ -1511,11 +1373,7 @@ async function loadChats() {
           .eq("receiver_id", myProfile.id)
           .eq("read", false);
 
-        return {
-          friend,
-          lastMsg,
-          unreadCount: unreadCount || 0,
-        };
+        return { friend, lastMsg, unreadCount: unreadCount || 0 };
       })
     );
 
@@ -1548,11 +1406,11 @@ async function loadChats() {
   }
 }
 
+// === VOLLBILD-CHAT FÜR MOBIL ===
 async function openChat(friendId) {
   currentChatPartner = friendId;
   switchTab("messages");
 
-  // Lade Friend-Info
   const { data: friend } = await supabase
     .from("athletes")
     .select("id, name, image_url")
@@ -1560,19 +1418,50 @@ async function openChat(friendId) {
     .single();
 
   const chatWindow = document.getElementById("chat-window");
-  chatWindow.innerHTML = `
-        <div class="chat-header">
-            <h3>${friend.name}</h3>
-        </div>
-        <div class="chat-messages" id="current-chat-messages"></div>
-        <form class="chat-input-form" onsubmit="sendPrivateMessage(event, '${friendId}')">
-            <input type="text" name="message" placeholder="Nachricht schreiben..." required />
-            <button type="submit">Senden</button>
-        </form>
+  const messagesContainer = document.getElementById("messages-container");
+  const chatHeader =
+    chatWindow.querySelector(".chat-header") || document.createElement("div");
+  chatHeader.className = "chat-header";
+  chatHeader.innerHTML = `
+        <button class="back-to-list" onclick="exitFullscreenChat()">Zurück</button>
+        <h3 id="chat-partner-name">${friend.name}</h3>
     `;
 
+  // Dynamisches Rendering des Chat-Fensters
+  chatWindow.innerHTML = "";
+  chatWindow.appendChild(chatHeader);
+  const messagesDiv = document.createElement("div");
+  messagesDiv.className = "chat-messages";
+  messagesDiv.id = "chat-messages";
+  chatWindow.appendChild(messagesDiv);
+
+  const inputForm = document.createElement("form");
+  inputForm.className = "chat-input-form";
+  inputForm.id = "chat-input-form";
+  inputForm.innerHTML = `
+        <input type="text" name="message" placeholder="Nachricht schreiben..." autocomplete="off" required />
+        <button type="submit">Senden</button>
+    `;
+  inputForm.onsubmit = (e) => sendPrivateMessage(e, friendId);
+  chatWindow.appendChild(inputForm);
+
   await loadMessages(friendId);
-  loadChats(); // Aktualisiere Chat-Liste
+  loadChats();
+
+  // Vollbild-Modus aktivieren (nur auf kleinen Bildschirmen)
+  if (window.innerWidth <= 768 && !fullscreenChatActive) {
+    messagesContainer.classList.add("fullscreen-chat");
+    document.body.classList.add("chat-fullscreen");
+    fullscreenChatActive = true;
+  }
+}
+
+function exitFullscreenChat() {
+  if (!fullscreenChatActive) return;
+  const messagesContainer = document.getElementById("messages-container");
+  messagesContainer.classList.remove("fullscreen-chat");
+  document.body.classList.remove("chat-fullscreen");
+  fullscreenChatActive = false;
 }
 
 async function loadMessages(friendId) {
@@ -1586,7 +1475,7 @@ async function loadMessages(friendId) {
     )
     .order("created_at", { ascending: true });
 
-  const messagesDiv = document.getElementById("current-chat-messages");
+  const messagesDiv = document.getElementById("chat-messages");
   if (messagesDiv) {
     messagesDiv.innerHTML = messages
       .map((m) => {
@@ -1608,18 +1497,14 @@ async function loadMessages(friendId) {
             `;
       })
       .join("");
-
-    // Scroll to bottom
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-    // Markiere als gelesen
     await supabase
       .from("private_messages")
       .update({ read: true })
       .eq("receiver_id", myProfile.id)
       .eq("sender_id", friendId)
       .eq("read", false);
-
     updateNotificationBadges();
   }
 }
@@ -1639,9 +1524,8 @@ async function sendPrivateMessage(event, receiverId) {
     },
   ]);
 
-  if (error) {
-    showNotification("Fehler: " + error.message, "error");
-  } else {
+  if (error) showNotification("Fehler: " + error.message, "error");
+  else {
     event.target.reset();
     await loadMessages(receiverId);
     loadChats();
@@ -1651,7 +1535,6 @@ async function sendPrivateMessage(event, receiverId) {
 async function updateNotificationBadges() {
   if (!supabase || !myProfile || myProfile.type !== "athlete") return;
 
-  // Ungelesene Nachrichten
   const { count: unreadCount } = await supabase
     .from("private_messages")
     .select("id", { count: "exact", head: true })
@@ -1677,23 +1560,16 @@ function openOpenMatChat(openmatId, title) {
   document.getElementById("openmat-chat-modal").classList.add("show");
   loadOpenMatMessages(openmatId);
 
-  // Auto-refresh alle 3 Sekunden
-  if (window.openmatChatInterval) {
-    clearInterval(window.openmatChatInterval);
-  }
+  if (window.openmatChatInterval) clearInterval(window.openmatChatInterval);
   window.openmatChatInterval = setInterval(() => {
-    if (currentOpenMatChat === openmatId) {
-      loadOpenMatMessages(openmatId);
-    }
+    if (currentOpenMatChat === openmatId) loadOpenMatMessages(openmatId);
   }, 3000);
 }
 
 function closeOpenMatChat() {
   document.getElementById("openmat-chat-modal").classList.remove("show");
   currentOpenMatChat = null;
-  if (window.openmatChatInterval) {
-    clearInterval(window.openmatChatInterval);
-  }
+  if (window.openmatChatInterval) clearInterval(window.openmatChatInterval);
 }
 
 async function loadOpenMatMessages(openmatId) {
@@ -1730,7 +1606,6 @@ async function loadOpenMatMessages(openmatId) {
             `;
       })
       .join("");
-
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 }
@@ -1758,9 +1633,8 @@ document
       },
     ]);
 
-    if (error) {
-      showNotification("Fehler: " + error.message, "error");
-    } else {
+    if (error) showNotification("Fehler: " + error.message, "error");
+    else {
       e.target.reset();
       loadOpenMatMessages(currentOpenMatChat);
     }
@@ -1785,18 +1659,15 @@ async function loadDashboard() {
 
   const statsGrid = document.getElementById("stats-grid");
   statsGrid.innerHTML = `
-        <div class="stat-card">
-            <div>👥 Athleten</div>
-            <div class="stat-number">${athletes?.length || 0}</div>
-        </div>
-        <div class="stat-card">
-            <div>🏋️ Gyms</div>
-            <div class="stat-number">${gyms?.length || 0}</div>
-        </div>
-        <div class="stat-card">
-            <div>📅 Open Mats</div>
-            <div class="stat-number">${openMats?.length || 0}</div>
-        </div>
+        <div class="stat-card"><div>Athleten</div><div class="stat-number">${
+          athletes?.length || 0
+        }</div></div>
+        <div class="stat-card"><div>Gyms</div><div class="stat-number">${
+          gyms?.length || 0
+        }</div></div>
+        <div class="stat-card"><div>Open Mats</div><div class="stat-number">${
+          openMats?.length || 0
+        }</div></div>
     `;
 
   const activities = document.getElementById("recent-activities");
@@ -1824,7 +1695,6 @@ async function loadDashboard() {
 
 async function initMap() {
   if (!supabase) return;
-
   if (map) map.remove();
 
   map = L.map("map").setView([51.1657, 10.4515], 6);
@@ -1839,7 +1709,6 @@ async function initMap() {
     .gte("event_date", new Date().toISOString());
 
   let bounds = [];
-
   if (gyms && gyms.length > 0) {
     gyms.forEach((gym) => {
       if (gym.latitude && gym.longitude) {
@@ -1868,7 +1737,7 @@ async function initMap() {
         L.marker([om.gyms.latitude, om.gyms.longitude], {
           icon: L.divIcon({
             className: "custom-icon",
-            html: "📅",
+            html: "",
             iconSize: [30, 30],
           }),
         })
@@ -1876,18 +1745,14 @@ async function initMap() {
           .bindPopup(
             `<strong>${om.title}</strong><br>${om.gyms.name}<br>${
               om.gyms.street || ""
-            }<br>${om.gyms.postal_code || ""} ${
-              om.gyms.city || ""
-            }<br>📅 ${date}`
+            }<br>${om.gyms.postal_code || ""} ${om.gyms.city || ""}<br>${date}`
           );
         bounds.push([om.gyms.latitude, om.gyms.longitude]);
       }
     });
   }
 
-  if (bounds.length > 0) {
-    map.fitBounds(bounds, { padding: [50, 50] });
-  }
+  if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
 }
 
 // ================================================
@@ -1905,9 +1770,7 @@ function switchTab(tabName, eventTarget = null) {
     .forEach((b) => b.classList.remove("active"));
 
   const targetTab = document.getElementById(tabName + "-tab");
-  if (targetTab) {
-    targetTab.classList.add("active");
-  }
+  if (targetTab) targetTab.classList.add("active");
 
   if (eventTarget) {
     eventTarget.classList.add("active");
@@ -1922,29 +1785,19 @@ function switchTab(tabName, eventTarget = null) {
       messages: "Nachrichten",
       map: "Karte",
     };
-
-    const buttons = document.querySelectorAll(".tab-btn");
-    buttons.forEach((btn) => {
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
       const btnText = btn.textContent.trim().split("\n")[0].trim();
-      if (btnText === tabMapping[tabName]) {
-        btn.classList.add("active");
-      }
+      if (btnText === tabMapping[tabName]) btn.classList.add("active");
     });
   }
 
-  if (tabName === "map" && !map) {
-    initMap();
-  }
-  if (tabName === "dashboard") {
-    loadDashboard();
-  }
+  if (tabName === "map" && !map) initMap();
+  if (tabName === "dashboard") loadDashboard();
   if (tabName === "friends" && myProfile?.type === "athlete") {
     loadFriendRequests();
     loadFriends();
   }
-  if (tabName === "messages" && myProfile?.type === "athlete") {
-    loadChats();
-  }
+  if (tabName === "messages" && myProfile?.type === "athlete") loadChats();
 }
 
 // ================================================
