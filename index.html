@@ -576,50 +576,38 @@
       <!-- ==========================================================================
          10. NACHRIHTEN TAB (mit Vollbild-Chat-Unterstützung)
          ========================================================================== -->
-      <!-- ==========================================================================
-     10. NACHRICHTEN TAB (mit Vollbild-Chat-Unterstützung)
-     ========================================================================== -->
       <div id="messages-tab" class="tab-content">
         <h2>Nachrichten</h2>
-        <div id="messages-container" class="messages-container">
-          <!-- Linke Spalte: Chat-Liste -->
+        <div class="messages-container" id="messages-container">
           <div class="chat-list">
             <h3>Chats</h3>
             <div id="chat-list"></div>
           </div>
-
-          <!-- Rechte Spalte: Aktiver Chat -->
           <div class="chat-window" id="chat-window">
-            <!-- Header -->
+            <!-- Header mit Zurück-Button (nur mobil sichtbar im Vollbild) -->
             <div class="chat-header">
               <button class="back-to-list" onclick="exitFullscreenChat()">
-                ←
+                Zurück
               </button>
-              <h3 id="chat-partner-name">Chat wählen</h3>
+              <h3 id="chat-partner-name">Chat</h3>
             </div>
-
-            <!-- Nachrichten -->
-            <div class="chat-messages" id="current-chat-messages">
-              <p
-                style="
-                  text-align: center;
-                  color: #999;
-                  padding: 40px;
-                  margin: 0;
-                "
-              >
+            <!-- Nachrichtenbereich -->
+            <div class="chat-messages" id="chat-messages">
+              <p style="text-align: center; color: #999; padding: 40px">
                 Wähle einen Chat aus der Liste
               </p>
             </div>
-
             <!-- Eingabeformular -->
-            <form class="chat-input-form" id="chat-input-form">
+            <form
+              class="chat-input-form"
+              id="chat-input-form"
+              style="display: none"
+            >
               <input
                 type="text"
                 name="message"
                 placeholder="Nachricht schreiben..."
                 autocomplete="off"
-                required
               />
               <button type="submit">Senden</button>
             </form>
