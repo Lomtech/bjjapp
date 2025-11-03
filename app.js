@@ -2020,17 +2020,7 @@ if (menuIcon && mainMenu) {
   });
 }
 
-function updateMenuVisibility() {
-
-  if (menuIcon && mainMenu) {
-    if (currentUser) {
-      menuIcon.style.display = "none"; // Standard-CSS (z. B. flex/block)
-      mainMenu.style.display = "none";
-    } else {
-      menuIcon.style.display = "";
-      mainMenu.style.display = "";
-    }
-  }
+if (currentUser) {
+  menuIcon.style.display = "none"; // Standard-CSS (z. B. flex/block)
+  mainMenu.style.display = "none";
 }
-
-updateMenuVisibility();
