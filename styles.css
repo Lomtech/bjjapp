@@ -758,9 +758,9 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--black);
+  background: var(--white);
   color: #fff;
-  border: none;
+  border-color: #e2e2e2;
   font-size: 18px;
   transition: transform var(--transition-fast);
 }
@@ -794,11 +794,10 @@ button:disabled {
     height: 48px;
     font-size: 20px;
   }
-}
-
-/* Schutz vor Chat-List Überschreiben: falls Chat-Liste oberhalb liegt */
-.chat-list {
-  z-index: 1;
+  /* Schutz vor Chat-List Überschreiben: falls Chat-Liste oberhalb liegt */
+  .chat-list {
+    z-index: 1;
+  }
 }
 
 @media (min-width: 640px) {
