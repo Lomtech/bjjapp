@@ -2006,6 +2006,7 @@ function showNotification(message, type = "success") {
 
 const menuIcon = document.getElementById("menu-icon");
 const logoutBtn = document.getElementById("logout-btn");
+const mainMenu = document.getElementById("main-menu");
 
 // Menü öffnen/schließen
 menuIcon.addEventListener("click", () => {
