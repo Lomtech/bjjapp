@@ -1036,7 +1036,7 @@ button:disabled {
   }
 
   .btn-danger {
-    padding: 8px 16px;
+    padding: 2px 2px;
     font-size: 14px;
   }
 }
