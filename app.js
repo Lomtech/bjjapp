@@ -1945,7 +1945,7 @@ function switchTab(tabName, eventTarget = null) {
     loadFriendRequests();
     loadFriends();
   }
-  if (tabName === "open_mats") {
+  if (tabName === "openmats") {
     loadOpenMats();
   }
   if (tabName === "messages" && myProfile?.type === "athlete") {
