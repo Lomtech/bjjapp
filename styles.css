@@ -601,11 +601,11 @@ button:disabled {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0;
-  height: calc(100dvh - 120px);
-  background: var(--white);
-  border-radius: 0;
+  height: calc(100dvh - 90px);
+  background: var(--gray-lightest);
+  border-radius: var(--border-radius-md);
   overflow: hidden;
-  box-shadow: none;
+  box-shadow: var(--shadow-md);
   border: none;
 }
 
