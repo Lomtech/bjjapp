@@ -1353,10 +1353,6 @@ button[type="submit"]:hover,
 }
 
 @media (min-width: 768px) {
-  .menu-icon {
-    display: none;
-  }
-
   .main-menu {
     max-height: none;
     opacity: 1;
@@ -1396,4 +1392,3 @@ button[type="submit"]:hover,
     padding: 24px;
   }
 }
-
