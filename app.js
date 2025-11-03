@@ -2004,17 +2004,38 @@ function showNotification(message, type = "success") {
   setTimeout(() => notif.classList.remove("show"), 3000);
 }
 
-const authSection = document.getElementById("auth-section");
+/**
+ * Aktualisiert die Sichtbarkeit des mobilen Menüs.
+ * Das Menü wird nur angezeigt, wenn ein Benutzer eingeloggt ist.
+ */
+function updateMenuVisibility() {
+  const menuIcon = document.getElementById("menu-icon");
+  const mainMenu = document.getElementById("main-menu");
+
+  if (menuIcon && mainMenu) {
+    if (currentUser) {
+      menuIcon.style.display = ""; // Standard-CSS (z. B. flex/block)
+      mainMenu.style.display = "";
+    } else {
+      menuIcon.style.display = "none";
+      mainMenu.style.display = "none";
+    }
+  }
+}
+
+/* -------------------------------------------------
+   1. Menü-Event-Listener (nur registrieren, wenn
+       das Icon existiert – unabhängig vom Login-Status)
+   ------------------------------------------------- */
+const menuIcon = document.getElementById("menu-icon");
 const mainMenu = document.getElementById("main-menu");
 
-function setupMenuToggle() {
-  const menuIcon = document.getElementById("menu-icon");
-  if (!menuIcon || !mainMenu) return;
-
+if (menuIcon && mainMenu) {
   menuIcon.addEventListener("click", () => {
     mainMenu.classList.toggle("open");
   });
 
+  // Schließen, wenn ein Menüpunkt angeklickt wird (nur Mobile)
   mainMenu.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", () => {
       mainMenu.classList.remove("open");
@@ -2022,20 +2043,31 @@ function setupMenuToggle() {
   });
 }
 
-function showMenuAfterLogin() {
-  mainMenu.classList.add("active");
+/* -------------------------------------------------
+   2. Sichtbarkeit beim ersten Laden prüfen
+   ------------------------------------------------- */
+updateMenuVisibility();
 
-  authSection.innerHTML = `
-  <button class="menu-icon" id="menu-icon">☰</button>
-  <button class="logout-btn" id="logout-btn">Logout</button>
-  `;
+/* -------------------------------------------------
+   3. Sichtbarkeit bei Auth-Status-Änderungen
+       (wird bereits in initSupabase → onAuthStateChange
+        aufgerufen, hier nur sicherheitshalber nochmal)
+   ------------------------------------------------- */
+function updateAuthUI() {
+  // … (vorhandener Code)
 
-  setupMenuToggle();
-
-  document.getElementById("logout-btn").addEventListener("click", () => {
-    authSection.innerHTML = "";
-    mainMenu.classList.remove("active");
-    mainMenu.classList.remove("open");
-    console.log("User logged out");
-  });
+  // Am Ende der UI-Update-Funktion:
+  updateMenuVisibility();
 }
+
+/* -------------------------------------------------
+   4. Optional: Direkt nach dem Setzen von currentUser
+   ------------------------------------------------- */
+supabase.auth.onAuthStateChange(async (event, session) => {
+  currentUser = session?.user || null;
+
+  // … (vorhandene Logik)
+
+  // Menü-Sichtbarkeit immer neu setzen
+  updateMenuVisibility();
+});
