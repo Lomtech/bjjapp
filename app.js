@@ -1,113 +1,36 @@
-/**
- * BJJ-Community-Plattform – Haupt-JavaScript-Datei
- *
- * Diese Datei enthält die vollständige, korrigierte und strukturierte Logik der Webanwendung.
- * Sie wurde vollständig überarbeitet, um:
- * - Redundanzen zu beseitigen
- * - Event-Listener korrekt zu registrieren (nur einmal)
- * - Konsistente Namenskonventionen und Struktur
- * - Bessere Fehlerbehandlung
- * - Klare Trennung von Verantwortlichkeiten
- * - Vollständige Funktionalität (inkl. fehlender Event-Listener)
- *
- * @author xAI (strukturelle Überarbeitung)
- * @version 1.0.0
- * @date 2025-11-03
- */
-
-"use strict";
-
-// ================================================
-// KONFIGURATION & GLOBALE VARIABLEN
-// ================================================
-
-// Umgebungsvariablen (werden durch build.js ersetzt)
+// Umgebungsvariablen - werden von build.js ersetzt
 const SUPABASE_URL = "SUPABASE_URL_PLACEHOLDER";
 const SUPABASE_ANON_KEY = "SUPABASE_KEY_PLACEHOLDER";
 
-// Globale Zustände
 let supabase = null;
 let map = null;
 let currentUser = null;
-let myProfile = null; // { type: 'athlete' | 'gym', id: uuid, data: object }
+let isLogin = true;
+let allAthletes = [];
+let allGyms = [];
+let myProfile = null; // { type: 'athlete'|'gym', id: uuid, data: {...} }test
 let currentChatPartner = null;
 let currentOpenMatChat = null;
 let messagePollingInterval = null;
-let openMatChatInterval = null;
-
-const allAthletes = [];
-const allGyms = [];
 
 // ================================================
 // INITIALISIERUNG
 // ================================================
 
-(function initializeApplication() {
+(function init() {
   if (
     SUPABASE_URL &&
     SUPABASE_ANON_KEY &&
     SUPABASE_URL !== "SUPABASE_URL_PLACEHOLDER" &&
     SUPABASE_ANON_KEY !== "SUPABASE_KEY_PLACEHOLDER"
   ) {
-    initializeSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
+    initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
   } else {
-    showNotification("Umgebungsvariablen nicht gefunden", "warning");
+    showNotification("⚠️ Umgebungsvariablen nicht gefunden", "warning");
   }
-
-  // Registriere globale Event-Listener
-  registerGlobalEventListeners();
 })();
 
-function registerGlobalEventListeners() {
-  const authForm = document.getElementById("auth-form");
-  if (authForm) {
-    authForm.addEventListener("submit", handleAuthenticationSubmit);
-  }
-
-  const toggleAuthLink = document.getElementById("toggle-auth");
-  if (toggleAuthLink) {
-    toggleAuthLink.addEventListener("click", toggleAuthMode);
-  }
-
-  const athleteForm = document.getElementById("athlete-form");
-  if (athleteForm) {
-    athleteForm.addEventListener("submit", handleAthleteFormSubmit);
-  }
-
-  const gymForm = document.getElementById("gym-form");
-  if (gymForm) {
-    gymForm.addEventListener("submit", handleGymProfileFormSubmit);
-  }
-
-  const gymCreationForm = document.getElementById("gym-creation-form-element");
-  if (gymCreationForm) {
-    gymCreationForm.addEventListener("submit", handleGymCreationFormSubmit);
-  }
-
-  const openMatForm = document.getElementById("openmat-form");
-  if (openMatForm) {
-    openMatForm.addEventListener("submit", handleOpenMatFormSubmit);
-  }
-
-  const openMatMessageForm = document.getElementById("openmat-message-form");
-  if (openMatMessageForm) {
-    openMatMessageForm.addEventListener("submit", handleOpenMatMessageSubmit);
-  }
-
-  // Mobile Menü
-  const menuIcon = document.getElementById("menu-icon");
-  const mainMenu = document.getElementById("main-menu");
-  if (menuIcon && mainMenu) {
-    menuIcon.addEventListener("click", () => mainMenu.classList.toggle("open"));
-    mainMenu
-      .querySelectorAll("button")
-      .forEach((btn) =>
-        btn.addEventListener("click", () => mainMenu.classList.remove("open"))
-      );
-  }
-}
-
-async function initializeSupabase(url, key) {
+async function initSupabase(url, key) {
   supabase = window.supabase.createClient(url, key);
 
   const {
@@ -117,7 +40,7 @@ async function initializeSupabase(url, key) {
     currentUser = session.user;
     await loadUserProfile();
     updateAuthUI();
-    await initializeApplicationData();
+    await initializeData();
   } else {
     updateAuthUI();
   }
@@ -127,32 +50,39 @@ async function initializeSupabase(url, key) {
     if (event === "SIGNED_IN") {
       await loadUserProfile();
       updateAuthUI();
-      await initializeApplicationData();
+      await initializeData();
     } else if (event === "SIGNED_OUT") {
       myProfile = null;
       updateAuthUI();
-      clearMessagePolling();
+      if (messagePollingInterval) {
+        clearInterval(messagePollingInterval);
+      }
     }
   });
 }
 
-async function initializeApplicationData() {
-  await Promise.all([
-    loadGymsForAthleteSelect(),
-    loadGymsForFilter(),
-    loadGymsForOpenMatSelect(),
-    loadAthletes(),
-    loadGyms(),
-    loadOpenMats(),
-    loadDashboard(),
-  ]);
+async function initializeData() {
+  loadGymsForAthleteSelect();
+  loadGymsForFilter();
+  loadGymsForOpenMatSelect();
+  loadAthletes();
+  loadGyms();
+  loadOpenMats();
+  loadDashboard();
 
-  if (myProfile?.type === "athlete") {
-    await loadFriendRequests();
-    await loadFriends();
-    await loadChats();
+  if (myProfile && myProfile.type === "athlete") {
+    loadFriendRequests();
+    loadFriends();
+    loadChats();
     updateNotificationBadges();
-    startMessagePolling();
+
+    // Polling für neue Nachrichten (alle 5 Sekunden)
+    messagePollingInterval = setInterval(() => {
+      updateNotificationBadges();
+      if (currentChatPartner) {
+        loadMessages(currentChatPartner);
+      }
+    }, 5000);
   }
 }
 
@@ -162,17 +92,15 @@ async function initializeApplicationData() {
 
 function updateAuthUI() {
   const authSection = document.getElementById("auth-section");
-  if (!authSection) return;
-
   if (currentUser) {
     authSection.innerHTML = `
-      <button class="auth-btn logout" onclick="logout()">Abmelden</button>
-    `;
+            <button class="auth-btn logout" onclick="logout()">Logout</button>
+        `;
   } else {
     authSection.innerHTML = `
-      <button class="auth-btn" onclick="openAuthModal('login')">Anmelden</button>
-      <button class="auth-btn" onclick="openAuthModal('signup')">Registrieren</button>
-    `;
+            <button class="auth-btn" onclick="openAuthModal('login')">Login</button>
+            <button class="auth-btn" onclick="openAuthModal('signup')">Registrieren</button>
+        `;
   }
   updateVisibility();
 }
@@ -185,18 +113,22 @@ function updateVisibility() {
   if (!currentUser) {
     tabs.forEach((tab) => (tab.style.display = "none"));
     tabContents.forEach((content) => content.classList.remove("active"));
-    if (welcomeScreen) welcomeScreen.classList.add("active");
+    if (welcomeScreen) {
+      welcomeScreen.classList.add("active");
+    }
   } else {
     tabs.forEach((tab) => (tab.style.display = "block"));
-    if (welcomeScreen) welcomeScreen.classList.remove("active");
+    if (welcomeScreen) {
+      welcomeScreen.classList.remove("active");
+    }
     switchTab("dashboard");
   }
 }
 
 function openAuthModal(mode) {
-  const isLogin = mode === "login";
+  isLogin = mode === "login";
   document.getElementById("modal-title").textContent = isLogin
-    ? "Anmelden"
+    ? "Login"
     : "Registrieren";
   document.getElementById("auth-submit-btn").textContent = isLogin
     ? "Anmelden"
@@ -205,6 +137,14 @@ function openAuthModal(mode) {
     ? "Noch kein Konto? Registrieren"
     : "Bereits registriert? Anmelden";
   document.getElementById("auth-modal").classList.add("show");
+}
+
+function closeModal() {
+  if (!currentUser) {
+    showNotification("Bitte melde dich an, um fortzufahren", "warning");
+    return;
+  }
+  closeModalForce();
 }
 
 function closeModalForce() {
@@ -216,8 +156,8 @@ function closeModalForce() {
 
 function toggleAuthMode(e) {
   e.preventDefault();
-  const currentMode = document.getElementById("modal-title").textContent;
-  openAuthModal(currentMode === "Anmelden" ? "signup" : "login");
+  isLogin = !isLogin;
+  openAuthModal(isLogin ? "login" : "signup");
 }
 
 async function logout() {
@@ -225,21 +165,14 @@ async function logout() {
   showNotification("Erfolgreich abgemeldet", "info");
 }
 
-async function handleAuthenticationSubmit(e) {
+document.getElementById("auth-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!supabase)
-    return showNotification("Supabase nicht initialisiert", "warning");
+    return showNotification("Bitte zuerst Supabase konfigurieren!", "warning");
 
   const formData = new FormData(e.target);
-  const email = formData.get("email").trim();
+  const email = formData.get("email");
   const password = formData.get("password");
-
-  if (!email || !password) {
-    return showNotification("Bitte alle Felder ausfüllen", "warning");
-  }
-
-  const isLogin =
-    document.getElementById("modal-title").textContent === "Anmelden";
 
   try {
     if (isLogin) {
@@ -248,7 +181,7 @@ async function handleAuthenticationSubmit(e) {
         password,
       });
       if (error) throw error;
-      showNotification("Erfolgreich angemeldet");
+      showNotification("Erfolgreich angemeldet!");
       closeModalForce();
     } else {
       const { error } = await supabase.auth.signUp({ email, password });
@@ -262,10 +195,10 @@ async function handleAuthenticationSubmit(e) {
   } catch (error) {
     showNotification("Fehler: " + error.message, "error");
   }
-}
+});
 
 // ================================================
-// PROFILVERWALTUNG
+// PROFIL-MANAGEMENT
 // ================================================
 
 async function loadUserProfile() {
@@ -276,7 +209,7 @@ async function loadUserProfile() {
     .select("*, gyms(name, city)")
     .eq("user_id", currentUser.id);
 
-  if (athletes?.length > 0) {
+  if (athletes && athletes.length > 0) {
     myProfile = { type: "athlete", id: athletes[0].id, data: athletes[0] };
     displayMyProfile();
     return;
@@ -287,7 +220,7 @@ async function loadUserProfile() {
     .select("*")
     .eq("user_id", currentUser.id);
 
-  if (gyms?.length > 0) {
+  if (gyms && gyms.length > 0) {
     myProfile = { type: "gym", id: gyms[0].id, data: gyms[0] };
     displayMyProfile();
     return;
@@ -306,35 +239,35 @@ function displayProfileSelector() {
 
 function showProfileForm(type) {
   document.getElementById("profile-type-selector").style.display = "none";
-  document.getElementById("athlete-profile-form").style.display =
-    type === "athlete" ? "block" : "none";
-  document.getElementById("gym-profile-form").style.display =
-    type === "gym" ? "block" : "none";
-
-  const title =
-    type === "athlete" ? "Athleten-Profil anlegen" : "Gym-Profil anlegen";
-  const btnText = type === "athlete" ? "Profil anlegen" : "Gym anlegen";
 
   if (type === "athlete") {
-    document.getElementById("athlete-form-title").textContent = title;
-    document.getElementById("athlete-submit-btn").textContent = btnText;
+    document.getElementById("athlete-profile-form").style.display = "block";
+    document.getElementById("gym-profile-form").style.display = "none";
+    document.getElementById("athlete-form-title").textContent =
+      "Athleten-Profil anlegen";
+    document.getElementById("athlete-submit-btn").textContent =
+      "Profil anlegen";
   } else {
-    document.getElementById("gym-form-title").textContent = title;
-    document.getElementById("gym-submit-btn").textContent = btnText;
+    document.getElementById("athlete-profile-form").style.display = "none";
+    document.getElementById("gym-profile-form").style.display = "block";
+    document.getElementById("gym-form-title").textContent =
+      "Gym-Profil anlegen";
+    document.getElementById("gym-submit-btn").textContent = "Gym anlegen";
   }
 }
 
 function cancelProfileEdit() {
-  document.getElementById("athlete-form").reset();
-  document.getElementById("gym-form").reset();
-  document.getElementById("current-image-preview").innerHTML = "";
-  document.getElementById("gym-image-preview").innerHTML = "";
-
   if (myProfile) {
     displayMyProfile();
   } else {
     displayProfileSelector();
   }
+
+  // Reset forms
+  document.getElementById("athlete-form").reset();
+  document.getElementById("gym-form").reset();
+  document.getElementById("current-image-preview").innerHTML = "";
+  document.getElementById("gym-image-preview").innerHTML = "";
 }
 
 function displayMyProfile() {
@@ -342,56 +275,70 @@ function displayMyProfile() {
   document.getElementById("athlete-profile-form").style.display = "none";
   document.getElementById("gym-profile-form").style.display = "none";
 
-  const container = document.getElementById("my-profile-display");
-  container.style.display = "block";
+  const display = document.getElementById("my-profile-display");
+  display.style.display = "block";
 
   if (myProfile.type === "athlete") {
     const a = myProfile.data;
-    container.innerHTML = `
-      <div class="profile-card" style="max-width: 500px; margin: 0 auto;">
-        ${renderProfileImage(a.image_url, a.name)}
-        <h2>${a.name}</h2>
-        ${a.bio ? `<p style="color: #666; margin: 10px 0;">${a.bio}</p>` : ""}
-        ${a.age ? `<p>Alter: ${a.age} Jahre</p>` : ""}
-        ${a.weight ? `<p>Gewicht: ${a.weight} kg</p>` : ""}
-        ${
-          a.belt_rank
-            ? `<span class="belt-badge belt-${
-                a.belt_rank
-              }">${a.belt_rank.toUpperCase()}</span>`
-            : ""
-        }
-        ${
-          a.gyms
-            ? `<p style="margin-top: 10px;">Gym: <strong>${
-                a.gyms.name
-              }</strong>${a.gyms.city ? ` (${a.gyms.city})` : ""}</p>`
-            : ""
-        }
-        <button class="btn" style="width: 100%; margin-top: 20px;" onclick="editMyProfile()">Profil bearbeiten</button>
-      </div>`;
+    display.innerHTML = `
+            <div class="profile-card" style="max-width: 500px; margin: 0 auto;">
+                ${
+                  a.image_url
+                    ? `<img src="${a.image_url}" class="profile-image" alt="${a.name}">`
+                    : '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
+                }
+                <h2>${a.name}</h2>
+                ${
+                  a.bio
+                    ? `<p style="color: #666; margin: 10px 0;">${a.bio}</p>`
+                    : ""
+                }
+                ${a.age ? `<p>📅 ${a.age} Jahre</p>` : ""}
+                ${a.weight ? `<p>⚖️ ${a.weight} kg</p>` : ""}
+                ${
+                  a.belt_rank
+                    ? `<span class="belt-badge belt-${
+                        a.belt_rank
+                      }">${a.belt_rank.toUpperCase()}</span>`
+                    : ""
+                }
+                ${
+                  a.gyms
+                    ? `<p style="margin-top: 10px;">🏋️ <strong>${
+                        a.gyms.name
+                      }</strong>${a.gyms.city ? ` (${a.gyms.city})` : ""}</p>`
+                    : ""
+                }
+                <button class="btn" style="width: 100%; margin-top: 20px;" onclick="editMyProfile()">Profil bearbeiten</button>
+            </div>
+        `;
   } else {
     const g = myProfile.data;
-    container.innerHTML = `
-      <div class="profile-card" style="max-width: 500px; margin: 0 auto;">
-        ${
-          g.image_url
-            ? `<img src="${g.image_url}" class="profile-image" alt="${g.name}">`
-            : ""
-        }
-        <h2>${g.name}</h2>
-        ${g.description ? `<p style="color: #666;">${g.description}</p>` : ""}
-        <p>Adresse: ${g.street || ""}</p>
-        <p>PLZ/Ort: ${g.postal_code || ""} ${g.city || ""}</p>
-        ${g.phone ? `<p>Telefon: ${g.phone}</p>` : ""}
-        ${g.email ? `<p>E-Mail: ${g.email}</p>` : ""}
-        ${
-          g.website
-            ? `<p><a href="${g.website}" target="_blank">Website</a></p>`
-            : ""
-        }
-        <button class="btn" style="width: 100%; margin-top: 20px;" onclick="editMyProfile()">Profil bearbeiten</button>
-      </div>`;
+    display.innerHTML = `
+            <div class="profile-card" style="max-width: 500px; margin: 0 auto;">
+                ${
+                  g.image_url
+                    ? `<img src="${g.image_url}" class="profile-image" alt="${g.name}">`
+                    : ""
+                }
+                <h2>${g.name}</h2>
+                ${
+                  g.description
+                    ? `<p style="color: #666;">${g.description}</p>`
+                    : ""
+                }
+                <p>📍 ${g.street || ""}</p>
+                <p>🏙️ ${g.postal_code || ""} ${g.city || ""}</p>
+                ${g.phone ? `<p>📞 ${g.phone}</p>` : ""}
+                ${g.email ? `<p>📧 ${g.email}</p>` : ""}
+                ${
+                  g.website
+                    ? `<p><a href="${g.website}" target="_blank">🌐 Website</a></p>`
+                    : ""
+                }
+                <button class="btn" style="width: 100%; margin-top: 20px;" onclick="editMyProfile()">Profil bearbeiten</button>
+            </div>
+        `;
   }
 }
 
@@ -408,16 +355,18 @@ function editMyProfile() {
 
     if (a.image_url) {
       document.getElementById("current-image-preview").innerHTML = `
-        <div style="margin-top: 10px;">
-          <img src="${a.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
-          <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
-        </div>`;
+                <div style="margin-top: 10px;">
+                    <img src="${a.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
+                    <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
+                </div>
+            `;
     }
-    showProfileForm("athlete");
+
     document.getElementById("athlete-form-title").textContent =
       "Profil bearbeiten";
     document.getElementById("athlete-submit-btn").textContent =
       "Änderungen speichern";
+    showProfileForm("athlete");
   } else {
     const g = myProfile.data;
     document.getElementById("gym-id").value = g.id;
@@ -432,87 +381,102 @@ function editMyProfile() {
 
     if (g.image_url) {
       document.getElementById("gym-image-preview").innerHTML = `
-        <div style="margin-top: 10px;">
-          <img src="${g.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
-          <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
-        </div>`;
+                <div style="margin-top: 10px;">
+                    <img src="${g.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
+                    <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
+                </div>
+            `;
     }
-    showProfileForm("gym");
+
     document.getElementById("gym-form-title").textContent = "Profil bearbeiten";
     document.getElementById("gym-submit-btn").textContent =
       "Änderungen speichern";
+    showProfileForm("gym");
   }
 }
 
 // ================================================
-// ATHLETENVERWALTUNG
+// ATHLETEN-FORMULAR
 // ================================================
 
-async function handleAthleteFormSubmit(e) {
-  e.preventDefault();
-  if (!supabase || !currentUser) return;
+document
+  .getElementById("athlete-form")
+  .addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!supabase) return;
 
-  const formData = new FormData(e.target);
-  const athleteId = formData.get("athlete_id");
-  const isEditing = !!athleteId;
-  const imageFile = formData.get("image");
+    const formData = new FormData(e.target);
+    const athleteId = formData.get("athlete_id");
+    const isEditing = !!athleteId;
+    const imageFile = formData.get("image");
 
-  let imageUrl = myProfile?.data?.image_url || null;
+    let imageUrl = myProfile?.data?.image_url || null;
 
-  if (imageFile && imageFile.size > 0) {
-    imageUrl = await uploadProfileImage(imageFile, currentUser.id);
-    if (!imageUrl) return;
-  }
+    // Bild hochladen wenn vorhanden
+    if (imageFile && imageFile.size > 0) {
+      const fileExt = imageFile.name.split(".").pop();
+      const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
 
-  const data = {
-    name: formData.get("name"),
-    age: formData.get("age") ? parseInt(formData.get("age")) : null,
-    weight: formData.get("weight") ? parseFloat(formData.get("weight")) : null,
-    belt_rank: formData.get("belt_rank"),
-    bio: formData.get("bio") || null,
-    gym_id: formData.get("gym_id") || null,
-    image_url: imageUrl,
-    user_id: currentUser.id,
-  };
+      const { error: uploadError } = await supabase.storage
+        .from("profile-images")
+        .upload(fileName, imageFile, { upsert: true });
 
-  try {
-    const { error } = isEditing
-      ? await supabase.from("athletes").update(data).eq("id", athleteId)
-      : await supabase.from("athletes").insert([data]);
+      if (uploadError) {
+        showNotification(
+          "Fehler beim Bild-Upload: " + uploadError.message,
+          "error"
+        );
+        return;
+      }
 
-    if (error) throw error;
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("profile-images").getPublicUrl(fileName);
+      imageUrl = publicUrl;
+    }
 
-    showNotification(isEditing ? "Profil aktualisiert!" : "Profil erstellt!");
-    await loadUserProfile();
-    await loadAthletes();
-    if (!isEditing) await loadDashboard();
-  } catch (error) {
-    showNotification("Fehler: " + error.message, "error");
-  }
-}
+    const data = {
+      name: formData.get("name"),
+      age: formData.get("age") ? parseInt(formData.get("age")) : null,
+      weight: formData.get("weight")
+        ? parseFloat(formData.get("weight"))
+        : null,
+      belt_rank: formData.get("belt_rank"),
+      bio: formData.get("bio") || null,
+      gym_id: formData.get("gym_id") || null,
+      image_url: imageUrl,
+      user_id: currentUser.id,
+    };
 
-async function loadGymsForAthleteSelect() {
-  const { data: gyms } = await supabase
-    .from("gyms")
-    .select("id, name, city")
-    .order("name");
-  const select = document.getElementById("athlete-gym-select");
-  if (gyms && select) {
-    select.innerHTML =
-      `<option value="">Kein Gym zugeordnet</option>` +
-      gyms
-        .map(
-          (g) =>
-            `<option value="${g.id}">${g.name}${
-              g.city ? ` (${g.city})` : ""
-            }</option>`
-        )
-        .join("");
-  }
-}
+    if (isEditing) {
+      const { error } = await supabase
+        .from("athletes")
+        .update(data)
+        .eq("id", athleteId);
+
+      if (error) {
+        showNotification("Fehler: " + error.message, "error");
+      } else {
+        showNotification("Profil aktualisiert!");
+        await loadUserProfile();
+        loadAthletes();
+      }
+    } else {
+      const { error } = await supabase.from("athletes").insert([data]);
+
+      if (error) {
+        showNotification("Fehler: " + error.message, "error");
+      } else {
+        showNotification("Profil erstellt!");
+        await loadUserProfile();
+        loadAthletes();
+        loadDashboard();
+      }
+    }
+  });
 
 // ================================================
-// GYM-VERWALTUNG
+// GYM-FORMULAR
 // ================================================
 
 async function geocodeAddress(street, postalCode, city) {
@@ -526,6 +490,7 @@ async function geocodeAddress(street, postalCode, city) {
       headers: { "User-Agent": "BJJ-Community-Platform" },
     });
     const data = await response.json();
+
     if (data && data.length > 0) {
       return {
         latitude: parseFloat(data[0].lat),
@@ -533,16 +498,23 @@ async function geocodeAddress(street, postalCode, city) {
         success: true,
       };
     }
+
+    console.warn("Geocoding failed, using fallback");
+    return {
+      latitude: 48.1351,
+      longitude: 11.582,
+      success: true,
+      fallback: true,
+    };
   } catch (error) {
     console.error("Geocoding error:", error);
+    return {
+      latitude: 48.1351,
+      longitude: 11.582,
+      success: true,
+      fallback: true,
+    };
   }
-
-  return {
-    latitude: 48.1351,
-    longitude: 11.582,
-    success: true,
-    fallback: true,
-  };
 }
 
 async function checkGymDuplicate(name, street, gymId = null) {
@@ -551,43 +523,35 @@ async function checkGymDuplicate(name, street, gymId = null) {
     .select("id")
     .eq("name", name)
     .eq("street", street);
-  if (gymId) query = query.neq("id", gymId);
+
+  if (gymId) {
+    query = query.neq("id", gymId);
+  }
+
   const { data } = await query;
   return data && data.length > 0;
 }
 
-async function handleGymProfileFormSubmit(e) {
+document.getElementById("gym-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  await handleGymFormSubmit(e, "gym-form", "gym-id", "gym-geocoding-status");
-}
+  if (!supabase) return;
 
-async function handleGymCreationFormSubmit(e) {
-  e.preventDefault();
-  await handleGymFormSubmit(
-    e,
-    "gym-creation-form-element",
-    "gym-edit-id",
-    "gym-geocoding-status"
-  );
-}
-
-async function handleGymFormSubmit(e, formId, idField, statusId) {
-  if (!supabase || !currentUser) return;
-
-  const submitBtn = e.submitter;
+  const submitBtn = document.getElementById("gym-submit-btn");
   submitBtn.disabled = true;
   const originalText = submitBtn.textContent;
   submitBtn.textContent = "Wird gespeichert...";
 
   const formData = new FormData(e.target);
-  const gymId = formData.get(idField);
+  const gymId = formData.get("gym_id");
   const isEditing = !!gymId;
   const name = formData.get("name");
   const street = formData.get("street");
   const postalCode = formData.get("postal_code");
   const city = formData.get("city");
 
-  if (await checkGymDuplicate(name, street, gymId)) {
+  // Duplikat-Check
+  const isDuplicate = await checkGymDuplicate(name, street, gymId);
+  if (isDuplicate) {
     showNotification(
       "Ein Gym mit diesem Namen und dieser Straße existiert bereits!",
       "error"
@@ -597,228 +561,596 @@ async function handleGymFormSubmit(e, formId, idField, statusId) {
     return;
   }
 
-  const statusDiv = document.getElementById(statusId);
-  statusDiv.textContent = "Geocodiere Adresse...";
+  const statusDiv = document.getElementById("geocoding-status");
+  statusDiv.textContent = "🔄 Geocodiere Adresse...";
   statusDiv.className = "geocoding-status";
 
   const geoResult = await geocodeAddress(street, postalCode, city);
-  statusDiv.textContent = geoResult.fallback
-    ? "Adresse approximiert (München als Fallback)"
-    : "Adresse erfolgreich gefunden";
-  statusDiv.className = `geocoding-status ${
-    geoResult.fallback ? "warning" : "success"
-  }`;
 
-  let imageUrl = isEditing
-    ? (await supabase.from("gyms").select("image_url").eq("id", gymId).single())
-        .data?.image_url
-    : null;
+  if (geoResult.fallback) {
+    statusDiv.textContent = "⚠️ Adresse approximiert (München als Fallback)";
+    statusDiv.className = "geocoding-status warning";
+  } else {
+    statusDiv.textContent = "✅ Adresse erfolgreich gefunden";
+    statusDiv.className = "geocoding-status success";
+  }
+
   const imageFile = formData.get("image");
+  let imageUrl = myProfile?.data?.image_url || null;
+
   if (imageFile && imageFile.size > 0) {
-    imageUrl = await uploadProfileImage(imageFile, `gym_${currentUser.id}`);
-    if (!imageUrl) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
-      return;
+    const fileExt = imageFile.name.split(".").pop();
+    const fileName = `gym_${currentUser.id}_${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("profile-images")
+      .upload(fileName, imageFile, { upsert: true });
+
+    if (!uploadError) {
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("profile-images").getPublicUrl(fileName);
+      imageUrl = publicUrl;
     }
   }
 
   const data = {
-    name,
-    street,
-    postal_code: postalCode,
-    city,
-    address: `${street}, ${postalCode} ${city}`,
-    latitude: geoResult.latitude,
-    longitude: geoResult.longitude,
+    name: name,
     description: formData.get("description") || null,
     email: formData.get("email") || null,
     phone: formData.get("phone") || null,
     website: formData.get("website") || null,
+    street: street,
+    postal_code: postalCode,
+    city: city,
+    address: `${street}, ${postalCode} ${city}`,
+    latitude: geoResult.latitude,
+    longitude: geoResult.longitude,
     image_url: imageUrl,
     user_id: currentUser.id,
   };
 
-  try {
-    const { error } = isEditing
-      ? await supabase.from("gyms").update(data).eq("id", gymId)
-      : await supabase.from("gyms").insert([data]);
+  if (isEditing) {
+    const { error } = await supabase.from("gyms").update(data).eq("id", gymId);
 
-    if (error) throw error;
+    if (error) {
+      showNotification("Fehler: " + error.message, "error");
+    } else {
+      showNotification("Profil aktualisiert!");
+      await loadUserProfile();
+      loadGyms();
+      loadGymsForAthleteSelect();
+      loadGymsForFilter();
+      loadGymsForOpenMatSelect();
+      if (map) initMap();
+    }
+  } else {
+    const { error } = await supabase.from("gyms").insert([data]);
 
-    showNotification(isEditing ? "Gym aktualisiert!" : "Gym erstellt!");
-    cancelGymCreation();
-    await Promise.all([
-      loadUserProfile(),
-      loadGyms(),
-      loadGymsForAthleteSelect(),
-      loadGymsForFilter(),
-      loadGymsForOpenMatSelect(),
-      loadDashboard(),
-    ]);
-    if (map) await initMap();
-  } catch (error) {
-    showNotification("Fehler: " + error.message, "error");
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = originalText;
-    setTimeout(() => (statusDiv.textContent = ""), 3000);
+    if (error) {
+      showNotification("Fehler: " + error.message, "error");
+    } else {
+      showNotification("Gym erstellt!");
+      await loadUserProfile();
+      loadGyms();
+      loadGymsForAthleteSelect();
+      loadGymsForFilter();
+      loadGymsForOpenMatSelect();
+      loadDashboard();
+      if (map) initMap();
+    }
+  }
+
+  submitBtn.disabled = false;
+  submitBtn.textContent = originalText;
+  statusDiv.textContent = "";
+});
+
+// ================================================
+// ATHLETEN LADEN & ANZEIGEN
+// ================================================
+
+async function loadGymsForAthleteSelect() {
+  if (!supabase) return;
+  const { data: gyms } = await supabase
+    .from("gyms")
+    .select("id, name, city")
+    .order("name");
+  const select = document.getElementById("athlete-gym-select");
+  if (gyms && select) {
+    select.innerHTML =
+      '<option value="">Kein Gym zugeordnet</option>' +
+      gyms
+        .map(
+          (g) =>
+            `<option value="${g.id}">${g.name}${
+              g.city ? ` (${g.city})` : ""
+            }</option>`
+        )
+        .join("");
   }
 }
 
-async function uploadProfileImage(file, prefix) {
-  const fileExt = file.name.split(".").pop();
-  const fileName = `${prefix}_${Date.now()}.${fileExt}`;
-
-  const { error } = await supabase.storage
-    .from("profile-images")
-    .upload(fileName, file, { upsert: true });
-
-  if (error) {
-    showNotification("Fehler beim Bild-Upload: " + error.message, "error");
-    return null;
+async function loadGymsForFilter() {
+  if (!supabase) return;
+  const { data: gyms } = await supabase
+    .from("gyms")
+    .select("id, name, city")
+    .order("name");
+  const select = document.getElementById("filter-gym");
+  if (gyms && select) {
+    select.innerHTML =
+      '<option value="">Alle Gyms</option>' +
+      gyms
+        .map(
+          (g) =>
+            `<option value="${g.id}">${g.name}${
+              g.city ? ` (${g.city})` : ""
+            }</option>`
+        )
+        .join("");
   }
-
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("profile-images").getPublicUrl(fileName);
-  return publicUrl;
 }
 
-// ================================================
-// DATENANZEIGE & FILTER
-// ================================================
+async function loadGymsForOpenMatSelect() {
+  if (!supabase) return;
+  const { data: gyms } = await supabase
+    .from("gyms")
+    .select("id, name, city")
+    .order("name");
+  const select = document.getElementById("openmat-gym-select");
+  if (gyms && select) {
+    select.innerHTML =
+      '<option value="">Gym auswählen</option>' +
+      gyms
+        .map(
+          (g) =>
+            `<option value="${g.id}">${g.name}${
+              g.city ? ` (${g.city})` : ""
+            }</option>`
+        )
+        .join("");
+  }
+}
 
 async function loadAthletes() {
+  if (!supabase) return;
   const { data } = await supabase
     .from("athletes")
     .select("*, gyms(name, city)")
     .order("created_at", { ascending: false });
+
   if (data) {
-    allAthletes.length = 0;
-    allAthletes.push(...data);
+    allAthletes = data;
     displayAthletes(data);
   }
 }
 
 function displayAthletes(athletes) {
   const list = document.getElementById("athletes-list");
-  if (!list) return;
-
   list.innerHTML = athletes
     .map((a) => {
       const isMyProfile =
-        myProfile?.type === "athlete" && myProfile.id === a.id;
+        myProfile && myProfile.type === "athlete" && myProfile.id === a.id;
+      const isFriend = false; // Wird später implementiert mit loadFriendships
+
       return `
-      <div class="profile-card">
-        ${renderProfileImage(a.image_url, a.name)}
-        <h3>${a.name}</h3>
-        ${
-          a.bio
-            ? `<p style="font-size: 0.9em; color: #666; margin: 10px 0;">${a.bio}</p>`
-            : ""
-        }
-        ${a.age ? `<p>Alter: ${a.age} Jahre</p>` : ""}
-        ${a.weight ? `<p>Gewicht: ${a.weight} kg</p>` : ""}
-        ${
-          a.belt_rank
-            ? `<span class="belt-badge belt-${
-                a.belt_rank
-              }">${a.belt_rank.toUpperCase()}</span>`
-            : ""
-        }
-        ${
-          a.gyms
-            ? `<p>Gym: <strong>${a.gyms.name}</strong>${
-                a.gyms.city ? ` (${a.gyms.city})` : ""
-              }</p>`
-            : ""
-        }
-        ${
-          !isMyProfile && myProfile?.type === "athlete"
-            ? `<button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="sendFriendRequest('${a.id}')">Freundschaft anfragen</button>`
-            : ""
-        }
-      </div>`;
+            <div class="profile-card">
+                ${
+                  a.image_url
+                    ? `<img src="${a.image_url}" class="profile-image" alt="${a.name}">`
+                    : '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
+                }
+                <h3>${a.name}</h3>
+                ${
+                  a.bio
+                    ? `<p style="font-size: 0.9em; color: #666; margin: 10px 0;">${a.bio}</p>`
+                    : ""
+                }
+                ${a.age ? `<p>📅 ${a.age} Jahre</p>` : ""}
+                ${a.weight ? `<p>⚖️ ${a.weight} kg</p>` : ""}
+                ${
+                  a.belt_rank
+                    ? `<span class="belt-badge belt-${
+                        a.belt_rank
+                      }">${a.belt_rank.toUpperCase()}</span>`
+                    : ""
+                }
+                ${
+                  a.gyms
+                    ? `<p style="margin-top: 10px;">🏋️ <strong>${
+                        a.gyms.name
+                      }</strong>${a.gyms.city ? ` (${a.gyms.city})` : ""}</p>`
+                    : ""
+                }
+                ${
+                  !isMyProfile && myProfile?.type === "athlete"
+                    ? `
+                    <button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="sendFriendRequest('${a.id}')">
+                        👥 Freundschaftsanfrage senden
+                    </button>
+                `
+                    : ""
+                }
+            </div>
+        `;
     })
     .join("");
 }
 
 function filterAthletes() {
-  const search = document.getElementById("search-athlete").value.toLowerCase();
-  const belt = document.getElementById("filter-belt").value;
-  const gym = document.getElementById("filter-gym").value;
+  const searchTerm = document
+    .getElementById("search-athlete")
+    .value.toLowerCase();
+  const beltFilter = document.getElementById("filter-belt").value;
+  const gymFilter = document.getElementById("filter-gym").value;
 
-  let filtered = allAthletes.filter((a) => {
-    if (
-      search &&
-      !`${a.name} ${a.bio} ${a.gyms?.name} ${a.gyms?.city} ${a.belt_rank}`
-        .toLowerCase()
-        .includes(search)
-    )
-      return false;
-    if (belt && a.belt_rank !== belt) return false;
-    if (gym && a.gym_id !== gym) return false;
-    return true;
-  });
+  let filtered = allAthletes;
+
+  if (searchTerm) {
+    filtered = filtered.filter(
+      (a) =>
+        a.name?.toLowerCase().includes(searchTerm) ||
+        a.bio?.toLowerCase().includes(searchTerm) ||
+        a.gyms?.name?.toLowerCase().includes(searchTerm) ||
+        a.gyms?.city?.toLowerCase().includes(searchTerm) ||
+        a.belt_rank?.toLowerCase().includes(searchTerm)
+    );
+  }
+  if (beltFilter) {
+    filtered = filtered.filter((a) => a.belt_rank === beltFilter);
+  }
+  if (gymFilter) {
+    filtered = filtered.filter((a) => a.gym_id === gymFilter);
+  }
 
   displayAthletes(filtered);
 }
 
+// ================================================
+// GYMS LADEN & ANZEIGEN
+// ================================================
+
 async function loadGyms() {
+  if (!supabase) return;
   const { data: gyms } = await supabase.from("gyms").select("*");
+
   if (gyms) {
-    allGyms.length = 0;
-    allGyms.push(...gyms);
+    allGyms = gyms;
     displayGyms(gyms);
   }
 }
 
 function displayGyms(gyms) {
-  const list = documenturequirement.getElementById("gyms-list");
-  if (!list) return;
-
+  const list = document.getElementById("gyms-list");
   list.innerHTML = gyms
     .map((g) => {
+      const isMyGym =
+        myProfile && myProfile.type === "gym" && myProfile.id === g.id;
       const canEdit = currentUser && g.user_id === currentUser.id;
+
       return `
-      <div class="profile-card">
-        ${
-          g.image_url
-            ? `<img src="${g.image_url}" class="profile-image" alt="${g.name}">`
-            : ""
-        }
-        <h3>${g.name}</h3>
-        ${
-          g.description
-            ? `<p style="font-size: 0.9em; color: #666;">${g.description}</p>`
-            : ""
-        }
-        <p>Adresse: ${g.street || ""}</p>
-        <p>PLZ/Ort: ${g.postal_code || ""} ${g.city || ""}</p>
-        ${g.phone ? `<p>Telefon: ${g.phone}</p>` : ""}
-        ${
-          g.website
-            ? `<p><a href="${g.website}" target="_blank">Website</a></p>`
-            : ""
-        }
-        ${
-          canEdit
-            ? `<button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="editGymInTab('${g.id}')">Bearbeiten</button>`
-            : ""
-        }
-      </div>`;
+        <div class="profile-card">
+            ${
+              g.image_url
+                ? `<img src="${g.image_url}" class="profile-image" alt="${g.name}">`
+                : ""
+            }
+            <h3>${g.name}</h3>
+            ${
+              g.description
+                ? `<p style="font-size: 0.9em; color: #666;">${g.description}</p>`
+                : ""
+            }
+            <p>📍 ${g.street || ""}</p>
+            <p>🏙️ ${g.postal_code || ""} ${g.city || ""}</p>
+            ${g.phone ? `<p>📞 ${g.phone}</p>` : ""}
+            ${
+              g.website
+                ? `<p><a href="${g.website}" target="_blank">🌐 Website</a></p>`
+                : ""
+            }
+            ${
+              canEdit
+                ? `<button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="editGymInTab('${g.id}')">✏️ Bearbeiten</button>`
+                : ""
+            }
+        </div>
+      `;
     })
     .join("");
 }
 
+// Zeige Gym-Erstellungsformular im Gyms-Tab
+function showCreateGymForm() {
+  const form = document.getElementById("gym-creation-form");
+  const formElement = document.getElementById("gym-creation-form-element");
+  const title = document.getElementById("gym-creation-title");
+  const submitBtn = document.getElementById("gym-create-submit-btn");
+
+  // Reset form
+  formElement.reset();
+  document.getElementById("gym-edit-id").value = "";
+  document.getElementById("gym-create-image-preview").innerHTML = "";
+  document.getElementById("gym-geocoding-status").textContent = "";
+
+  // Set title
+  title.textContent = "Neues Gym erstellen";
+  submitBtn.textContent = "Gym erstellen";
+
+  // Show form
+  form.style.display = "block";
+
+  // Scroll to form
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// Bearbeite Gym im Gyms-Tab
+async function editGymInTab(gymId) {
+  console.log("Bearbeite Gym:", gymId);
+
+  const { data: gym, error } = await supabase
+    .from("gyms")
+    .select("*")
+    .eq("id", gymId)
+    .single();
+
+  if (error) {
+    console.error("Fehler beim Laden:", error);
+    showNotification("Fehler beim Laden des Gyms", "error");
+    return;
+  }
+
+  if (gym) {
+    console.log("Gym geladen:", gym);
+
+    const form = document.getElementById("gym-creation-form");
+    const title = document.getElementById("gym-creation-title");
+    const submitBtn = document.getElementById("gym-create-submit-btn");
+
+    // WICHTIG: Setze gym_id im hidden field
+    const hiddenIdField = document.getElementById("gym-edit-id");
+    hiddenIdField.value = gym.id;
+    console.log("Hidden ID gesetzt:", hiddenIdField.value);
+
+    // Fill form
+    document.getElementById("gym-create-name").value = gym.name || "";
+    document.getElementById("gym-create-description").value =
+      gym.description || "";
+    document.getElementById("gym-create-email").value = gym.email || "";
+    document.getElementById("gym-create-phone").value = gym.phone || "";
+    document.getElementById("gym-create-website").value = gym.website || "";
+    document.getElementById("gym-create-street").value = gym.street || "";
+    document.getElementById("gym-create-postal").value = gym.postal_code || "";
+    document.getElementById("gym-create-city").value = gym.city || "";
+
+    // Clear previous image preview
+    const imagePreview = document.getElementById("gym-create-image-preview");
+    if (gym.image_url) {
+      imagePreview.innerHTML = `
+        <div style="margin-top: 10px;">
+          <img src="${gym.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
+          <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
+        </div>
+      `;
+    } else {
+      imagePreview.innerHTML = "";
+    }
+
+    // Clear geocoding status
+    document.getElementById("gym-geocoding-status").textContent = "";
+
+    // Update title and button
+    title.textContent = "Gym bearbeiten";
+    submitBtn.textContent = "Änderungen speichern";
+
+    // Show form
+    form.style.display = "block";
+
+    // Scroll to form
+    form.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+// Abbrechen der Gym-Erstellung
+function cancelGymCreation() {
+  const form = document.getElementById("gym-creation-form");
+  form.style.display = "none";
+  document.getElementById("gym-creation-form-element").reset();
+  document.getElementById("gym-edit-id").value = "";
+  document.getElementById("gym-create-image-preview").innerHTML = "";
+  document.getElementById("gym-geocoding-status").textContent = "";
+}
+
+// Submit Handler für Gym-Erstellungsformular
+async function submitGymCreationForm(e) {
+  e.preventDefault();
+  console.log("=== GYM FORM SUBMIT ===");
+
+  if (!supabase || !currentUser) {
+    showNotification("Bitte melde dich an!", "error");
+    return;
+  }
+
+  const submitBtn = document.getElementById("gym-create-submit-btn");
+  submitBtn.disabled = true;
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = "Wird gespeichert...";
+
+  try {
+    const formData = new FormData(e.target);
+    const gymId = formData.get("gym_id");
+    const isEditing = !!gymId;
+
+    console.log("Form Data:");
+    console.log("- gym_id:", gymId);
+    console.log("- isEditing:", isEditing);
+    console.log("- name:", formData.get("name"));
+
+    const name = formData.get("name");
+    const street = formData.get("street");
+    const postalCode = formData.get("postal_code");
+    const city = formData.get("city");
+
+    // Duplikat-Check
+    const isDuplicate = await checkGymDuplicate(name, street, gymId);
+    if (isDuplicate) {
+      showNotification(
+        "Ein Gym mit diesem Namen und dieser Straße existiert bereits!",
+        "error"
+      );
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+      return;
+    }
+
+    const statusDiv = document.getElementById("gym-geocoding-status");
+    statusDiv.textContent = "🔄 Geocodiere Adresse...";
+    statusDiv.className = "geocoding-status";
+
+    const geoResult = await geocodeAddress(street, postalCode, city);
+    console.log("Geocoding Result:", geoResult);
+
+    if (geoResult.fallback) {
+      statusDiv.textContent = "⚠️ Adresse approximiert (München als Fallback)";
+      statusDiv.className = "geocoding-status warning";
+    } else {
+      statusDiv.textContent = "✅ Adresse erfolgreich gefunden";
+      statusDiv.className = "geocoding-status success";
+    }
+
+    const imageFile = formData.get("image");
+    let imageUrl = null;
+
+    // Wenn bearbeitet wird, hole die existierende URL
+    if (isEditing && gymId) {
+      console.log("Loading existing gym image...");
+      const { data: existingGym } = await supabase
+        .from("gyms")
+        .select("image_url")
+        .eq("id", gymId)
+        .single();
+      imageUrl = existingGym?.image_url;
+      console.log("Existing image URL:", imageUrl);
+    }
+
+    if (imageFile && imageFile.size > 0) {
+      console.log("Uploading new image...");
+      const fileExt = imageFile.name.split(".").pop();
+      const fileName = `gym_${currentUser.id}_${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("profile-images")
+        .upload(fileName, imageFile, { upsert: true });
+
+      if (!uploadError) {
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("profile-images").getPublicUrl(fileName);
+        imageUrl = publicUrl;
+        console.log("New image URL:", imageUrl);
+      } else {
+        console.error("Image upload error:", uploadError);
+      }
+    }
+
+    const data = {
+      name: name,
+      description: formData.get("description") || null,
+      email: formData.get("email") || null,
+      phone: formData.get("phone") || null,
+      website: formData.get("website") || null,
+      street: street,
+      postal_code: postalCode,
+      city: city,
+      address: `${street}, ${postalCode} ${city}`,
+      latitude: geoResult.latitude,
+      longitude: geoResult.longitude,
+      image_url: imageUrl,
+      user_id: currentUser.id,
+    };
+
+    console.log("Data to save:", data);
+
+    if (isEditing) {
+      console.log("UPDATING gym with ID:", gymId);
+      const { error } = await supabase
+        .from("gyms")
+        .update(data)
+        .eq("id", gymId);
+
+      if (error) {
+        console.error("Update error:", error);
+        showNotification("Fehler: " + error.message, "error");
+      } else {
+        console.log("Update successful!");
+        showNotification("Gym aktualisiert!");
+        cancelGymCreation();
+        await loadGyms();
+        await loadGymsForAthleteSelect();
+        await loadGymsForFilter();
+        await loadGymsForOpenMatSelect();
+        if (map) await initMap();
+      }
+    } else {
+      console.log("CREATING new gym");
+      const { error } = await supabase.from("gyms").insert([data]);
+
+      if (error) {
+        console.error("Insert error:", error);
+        showNotification("Fehler: " + error.message, "error");
+      } else {
+        console.log("Insert successful!");
+        showNotification("Gym erstellt!");
+        cancelGymCreation();
+        await loadGyms();
+        await loadGymsForAthleteSelect();
+        await loadGymsForFilter();
+        await loadGymsForOpenMatSelect();
+        await loadDashboard();
+        if (map) await initMap();
+      }
+    }
+  } catch (error) {
+    console.error("Unexpected error in submitGymCreationForm:", error);
+    showNotification(
+      "Ein unerwarteter Fehler ist aufgetreten: " + error.message,
+      "error"
+    );
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
+    const statusDiv = document.getElementById("gym-geocoding-status");
+    setTimeout(() => {
+      statusDiv.textContent = "";
+    }, 3000);
+  }
+
+  // Gym-Erstellungsformular im Gyms-Tab verknüpfen
+  const gymCreationForm = document.getElementById("gym-creation-form-element");
+  if (gymCreationForm) {
+    gymCreationForm.addEventListener("submit", submitGymCreationForm);
+  }
+
+  console.log("=== GYM FORM SUBMIT END ===");
+}
+
 function filterGyms() {
-  const search = document.getElementById("search-gym").value.toLowerCase();
-  const filtered = allGyms.filter((g) =>
-    `${g.name} ${g.city} ${g.street} ${g.postal_code} ${g.description}`
-      .toLowerCase()
-      .includes(search)
-  );
+  const searchTerm = document.getElementById("search-gym").value.toLowerCase();
+  let filtered = allGyms;
+
+  if (searchTerm) {
+    filtered = filtered.filter(
+      (g) =>
+        g.name?.toLowerCase().includes(searchTerm) ||
+        g.city?.toLowerCase().includes(searchTerm) ||
+        g.street?.toLowerCase().includes(searchTerm) ||
+        g.postal_code?.toLowerCase().includes(searchTerm) ||
+        g.description?.toLowerCase().includes(searchTerm) ||
+        g.address?.toLowerCase().includes(searchTerm)
+    );
+  }
+
   displayGyms(filtered);
 }
 
@@ -827,31 +1159,47 @@ function filterGyms() {
 // ================================================
 
 async function loadOpenMats() {
-  const { data, error } = await supabase
-    .from("open_mats")
-    .select("*, gyms(name, city, street, postal_code, user_id), created_by")
-    .gte("event_date", new Date().toISOString())
-    .order("event_date", { ascending: true });
+  if (!supabase) return;
 
-  if (error) {
-    showNotification(
-      "Fehler beim Laden der Open Mats: " + error.message,
-      "error"
-    );
-    return;
+  try {
+    const { data, error } = await supabase
+      .from("open_mats")
+      .select("*, gyms(name, city, street, postal_code, user_id), created_by")
+      .gte("event_date", new Date().toISOString())
+      .order("event_date", { ascending: true });
+
+    if (error) {
+      console.error("loadOpenMats - supabase error:", error);
+      showNotification(
+        "Fehler beim Laden der Open Mats: " + error.message,
+        "error"
+      );
+      return;
+    }
+
+    console.log("loadOpenMats - data:", data);
+    displayOpenMats(data || []);
+  } catch (err) {
+    console.error("loadOpenMats - unexpected error:", err);
+    showNotification("Unerwarteter Fehler beim Laden der Open Mats", "error");
   }
 
-  displayOpenMats(data || []);
+  // Sichtbarkeit des Erstellungsbereichs setzen
   const createSection = document.getElementById("create-openmat-section");
-  if (createSection)
-    createSection.style.display = currentUser ? "电流" : "none";
+  if (createSection) {
+    createSection.style.display = currentUser ? "block" : "none";
+  }
 }
 
 function displayOpenMats(openMats) {
   const list = document.getElementById("openmats-list");
-  if (!list) return;
 
-  if (!openMats || openMats.length === 0) {
+  if (!list) {
+    console.warn("displayOpenMats: Element #openmats-list nicht gefunden");
+    return;
+  }
+
+  if (!Array.isArray(openMats) || openMats.length === 0) {
     list.innerHTML =
       '<p style="color: #666;">Noch keine kommenden Open Mats</p>';
     return;
@@ -859,75 +1207,105 @@ function displayOpenMats(openMats) {
 
   list.innerHTML = openMats
     .map((om) => {
-      const date = new Date(om.event_date).toLocaleDateString("de-DE", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const date = new Date(om.event_date);
+      // created_by sollte die user-id des Erstellers sein
       const canEdit = currentUser && om.created_by === currentUser.id;
 
       return `
-      <div class="event-card">
-        ${
-          canEdit
-            ? `<div class="event-actions"><button class="btn btn-small btn-danger" onclick="deleteOpenMat('${om.id}')">Löschen</button></div>`
-            : ""
-        }
-        <div class="event-date">${date}</div>
-        <h3>${om.title}</h3>
-        <p><strong>${om.gyms?.name || ""}</strong></p>
-        ${om.gyms?.street ? `<p>Adresse: ${om.gyms.street}</p>` : ""}
-        ${
-          om.gyms?.city
-            ? `<p>PLZ/Ort: ${om.gyms.postal_code || ""} ${om.gyms.city}</p>`
-            : ""
-        }
-        ${om.description ? `<p>${om.description}</p>` : ""}
-        <p>Dauer: ${om.duration_minutes} Minuten</p>
-        ${
-          myProfile?.type === "athlete"
-            ? `<button class="btn event-chat-btn" onclick="openOpenMatChat('${
+        <div class="event-card">
+            ${
+              canEdit
+                ? `
+              <div class="event-actions">
+                <button class="btn btn-small btn-danger" onclick="deleteOpenMat('${om.id}')">🗑️</button>
+              </div>`
+                : ""
+            }
+            <div class="event-date">${date.toLocaleDateString("de-DE", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}</div>
+            <h3>${om.title}</h3>
+            <p><strong>${om.gyms?.name || ""}</strong></p>
+            ${om.gyms?.street ? `<p>📍 ${om.gyms.street}</p>` : ""}
+            ${
+              om.gyms?.city
+                ? `<p>🏙️ ${om.gyms.postal_code || ""} ${om.gyms.city}</p>`
+                : ""
+            }
+            ${om.description ? `<p>${om.description}</p>` : ""}
+            <p>⏱️ Dauer: ${om.duration_minutes} Minuten</p>
+            ${
+              myProfile?.type === "athlete"
+                ? `
+              <button class="btn event-chat-btn" onclick="openOpenMatChat('${
                 om.id
-              }', '${escapeHTML(om.title)}')">Chat beitreten</button>`
-            : ""
-        }
-      </div>`;
+              }', '${escapeHTML(om.title)}')">💬 Chat beitreten</button>
+            `
+                : ""
+            }
+        </div>
+      `;
     })
     .join("");
 }
 
-async function handleOpenMatFormSubmit(e) {
-  e.preventDefault();
-  if (!supabase || !currentUser)
-    return showNotification("Bitte anmelden", "error");
-
-  const formData = new FormData(e.target);
-  const gymId = formData.get("gym_id");
-  if (!gymId) return showNotification("Bitte ein Gym auswählen", "error");
-
-  const data = {
-    gym_id: gymId,
-    title: formData.get("title"),
-    description: formData.get("description") || null,
-    event_date: formData.get("event_date"),
-    duration_minutes: parseInt(formData.get("duration_minutes")),
-    created_by: currentUser.id,
-  };
-
-  const { error } = await supabase.from("open_mats").insert([data]);
-  if (error) {
-    showNotification("Fehler: " + error.message, "error");
-  } else {
-    showNotification("Event erstellt!");
-    e.target.reset();
-    await loadOpenMats();
-    await loadDashboard();
-    if (map) await initMap();
-  }
+// Kleine Hilfsfunktion, um Titel sicher in onclick-HTML einzubetten
+function escapeHTML(str = "") {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
+
+document
+  .getElementById("openmat-form")
+  .addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    if (!supabase || !currentUser) {
+      showNotification(
+        "Bitte melde dich an, um Open Mats zu erstellen!",
+        "error"
+      );
+      return;
+    }
+
+    const formData = new FormData(e.target);
+    const gymId = formData.get("gym_id");
+
+    if (!gymId) {
+      showNotification("Bitte wähle ein Gym aus!", "error");
+      return;
+    }
+
+    const data = {
+      gym_id: gymId,
+      title: formData.get("title"),
+      description: formData.get("description") || null,
+      event_date: formData.get("event_date"),
+      duration_minutes: parseInt(formData.get("duration_minutes")),
+      created_by: currentUser.id,
+    };
+
+    const { error } = await supabase.from("open_mats").insert([data]);
+    if (error) {
+      console.error("OpenMat Error:", error);
+      showNotification("Fehler: " + error.message, "error");
+    } else {
+      showNotification("Event erstellt!");
+      e.target.reset();
+      loadOpenMats();
+      loadDashboard();
+      if (map) initMap();
+    }
+  });
 
 async function deleteOpenMat(id) {
   if (!confirm("Event wirklich löschen?")) return;
@@ -936,20 +1314,122 @@ async function deleteOpenMat(id) {
     showNotification("Fehler beim Löschen", "error");
   } else {
     showNotification("Event gelöscht");
-    await loadOpenMats();
-    await loadDashboard();
-    if (map) await initMap();
+    loadOpenMats();
+    loadDashboard();
+    if (map) initMap();
   }
 }
 
 // ================================================
-// FREUNDSCHAFTEN & CHATS
+// FREUNDSCHAFTEN
 // ================================================
 
-async function sendFriendRequest(athleteId) {
-  if (!myProfile || myProfile.type !== "athlete")
-    return showNotification("Nur Athleten können Anfragen senden", "warning");
+async function loadFriendRequests() {
+  if (!supabase || !myProfile || myProfile.type !== "athlete") return;
 
+  const { data } = await supabase
+    .from("friendships")
+    .select(
+      "*, requester:athletes!friendships_requester_id_fkey(id, name, image_url)"
+    )
+    .eq("addressee_id", myProfile.id)
+    .eq("status", "pending");
+
+  const list = document.getElementById("friend-requests-list");
+  const badge = document.getElementById("friend-requests-badge");
+
+  if (data && data.length > 0) {
+    badge.textContent = data.length;
+    badge.style.display = "inline-block";
+
+    list.innerHTML = data
+      .map(
+        (fr) => `
+            <div class="friend-request">
+                <p><strong>${fr.requester.name}</strong> möchte mit dir befreundet sein</p>
+                <div class="actions">
+                    <button class="btn btn-small" onclick="acceptFriendRequest('${fr.id}')">✅ Annehmen</button>
+                    <button class="btn btn-small btn-danger" onclick="rejectFriendRequest('${fr.id}')">❌ Ablehnen</button>
+                </div>
+            </div>
+        `
+      )
+      .join("");
+  } else {
+    badge.style.display = "none";
+    list.innerHTML = '<p style="color: #666;">Keine offenen Anfragen</p>';
+  }
+}
+
+async function loadFriends() {
+  if (!supabase || !myProfile || myProfile.type !== "athlete") return;
+
+  const { data } = await supabase
+    .from("friendships")
+    .select(
+      `
+            id,
+            requester_id,
+            addressee_id,
+            requester:athletes!friendships_requester_id_fkey(id, name, image_url, belt_rank),
+            addressee:athletes!friendships_addressee_id_fkey(id, name, image_url, belt_rank)
+        `
+    )
+    .or(`requester_id.eq.${myProfile.id},addressee_id.eq.${myProfile.id}`)
+    .eq("status", "accepted");
+
+  const list = document.getElementById("friends-list");
+
+  if (data && data.length > 0) {
+    list.innerHTML = data
+      .map((f) => {
+        const friend =
+          f.requester_id === myProfile.id ? f.addressee : f.requester;
+        return `
+                <div class="profile-card">
+                    ${
+                      friend.image_url
+                        ? `<img src="${friend.image_url}" class="profile-image" alt="${friend.name}">`
+                        : '<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">👤</div>'
+                    }
+                    <h3>${friend.name}</h3>
+                    ${
+                      friend.belt_rank
+                        ? `<span class="belt-badge belt-${
+                            friend.belt_rank
+                          }">${friend.belt_rank.toUpperCase()}</span>`
+                        : ""
+                    }
+                    <button class="btn btn-small" style="margin-top: 10px; width: 100%;" onclick="openChat('${
+                      friend.id
+                    }')">
+                        💬 Chat öffnen
+                    </button>
+                    <button class="btn btn-small btn-danger" style="margin-top: 5px; width: 100%;" onclick="endFriendship('${
+                      f.id
+                    }')">
+                        Freundschaft beenden
+                    </button>
+                </div>
+            `;
+      })
+      .join("");
+  } else {
+    list.innerHTML =
+      '<p style="color: #666;">Noch keine Freunde. Sende Freundschaftsanfragen!</p>';
+  }
+}
+
+async function sendFriendRequest(athleteId) {
+  if (!supabase || !myProfile || myProfile.type !== "athlete") {
+    showNotification(
+      "Nur Athleten können Freundschaftsanfragen senden",
+      "warning"
+    );
+    return;
+  }
+
+  // Prüfe ob bereits Anfrage existiert
   const { data: existing } = await supabase
     .from("friendships")
     .select("id")
@@ -957,8 +1437,10 @@ async function sendFriendRequest(athleteId) {
       `and(requester_id.eq.${myProfile.id},addressee_id.eq.${athleteId}),and(requester_id.eq.${athleteId},addressee_id.eq.${myProfile.id})`
     );
 
-  if (existing?.length > 0)
-    return showNotification("Anfrage existiert bereits", "info");
+  if (existing && existing.length > 0) {
+    showNotification("Freundschaftsanfrage existiert bereits", "info");
+    return;
+  }
 
   const { error } = await supabase.from("friendships").insert([
     {
@@ -971,99 +1453,172 @@ async function sendFriendRequest(athleteId) {
   if (error) {
     showNotification("Fehler: " + error.message, "error");
   } else {
-    showNotification("Anfrage gesendet!");
+    showNotification("Freundschaftsanfrage gesendet!");
   }
 }
 
+async function acceptFriendRequest(friendshipId) {
+  const { error } = await supabase
+    .from("friendships")
+    .update({ status: "accepted" })
+    .eq("id", friendshipId);
+
+  if (error) {
+    showNotification("Fehler: " + error.message, "error");
+  } else {
+    showNotification("Freundschaft akzeptiert!");
+    loadFriendRequests();
+    loadFriends();
+    loadChats();
+  }
+}
+
+async function rejectFriendRequest(friendshipId) {
+  const { error } = await supabase
+    .from("friendships")
+    .delete()
+    .eq("id", friendshipId);
+
+  if (error) {
+    showNotification("Fehler: " + error.message, "error");
+  } else {
+    showNotification("Anfrage abgelehnt");
+    loadFriendRequests();
+  }
+}
+
+async function endFriendship(friendshipId) {
+  if (!confirm("Freundschaft wirklich beenden?")) return;
+
+  const { error } = await supabase
+    .from("friendships")
+    .delete()
+    .eq("id", friendshipId);
+
+  if (error) {
+    showNotification("Fehler: " + error.message, "error");
+  } else {
+    showNotification("Freundschaft beendet");
+    loadFriends();
+    loadChats();
+  }
+}
+
+// ================================================
+// PRIVATE CHATS
+// ================================================
+
 async function loadChats() {
-  if (!myProfile || myProfile.type !== "athlete") return;
+  if (!supabase || !myProfile || myProfile.type !== "athlete") return;
 
   const { data: friendships } = await supabase
     .from("friendships")
     .select(
-      `id, requester_id, addressee_id, requester:athletes!friendships_requester_id_fkey(id, name, image_url), addressee:athletes!friendships_addressee_id_fkey(id, name, image_url)`
+      `
+            id,
+            requester_id,
+            addressee_id,
+            requester:athletes!friendships_requester_id_fkey(id, name, image_url),
+            addressee:athletes!friendships_addressee_id_fkey(id, name, image_url)
+        `
     )
     .or(`requester_id.eq.${myProfile.id},addressee_id.eq.${myProfile.id}`)
     .eq("status", "accepted");
 
   const list = document.getElementById("chat-list");
-  if (!friendships || friendships.length === 0) {
+
+  if (friendships && friendships.length > 0) {
+    const chatItems = await Promise.all(
+      friendships.map(async (f) => {
+        const friend =
+          f.requester_id === myProfile.id ? f.addressee : f.requester;
+
+        // Lade letzte Nachricht
+        const { data: lastMsg } = await supabase
+          .from("private_messages")
+          .select("message, created_at")
+          .or(
+            `and(sender_id.eq.${myProfile.id},receiver_id.eq.${friend.id}),and(sender_id.eq.${friend.id},receiver_id.eq.${myProfile.id})`
+          )
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        // Zähle ungelesene
+        const { count: unreadCount } = await supabase
+          .from("private_messages")
+          .select("id", { count: "exact", head: true })
+          .eq("sender_id", friend.id)
+          .eq("receiver_id", myProfile.id)
+          .eq("read", false);
+
+        return {
+          friend,
+          lastMsg,
+          unreadCount: unreadCount || 0,
+        };
+      })
+    );
+
+    list.innerHTML = chatItems
+      .map(
+        (item) => `
+            <div class="chat-item ${
+              currentChatPartner === item.friend.id ? "active" : ""
+            }" onclick="openChat('${item.friend.id}')">
+                <div class="name">
+                    ${item.friend.name}
+                    ${
+                      item.unreadCount > 0
+                        ? `<span class="unread-badge">${item.unreadCount}</span>`
+                        : ""
+                    }
+                </div>
+                ${
+                  item.lastMsg
+                    ? `<div class="last-message">${item.lastMsg.message}</div>`
+                    : ""
+                }
+            </div>
+        `
+      )
+      .join("");
+  } else {
     list.innerHTML =
       '<p style="color: #666; padding: 10px;">Noch keine Chats</p>';
-    return;
   }
-
-  const chatItems = await Promise.all(
-    friendships.map(async (f) => {
-      const friend =
-        f.requester_id === myProfile.id ? f.addressee : f.requester;
-
-      const { data: lastMsg } = await supabase
-        .from("private_messages")
-        .select("message, created_at")
-        .or(
-          `and(sender_id.eq.${myProfile.id},receiver_id.eq.${friend.id}),and(sender_id.eq.${friend.id},receiver_id.eq.${myProfile.id})`
-        )
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      const { count: unreadCount } = await supabase
-        .from("private_messages")
-        .select("id", { count: "exact", head: true })
-        .eq("sender_id", friend.id)
-        .eq("receiver_id", myProfile.id)
-        .eq("read", false);
-
-      return { friend, lastMsg, unreadCount: unreadCount || 0 };
-    })
-  );
-
-  list.innerHTML = chatItems
-    .map(
-      (item) => `
-    <div class="chat-item ${
-      currentChatPartner === item.friend.id ? "active" : ""
-    }" onclick="openChat('${item.friend.id}')">
-      <div class="name">${item.friend.name} ${
-        item.unreadCount > 0
-          ? `<span class="unread-badge">${item.unreadCount}</span>`
-          : ""
-      }</div>
-      ${
-        item.lastMsg
-          ? `<div class="last-message">${item.lastMsg.message}</div>`
-          : ""
-      }
-    </div>
-  `
-    )
-    .join("");
 }
 
 async function openChat(friendId) {
   currentChatPartner = friendId;
   switchTab("messages");
 
+  // Lade Friend-Info
   const { data: friend } = await supabase
     .from("athletes")
     .select("id, name, image_url")
     .eq("id", friendId)
     .single();
+
   const chatWindow = document.getElementById("chat-window");
   chatWindow.innerHTML = `
-    <div class="chat-header"><h3>${friend.name}</h3></div>
-    <div class="chat-messages" id="current-chat-messages"></div>
-    <form class="chat-input-form" onsubmit="sendPrivateMessage(event, '${friendId}')">
-      <input type="text" name="message" placeholder="Nachricht schreiben..." required />
-      <button type="submit">Senden</button>
-    </form>`;
+        <div class="chat-header">
+            <h3>${friend.name}</h3>
+        </div>
+        <div class="chat-messages" id="current-chat-messages"></div>
+        <form class="chat-input-form" onsubmit="sendPrivateMessage(event, '${friendId}')">
+            <input type="text" name="message" placeholder="Nachricht schreiben..." required />
+            <button type="submit">🥊</button>
+        </form>
+    `;
 
   await loadMessages(friendId);
-  await loadChats();
+  loadChats(); // Aktualisiere Chat-Liste
 }
 
 async function loadMessages(friendId) {
+  if (!supabase || !myProfile || myProfile.type !== "athlete") return;
+
   const { data: messages } = await supabase
     .from("private_messages")
     .select("*, sender:athletes!private_messages_sender_id_fkey(name)")
@@ -1077,19 +1632,28 @@ async function loadMessages(friendId) {
     messagesDiv.innerHTML = messages
       .map((m) => {
         const isOwn = m.sender_id === myProfile.id;
-        const time = new Date(m.created_at).toLocaleTimeString("de-DE", {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        return `<div class="message ${isOwn ? "own" : "other"}">
-        ${!isOwn ? `<div class="message-sender">${m.sender.name}</div>` : ""}
-        <div class="message-content">${m.message}</div>
-        <div class="message-time">${time}</div>
-      </div>`;
+        const date = new Date(m.created_at);
+        return `
+                <div class="message ${isOwn ? "own" : "other"}">
+                    ${
+                      !isOwn
+                        ? `<div class="message-sender">${m.sender.name}</div>`
+                        : ""
+                    }
+                    <div class="message-content">${m.message}</div>
+                    <div class="message-time">${date.toLocaleTimeString(
+                      "de-DE",
+                      { hour: "2-digit", minute: "2-digit" }
+                    )}</div>
+                </div>
+            `;
       })
       .join("");
+
+    // Scroll to bottom
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
+    // Markiere als gelesen
     await supabase
       .from("private_messages")
       .update({ read: true })
@@ -1101,31 +1665,51 @@ async function loadMessages(friendId) {
   }
 }
 
-async function sendPrivateMessage(e, receiverId) {
-  e.preventDefault();
-  const formData = new FormData(e.target);
-  const message = formData.get("message").trim();
-  if (!message) return;
+async function sendPrivateMessage(event, receiverId) {
+  event.preventDefault();
+  if (!supabase || !myProfile || myProfile.type !== "athlete") return;
+
+  const formData = new FormData(event.target);
+  const message = formData.get("message");
 
   const { error } = await supabase.from("private_messages").insert([
     {
       sender_id: myProfile.id,
       receiver_id: receiverId,
-      message,
+      message: message,
     },
   ]);
 
   if (error) {
     showNotification("Fehler: " + error.message, "error");
   } else {
-    e.target.reset();
+    event.target.reset();
     await loadMessages(receiverId);
-    await loadChats();
+    loadChats();
+  }
+}
+
+async function updateNotificationBadges() {
+  if (!supabase || !myProfile || myProfile.type !== "athlete") return;
+
+  // Ungelesene Nachrichten
+  const { count: unreadCount } = await supabase
+    .from("private_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("receiver_id", myProfile.id)
+    .eq("read", false);
+
+  const messagesBadge = document.getElementById("messages-badge");
+  if (unreadCount > 0) {
+    messagesBadge.textContent = unreadCount;
+    messagesBadge.style.display = "inline-block";
+  } else {
+    messagesBadge.style.display = "none";
   }
 }
 
 // ================================================
-// OPEN MAT CHAT
+// OPEN MAT GRUPPENCHATS
 // ================================================
 
 function openOpenMatChat(openmatId, title) {
@@ -1134,19 +1718,28 @@ function openOpenMatChat(openmatId, title) {
   document.getElementById("openmat-chat-modal").classList.add("show");
   loadOpenMatMessages(openmatId);
 
-  if (openMatChatInterval) clearInterval(openMatChatInterval);
-  openMatChatInterval = setInterval(() => {
-    if (currentOpenMatChat === openmatId) loadOpenMatMessages(openmatId);
+  // Auto-refresh alle 3 Sekunden
+  if (window.openmatChatInterval) {
+    clearInterval(window.openmatChatInterval);
+  }
+  window.openmatChatInterval = setInterval(() => {
+    if (currentOpenMatChat === openmatId) {
+      loadOpenMatMessages(openmatId);
+    }
   }, 3000);
 }
 
 function closeOpenMatChat() {
   document.getElementById("openmat-chat-modal").classList.remove("show");
   currentOpenMatChat = null;
-  if (openMatChatInterval) clearInterval(openMatChatInterval);
+  if (window.openmatChatInterval) {
+    clearInterval(window.openmatChatInterval);
+  }
 }
 
 async function loadOpenMatMessages(openmatId) {
+  if (!supabase) return;
+
   const { data: messages } = await supabase
     .from("openmat_messages")
     .select("*, athlete:athletes(name, image_url)")
@@ -1158,94 +1751,121 @@ async function loadOpenMatMessages(openmatId) {
     messagesDiv.innerHTML = messages
       .map((m) => {
         const isOwn =
-          myProfile?.type === "athlete" && m.athlete_id === myProfile.id;
-        const time = new Date(m.created_at).toLocaleTimeString("de-DE", {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        return `<div class="message ${isOwn ? "own" : "other"}">
-        ${!isOwn ? `<div class="message-sender">${m.athlete.name}</div>` : ""}
-        <div class="message-content">${m.message}</div>
-        <div class="message-time">${time}</div>
-      </div>`;
+          myProfile &&
+          myProfile.type === "athlete" &&
+          m.athlete_id === myProfile.id;
+        const date = new Date(m.created_at);
+        return `
+                <div class="message ${isOwn ? "own" : "other"}">
+                    ${
+                      !isOwn
+                        ? `<div class="message-sender">${m.athlete.name}</div>`
+                        : ""
+                    }
+                    <div class="message-content">${m.message}</div>
+                    <div class="message-time">${date.toLocaleTimeString(
+                      "de-DE",
+                      { hour: "2-digit", minute: "2-digit" }
+                    )}</div>
+                </div>
+            `;
       })
       .join("");
+
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 }
 
-async function handleOpenMatMessageSubmit(e) {
-  e.preventDefault();
-  if (!myProfile || myProfile.type !== "athlete" || !currentOpenMatChat) return;
+document
+  .getElementById("openmat-message-form")
+  .addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (
+      !supabase ||
+      !myProfile ||
+      myProfile.type !== "athlete" ||
+      !currentOpenMatChat
+    )
+      return;
 
-  const formData = new FormData(e.target);
-  const message = formData.get("message").trim();
-  if (!message) return;
+    const formData = new FormData(e.target);
+    const message = formData.get("message");
 
-  const { error } = await supabase.from("openmat_messages").insert([
-    {
-      openmat_id: currentOpenMatChat,
-      athlete_id: myProfile.id,
-      message,
-    },
-  ]);
+    const { error } = await supabase.from("openmat_messages").insert([
+      {
+        openmat_id: currentOpenMatChat,
+        athlete_id: myProfile.id,
+        message: message,
+      },
+    ]);
 
-  if (error) {
-    showNotification("Fehler: " + error.message, "error");
-  } else {
-    e.target.reset();
-    await loadOpenMatMessages(currentOpenMatChat);
-  }
-}
+    if (error) {
+      showNotification("Fehler: " + error.message, "error");
+    } else {
+      e.target.reset();
+      loadOpenMatMessages(currentOpenMatChat);
+    }
+  });
 
 // ================================================
-// DASHBOARD & KARTE
+// DASHBOARD
 // ================================================
 
 async function loadDashboard() {
+  if (!supabase) return;
+
   const [{ data: athletes }, { data: gyms }, { data: openMats }] =
     await Promise.all([
-      supabase.from("athletes").select("id, name, created_at"),
-      supabase.from("gyms").select("id"),
+      supabase.from("athletes").select("*"),
+      supabase.from("gyms").select("*"),
       supabase
         .from("open_mats")
-        .select("id")
+        .select("*")
         .gte("event_date", new Date().toISOString()),
     ]);
 
   const statsGrid = document.getElementById("stats-grid");
-  if (statsGrid) {
-    statsGrid.innerHTML = `
-      <div class="stat-card"><div>Athleten</div><div class="stat-number">${
-        athletes?.length || 0
-      }</div></div>
-      <div class="stat-card"><div>Gyms</div><div class="stat-number">${
-        gyms?.length || 0
-      }</div></div>
-      <div class="stat-card"><div>Open Mats</div><div class="stat-number">${
-        openMats?.length || 0
-      }</div></div>`;
-  }
+  statsGrid.innerHTML = `
+        <div class="stat-card">
+            <div>👥 Athleten</div>
+            <div class="stat-number">${athletes?.length || 0}</div>
+        </div>
+        <div class="stat-card">
+            <div>🏋️ Gyms</div>
+            <div class="stat-number">${gyms?.length || 0}</div>
+        </div>
+        <div class="stat-card">
+            <div>📅 Open Mats</div>
+            <div class="stat-number">${openMats?.length || 0}</div>
+        </div>
+    `;
 
   const activities = document.getElementById("recent-activities");
-  if (activities && athletes?.length > 0) {
-    const recent = athletes.slice(-3).reverse();
-    activities.innerHTML = recent
-      .map(
-        (a) => `
-      <div style="padding: 15px; background: #f8f9fa; margin: 10px 0; border-radius: 8px;">
-        <strong>${a.name}</strong> hat sich registriert
-        <span style="float: right; color: #666; font-size: 0.9em;">${new Date(
-          a.created_at
-        ).toLocaleDateString("de-DE")}</span>
-      </div>`
-      )
-      .join("");
-  }
+  const recentAthletes = athletes?.slice(-3).reverse() || [];
+  activities.innerHTML =
+    recentAthletes.length > 0
+      ? recentAthletes
+          .map(
+            (a) => `
+            <div style="padding: 15px; background: #f8f9fa; margin: 10px 0; border-radius: 8px;">
+                <strong>${a.name}</strong> hat sich registriert
+                <span style="float: right; color: #666; font-size: 0.9em;">
+                    ${new Date(a.created_at).toLocaleDateString("de-DE")}
+                </span>
+            </div>
+        `
+          )
+          .join("")
+      : "<p>Noch keine Aktivitäten</p>";
 }
+
+// ================================================
+// KARTE
+// ================================================
 
 async function initMap() {
   if (!supabase) return;
+
   if (map) map.remove();
 
   map = L.map("map").setView([51.1657, 10.4515], 6);
@@ -1259,53 +1879,63 @@ async function initMap() {
     .select("*, gyms(name, city, street, postal_code, latitude, longitude)")
     .gte("event_date", new Date().toISOString());
 
-  const bounds = [];
+  let bounds = [];
 
-  gyms?.forEach((gym) => {
-    if (gym.latitude && gym.longitude) {
-      L.marker([gym.latitude, gym.longitude])
-        .addTo(map)
-        .bindPopup(
-          `<strong>${gym.name}</strong><br>${gym.street || ""}<br>${
-            gym.postal_code || ""
-          } ${gym.city || ""}`
-        );
-      bounds.push([gym.latitude, gym.longitude]);
-    }
-  });
+  if (gyms && gyms.length > 0) {
+    gyms.forEach((gym) => {
+      if (gym.latitude && gym.longitude) {
+        L.marker([gym.latitude, gym.longitude])
+          .addTo(map)
+          .bindPopup(
+            `<strong>${gym.name}</strong><br>${gym.street || ""}<br>${
+              gym.postal_code || ""
+            } ${gym.city || ""}`
+          );
+        bounds.push([gym.latitude, gym.longitude]);
+      }
+    });
+  }
 
-  openMats?.forEach((om) => {
-    if (om.gyms?.latitude && om.gyms?.longitude) {
-      const date = new Date(om.event_date).toLocaleDateString("de-DE", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      L.marker([om.gyms.latitude, om.gyms.longitude], {
-        icon: L.divIcon({
-          className: "custom-icon",
-          html: "Open Mat",
-          iconSize: [30, 30],
-        }),
-      })
-        .addTo(map)
-        .bindPopup(
-          `<strong>${om.title}</strong><br>${om.gyms.name}<br>${date}`
-        );
-      bounds.push([om.gyms.latitude, om.gyms.longitude]);
-    }
-  });
+  if (openMats && openMats.length > 0) {
+    openMats.forEach((om) => {
+      if (om.gyms?.latitude && om.gyms?.longitude) {
+        const date = new Date(om.event_date).toLocaleDateString("de-DE", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        L.marker([om.gyms.latitude, om.gyms.longitude], {
+          icon: L.divIcon({
+            className: "custom-icon",
+            html: "📅",
+            iconSize: [30, 30],
+          }),
+        })
+          .addTo(map)
+          .bindPopup(
+            `<strong>${om.title}</strong><br>${om.gyms.name}<br>${
+              om.gyms.street || ""
+            }<br>${om.gyms.postal_code || ""} ${
+              om.gyms.city || ""
+            }<br>📅 ${date}`
+          );
+        bounds.push([om.gyms.latitude, om.gyms.longitude]);
+      }
+    });
+  }
 
-  if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
+  if (bounds.length > 0) {
+    map.fitBounds(bounds, { padding: [50, 50] });
+  }
 }
 
 // ================================================
-// TAB-NAVIGATION & HILFSFUNKTIONEN
+// TAB-NAVIGATION
 // ================================================
 
-function switchTab(tabName) {
+function switchTab(tabName, eventTarget = null) {
   if (!currentUser) return;
 
   document
@@ -1315,146 +1945,74 @@ function switchTab(tabName) {
     .querySelectorAll(".tab-btn")
     .forEach((b) => b.classList.remove("active"));
 
-  const target = document.getElementById(`${tabName}-tab`);
-  if (target) target.classList.add("active");
+  const targetTab = document.getElementById(tabName + "-tab");
+  if (targetTab) {
+    targetTab.classList.add("active");
+  }
 
-  const btn = Array.from(document.querySelectorAll(".tab-btn")).find(
-    (b) =>
-      b.textContent.trim().split("\n")[0].trim() ===
-      {
-        dashboard: "Dashboard",
-        profile: "Mein Profil",
-        athletes: "Athleten",
-        gyms: "Gyms",
-        openmats: "Open Mats",
-        friends: "Freunde",
-        messages: "Nachrichten",
-        map: "Karte",
-      }[tabName]
-  );
-  if (btn) btn.classList.add("active");
+  if (eventTarget) {
+    eventTarget.classList.add("active");
+  } else {
+    const tabMapping = {
+      dashboard: "Dashboard",
+      profile: "Mein Profil",
+      athletes: "Athleten",
+      gyms: "Gyms",
+      openmats: "Open Mats",
+      friends: "Freunde",
+      messages: "Nachrichten",
+      map: "Karte",
+    };
 
-  if (tabName === "map" && !map) initMap();
-  if (tabName === "dashboard") loadDashboard();
+    const buttons = document.querySelectorAll(".tab-btn");
+    buttons.forEach((btn) => {
+      const btnText = btn.textContent.trim().split("\n")[0].trim();
+      if (btnText === tabMapping[tabName]) {
+        btn.classList.add("active");
+      }
+    });
+  }
+
+  if (tabName === "map" && !map) {
+    initMap();
+  }
+  if (tabName === "dashboard") {
+    loadDashboard();
+  }
   if (tabName === "friends" && myProfile?.type === "athlete") {
     loadFriendRequests();
     loadFriends();
   }
-  if (tabName === "openmats") loadOpenMats();
-  if (tabName === "messages" && myProfile?.type === "athlete") loadChats();
-}
-
-function showNotification(message, type = "success") {
-  const notif = document.getElementById("notification");
-  notif.textContent = message;
-  notif.className = `notification show ${type}`;
-  setTimeout(() => notif.classList.remove("show"), 3000);
-}
-
-function renderProfileImage(url, name) {
-  return url
-    ? `<img src="${url}" class="profile-image" alt="${name}">`
-    : `<div class="profile-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 3em; color: white;">Profil</div>`;
-}
-
-function escapeHTML(str = "") {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function startMessagePolling() {
-  if (messagePollingInterval) clearInterval(messagePollingInterval);
-  messagePollingInterval = setInterval(() => {
-    updateNotificationBadges();
-    if (currentChatPartner) loadMessages(currentChatPartner);
-  }, 5000);
-}
-
-function clearMessagePolling() {
-  if (messagePollingInterval) clearInterval(messagePollingInterval);
-  messagePollingInterval = null;
-}
-
-async function updateNotificationBadges() {
-  if (!myProfile || myProfile.type !== "athlete") return;
-
-  const { count: unreadCount } = await supabase
-    .from("private_messages")
-    .select("id", { count: "exact", head: true })
-    .eq("receiver_id", myProfile.id)
-    .eq("read", false);
-
-  const badge = document.getElementById("messages-badge");
-  if (badge) {
-    badge.textContent = unreadCount;
-    badge.style.display = unreadCount > 0 ? "inline-block" : "none";
+  if (tabName === "openmats") {
+    loadOpenMats();
+  }
+  if (tabName === "messages" && myProfile?.type === "athlete") {
+    loadChats();
   }
 }
 
 // ================================================
-// GYM-ERSTELLUNG IM GYMS-TAB
+// UTILITY FUNCTIONS
 // ================================================
 
-function showCreateGymForm() {
-  const form = document.getElementById("gym-creation-form");
-  form.style.display = "block";
-  document.getElementById("gym-creation-form-element").reset();
-  document.getElementById("gym-edit-id").value = "";
-  document.getElementById("gym-create-image-preview").innerHTML = "";
-  document.getElementById("gym-geocoding-status").textContent = "";
-  document.getElementById("gym-creation-title").textContent =
-    "Neues Gym erstellen";
-  document.getElementById("gym-create-submit-btn").textContent =
-    "Gym erstellen";
-  form.scrollIntoView({ behavior: "smooth" });
+function showNotification(message, type = "success") {
+  const notif = document.getElementById("notification");
+  notif.textContent = message;
+  notif.className = "notification show";
+  if (type) notif.classList.add(type);
+  setTimeout(() => notif.classList.remove("show"), 3000);
 }
 
-async function editGymInTab(gymId) {
-  const { data: gym, error } = await supabase
-    .from("gyms")
-    .select("*")
-    .eq("id", gymId)
-    .single();
-  if (error || !gym) return showNotification("Gym nicht gefunden", "error");
+const menuIcon = document.getElementById("menu-icon");
+const mainMenu = document.getElementById("main-menu");
 
-  const form = document.getElementById("gym-creation-form");
-  form.style.display = "block";
+menuIcon.addEventListener("click", () => {
+  mainMenu.classList.toggle("open");
+});
 
-  document.getElementById("gym-edit-id").value = gym.id;
-  document.getElementById("gym-create-name").value = gym.name || "";
-  document.getElementById("gym-create-description").value =
-    gym.description || "";
-  document.getElementById("gym-create-email").value = gym.email || "";
-  document.getElementById("gym-create-phone").value = gym.phone || "";
-  document.getElementById("gym-create-website").value = gym.website || "";
-  document.getElementById("gym-create-street").value = gym.street || "";
-  document.getElementById("gym-create-postal").value = gym.postal_code || "";
-  document.getElementById("gym-create-city").value = gym.city || "";
-
-  const preview = document.getElementById("gym-create-image-preview");
-  preview.innerHTML = gym.image_url
-    ? `
-    <div style="margin-top: 10px;">
-      <img src="${gym.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
-      <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
-    </div>`
-    : "";
-
-  document.getElementById("gym-creation-title").textContent = "Gym bearbeiten";
-  document.getElementById("gym-create-submit-btn").textContent =
-    "Änderungen speichern";
-  form.scrollIntoView({ behavior: "smooth" });
-}
-
-function cancelGymCreation() {
-  const form = document.getElementById("gym-creation-form");
-  form.style.display = "none";
-  document.getElementById("gym-creation-form-element").reset();
-  document.getElementById("gym-edit-id").value = "";
-  document.getElementById("gym-create-image-preview").innerHTML = "";
-  document.getElementById("gym02-geocoding-status").textContent = "";
-}
+// Menü schließen, wenn man auf Menüpunkt klickt (mobile only)
+mainMenu.querySelectorAll("button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    mainMenu.classList.remove("open");
+  });
+});
