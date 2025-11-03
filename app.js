@@ -94,45 +94,6 @@ function updateAuthUI() {
   const authSection = document.getElementById("auth-section");
   if (currentUser) {
     authSection.innerHTML = `
-            <nav class="main-menu" id="main-menu">
-          <ul>
-            <li>
-              <button onclick="switchTab('dashboard', this)">Dashboard</button>
-            </li>
-            <li>
-              <button onclick="switchTab('profile', this)">Mein Profil</button>
-            </li>
-            <li>
-              <button onclick="switchTab('athletes', this)">Athleten</button>
-            </li>
-            <li><button onclick="switchTab('gyms', this)">Gyms</button></li>
-            <li>
-              <button onclick="switchTab('openmats', this)">Open Mats</button>
-            </li>
-            <li>
-              <button onclick="switchTab('friends', this)">
-                Freunde
-                <span
-                  id="friend-requests-badge"
-                  class="notification-badge"
-                  style="display: none"
-                ></span>
-              </button>
-            </li>
-            <li>
-              <button onclick="switchTab('messages', this)">
-                Nachrichten
-                <span
-                  id="messages-badge"
-                  class="notification-badge"
-                  style="display: none"
-                ></span>
-              </button>
-            </li>
-            <li><button onclick="switchTab('map', this)">Karte</button></li>
-            <li><button class="auth-btn logout" onclick="logout()">Logout</button></li>
-          </ul>
-        </nav>
         `;
   } else {
     authSection.innerHTML = `
