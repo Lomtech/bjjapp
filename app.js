@@ -2034,5 +2034,6 @@ function updateMenuVisibility() {
     }
   }
 }
-
-updateMenuVisibility();
+if (currentUser) {
+  updateMenuVisibility();
+}
