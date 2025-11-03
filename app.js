@@ -92,12 +92,27 @@ async function initializeData() {
 
 function updateAuthUI() {
   const authSection = document.getElementById("auth-section");
+  const menuIcon = document.getElementById("menu-icon");
+  const mainMenu = document.getElementById("main-menu");
   if (currentUser) {
     authSection.innerHTML = `
             <button class="auth-btn logout" onclick="logout()">Logout</button>
+            menuIcon.style.display = "";
+            mainMenu.style.display = "";
+          menuIcon.addEventListener("click", () => {
+              mainMenu.classList.toggle("open");
+            });
+            // Menü schließen, wenn man auf Menüpunkt klickt (mobile only)
+            mainMenu.querySelectorAll("button").forEach((btn) => {
+              btn.addEventListener("click", () => {
+                mainMenu.classList.remove("open");
+              });
+            });
         `;
   } else {
     authSection.innerHTML = `
+            menuIcon.styles.display = "none";
+            mainMenu.styles.display = "none";
             <button class="auth-btn" onclick="openAuthModal('login')">Login</button>
             <button class="auth-btn" onclick="openAuthModal('signup')">Registrieren</button>
         `;
@@ -2002,17 +2017,3 @@ function showNotification(message, type = "success") {
   if (type) notif.classList.add(type);
   setTimeout(() => notif.classList.remove("show"), 3000);
 }
-
-const menuIcon = document.getElementById("menu-icon");
-const mainMenu = document.getElementById("main-menu");
-
-menuIcon.addEventListener("click", () => {
-  mainMenu.classList.toggle("open");
-});
-
-// Menü schließen, wenn man auf Menüpunkt klickt (mobile only)
-mainMenu.querySelectorAll("button").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    mainMenu.classList.remove("open");
-  });
-});
