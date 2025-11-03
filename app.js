@@ -94,9 +94,6 @@ function updateAuthUI() {
   const authSection = document.getElementById("auth-section");
   if (currentUser) {
     authSection.innerHTML = `
-            <div class="user-info">
-                <span>👤 ${currentUser.email}</span>
-            </div>
             <button class="auth-btn logout" onclick="logout()">Logout</button>
         `;
   } else {
