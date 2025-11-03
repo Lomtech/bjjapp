@@ -2004,15 +2004,17 @@ function showNotification(message, type = "success") {
   setTimeout(() => notif.classList.remove("show"), 3000);
 }
 
-const menuIcon = document.getElementById("menu-icon");
+const authSection = document.getElementById("auth-section");
 const mainMenu = document.getElementById("main-menu");
 
-if (menuIcon && mainMenu) {
+function setupMenuToggle() {
+  const menuIcon = document.getElementById("menu-icon");
+  if (!menuIcon || !mainMenu) return;
+
   menuIcon.addEventListener("click", () => {
     mainMenu.classList.toggle("open");
   });
 
-  // Schließen, wenn ein Menüpunkt angeklickt wird (nur Mobile)
   mainMenu.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", () => {
       mainMenu.classList.remove("open");
@@ -2020,7 +2022,20 @@ if (menuIcon && mainMenu) {
   });
 }
 
-if (currentUser) {
-  menuIcon.style.display = "none"; // Standard-CSS (z. B. flex/block)
-  mainMenu.style.display = "none";
+function showMenuAfterLogin() {
+  mainMenu.classList.add("active");
+
+  authSection.innerHTML = `
+  <button class="menu-icon" id="menu-icon">☰</button>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+  `;
+
+  setupMenuToggle();
+
+  document.getElementById("logout-btn").addEventListener("click", () => {
+    authSection.innerHTML = "";
+    mainMenu.classList.remove("active");
+    mainMenu.classList.remove("open");
+    console.log("User logged out");
+  });
 }
