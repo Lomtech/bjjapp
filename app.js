@@ -2002,3 +2002,10 @@ function showNotification(message, type = "success") {
   if (type) notif.classList.add(type);
   setTimeout(() => notif.classList.remove("show"), 3000);
 }
+
+const menuIcon = document.getElementById("menu-icon");
+const mainMenu = document.getElementById("main-menu");
+
+menuIcon.addEventListener("click", () => {
+  mainMenu.classList.toggle("open");
+});
