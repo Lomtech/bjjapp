@@ -1369,36 +1369,71 @@ button[type="submit"]:hover,
 /* === DESKTOP: Menü standardmäßig offen, aber schließbar === */
 @media (min-width: 768px) {
   .main-menu {
-    max-height: 800px;
+    background: var(--white);
+    border: 1px solid var(--gray-lighter);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+    margin-top: 12px;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: max-height var(--transition-slow),
+      opacity var(--transition-slow), padding var(--transition-slow);
+    padding: 0 20px;
+  }
+  .main-menu.open {
+    max-height: 800px; /* genug für alle Einträge */
     opacity: 1;
     pointer-events: all;
     padding: 16px 20px;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    margin-top: 8px;
   }
   .main-menu ul {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: flex-start;
+    list-style: none;
+    margin: 0;
+    padding: 0;
   }
   .main-menu li {
+    border-bottom: 1px solid var(--gray-lighter);
+  }
+  .main-menu li:last-child {
     border-bottom: none;
-    flex: 0 1 auto;
   }
   .main-menu button {
-    border-radius: var(--border-radius-pill);
-    padding: 10px 18px;
-    justify-content: center;
-    min-width: auto;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    padding: 14px 20px;
+    font-size: 0.9375rem;
+    color: var(--black-soft);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--transition-base);
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   .main-menu button:hover {
     background: var(--gray-lightest);
+    color: var(--black);
   }
   .main-menu button.active {
     background: var(--black);
     color: var(--white);
+    font-weight: 600;
+  }
+  .main-menu .notification-badge {
+    background: #dc3545;
+    color: white;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
   }
 }
