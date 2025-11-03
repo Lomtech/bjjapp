@@ -97,7 +97,6 @@ function updateAuthUI() {
         `;
   } else {
     authSection.innerHTML = `
-
             <button class="auth-btn" onclick="openAuthModal('login')">Login</button>
             <button class="auth-btn" onclick="openAuthModal('signup')">Registrieren</button>
         `;
