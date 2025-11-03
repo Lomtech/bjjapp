@@ -93,8 +93,8 @@ async function initializeData() {
 function updateAuthUI() {
   const authSection = document.getElementById("auth-section");
   if (currentUser) {
-    // authSection.innerHTML = `
-    //     `;
+    authSection.innerHTML = `
+        `;
   } else {
     authSection.innerHTML = `
 
