@@ -1156,107 +1156,73 @@ function filterGyms() {
 // ================================================
 
 async function loadOpenMats() {
-  if (!supabase) {
-    console.warn("Supabase nicht initialisiert");
-    return;
+  if (!supabase) return;
+  const { data } = await supabase
+    .from("open_mats")
+    .select(
+      "*, gyms(name, city, street, postal_code, user_id), creator:created_by(email)"
+    )
+    .gte("event_date", new Date().toISOString())
+    .order("event_date", { ascending: true });
+
+  if (data) {
+    const list = document.getElementById("openmats-list");
+    list.innerHTML = data
+      .map((om) => {
+        const date = new Date(om.event_date);
+        // Jeder kann sein eigenes Open Mat bearbeiten/löschen
+        const canEdit = currentUser && om.created_by === currentUser.id;
+
+        return `
+                <div class="event-card">
+                    ${
+                      canEdit
+                        ? `
+                        <div class="event-actions">
+                            <button class="btn btn-small btn-danger" onclick="deleteOpenMat('${om.id}')">🗑️</button>
+                        </div>
+                    `
+                        : ""
+                    }
+                    <div class="event-date">${date.toLocaleDateString("de-DE", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}</div>
+                    <h3>${om.title}</h3>
+                    <p><strong>${om.gyms?.name || ""}</strong></p>
+                    ${om.gyms?.street ? `<p>📍 ${om.gyms.street}</p>` : ""}
+                    ${
+                      om.gyms?.city
+                        ? `<p>🏙️ ${om.gyms.postal_code || ""} ${
+                            om.gyms.city
+                          }</p>`
+                        : ""
+                    }
+                    ${om.description ? `<p>${om.description}</p>` : ""}
+                    <p>⏱️ Dauer: ${om.duration_minutes} Minuten</p>
+                    ${
+                      myProfile?.type === "athlete"
+                        ? `
+                        <button class="btn event-chat-btn" onclick="openOpenMatChat('${om.id}', '${om.title}')">
+                            💬 Chat beitreten
+                        </button>
+                    `
+                        : ""
+                    }
+                </div>
+            `;
+      })
+      .join("");
   }
 
-  try {
-    // Erstmal mit Datum-Filter versuchen
-    const nowIso = new Date().toISOString();
-    let res = await supabase
-      .from("open_mats")
-      .select(
-        "*, gyms(name, city, street, postal_code, latitude, longitude), creator:created_by(email)"
-      )
-      .gte("event_date", nowIso)
-      .order("event_date", { ascending: true });
-
-    console.log("loadOpenMats: first query", { nowIso, res });
-
-    // Falls keine Daten und kein Fehler: nochmal ohne Datum-Filter prüfen (Debug-Fallback)
-    if ((!res.data || res.data.length === 0) && !res.error) {
-      console.info(
-        "loadOpenMats: keine zukünftigen Events gefunden — teste ohne Datum-Filter"
-      );
-      res = await supabase
-        .from("open_mats")
-        .select(
-          "*, gyms(name, city, street, postal_code, latitude, longitude), creator:created_by(email)"
-        )
-        .order("event_date", { ascending: true });
-      console.log("loadOpenMats: fallback query", res);
-    }
-
-    if (res.error) {
-      console.error("Supabase open_mats error:", res.error);
-      document.getElementById(
-        "openmats-list"
-      ).innerHTML = `<p style="color:#c00">Fehler beim Laden der Events: ${res.error.message}</p>`;
-      return;
-    }
-
-    const data = res.data || [];
-
-    const list = document.getElementById("openmats-list");
-    if (!list) {
-      console.warn('Kein Element mit id="openmats-list" gefunden');
-      return;
-    }
-
-    if (data.length === 0) {
-      list.innerHTML = '<p style="color: #666;">Keine Open Mats gefunden</p>';
-    } else {
-      list.innerHTML = data
-        .map((om) => {
-          const date = new Date(om.event_date);
-          const canEdit = currentUser && om.created_by === currentUser.id;
-          return `
-            <div class="event-card">
-              ${
-                canEdit
-                  ? `<div class="event-actions"><button class="btn btn-small btn-danger" onclick="deleteOpenMat('${om.id}')">🗑️</button></div>`
-                  : ""
-              }
-              <div class="event-date">${date.toLocaleDateString("de-DE", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}</div>
-              <h3>${om.title}</h3>
-              <p><strong>${om.gyms?.name || ""}</strong></p>
-              ${om.gyms?.street ? `<p>📍 ${om.gyms.street}</p>` : ""}
-              ${
-                om.gyms?.city
-                  ? `<p>🏙️ ${om.gyms.postal_code || ""} ${om.gyms.city}</p>`
-                  : ""
-              }
-              ${om.description ? `<p>${om.description}</p>` : ""}
-              <p>⏱️ Dauer: ${om.duration_minutes} Minuten</p>
-              ${
-                myProfile?.type === "athlete"
-                  ? `<button class="btn event-chat-btn" onclick="openOpenMatChat('${om.id}', '${om.title}')">💬 Chat beitreten</button>`
-                  : ""
-              }
-            </div>
-          `;
-        })
-        .join("");
-    }
-
-    // Sichtbarkeit des Create-Formulars (falls vorhanden)
-    const createSection = document.getElementById("create-openmat-section");
-    if (createSection) {
-      createSection.style.display = currentUser ? "block" : "none";
-    }
-  } catch (err) {
-    console.error("loadOpenMats unexpected error:", err);
-    document.getElementById(
-      "openmats-list"
-    ).innerHTML = `<p style="color:#c00">Unerwarteter Fehler: ${err.message}</p>`;
+  // Event-Erstellungs-Formular für alle eingeloggten Benutzer anzeigen
+  const createSection = document.getElementById("create-openmat-section");
+  if (createSection) {
+    createSection.style.display = currentUser ? "block" : "none";
   }
 }
 
