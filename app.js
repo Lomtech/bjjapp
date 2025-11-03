@@ -130,7 +130,7 @@ function updateAuthUI() {
               </button>
             </li>
             <li><button onclick="switchTab('map', this)">Karte</button></li>
-            <li><button onclick="logout()">Logout</button></li>
+            <li><button class="auth-btn logout" onclick="logout()">Logout</button></li>
           </ul>
         </nav>
         `;
