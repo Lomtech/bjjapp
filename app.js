@@ -1166,7 +1166,7 @@ async function loadOpenMats() {
     .order("event_date", { ascending: true });
 
   if (data) {
-    displayOpenMats();
+    displayOpenMats(data);
   }
 
   // Event-Erstellungs-Formular für alle eingeloggten Benutzer anzeigen
