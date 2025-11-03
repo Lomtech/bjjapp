@@ -1153,77 +1153,6 @@ h1 {
   color: var(--white);
 }
 
-/* === MENU === */
-.menu-icon {
-  background: var(--black);
-  color: var(--white);
-  border: none;
-  font-size: 1.5rem;
-  padding: 10px 14px;
-  border-radius: var(--border-radius-sm);
-  cursor: pointer;
-  transition: background var(--transition-base);
-}
-
-.menu-icon:hover {
-  background: var(--black-medium);
-}
-
-.main-menu {
-  background: var(--white);
-  border: 1px solid var(--gray-lighter);
-  border-radius: var(--border-radius-md);
-  box-shadow: var(--shadow-sm);
-  margin-top: 12px;
-  overflow: hidden;
-  max-height: 0;
-  opacity: 0;
-  pointer-events: none;
-  transition: all var(--transition-slow);
-}
-
-.main-menu.open {
-  max-height: 500px;
-  opacity: 1;
-  pointer-events: all;
-}
-
-.main-menu ul {
-  list-style: none;
-}
-
-.main-menu li {
-  border-bottom: 1px solid var(--gray-lighter);
-}
-
-.main-menu li:last-child {
-  border-bottom: none;
-}
-
-.main-menu button {
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: none;
-  padding: 14px 20px;
-  font-size: 0.9375rem;
-  color: var(--black-soft);
-  font-weight: 500;
-  cursor: pointer;
-  transition: background var(--transition-base);
-}
-
-.main-menu button:hover {
-  background: var(--gray-lightest);
-  color: var(--black);
-}
-
-.main-menu button.active {
-  background: var(--black);
-  color: var(--white);
-  font-weight: 600;
-}
-
 /* === TABS / CONTENT === */
 .tab-content {
   display: none;
@@ -1378,7 +1307,8 @@ button[type="submit"]:hover,
   max-height: 0;
   opacity: 0;
   pointer-events: none;
-  transition: max-height var(--transition-slow), opacity var(--transition-slow), padding var(--transition-slow);
+  transition: max-height var(--transition-slow), opacity var(--transition-slow),
+    padding var(--transition-slow);
   padding: 0 20px;
 }
 .main-menu.open {
