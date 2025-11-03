@@ -93,9 +93,8 @@ async function initializeData() {
 function updateAuthUI() {
   const authSection = document.getElementById("auth-section");
   if (currentUser) {
-    authSection.innerHTML = `
-            <button class="auth-btn logout" onclick="logout()">Logout</button>
-        `;
+    // authSection.innerHTML = `
+    //     `;
   } else {
     authSection.innerHTML = `
 
