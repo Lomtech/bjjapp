@@ -1611,7 +1611,7 @@ async function openChat(friendId) {
         <div class="chat-messages" id="current-chat-messages"></div>
         <form class="chat-input-form" onsubmit="sendPrivateMessage(event, '${friendId}')">
             <input type="text" name="message" placeholder="Nachricht schreiben..." required />
-            <button type="submit">Senden</button>
+            <button type="submit">🥊</button>
         </form>
     `;
 
