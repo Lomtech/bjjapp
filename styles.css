@@ -657,7 +657,7 @@ button:disabled {
 .chat-window {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 0;
 }
 
 .chat-header {
@@ -667,13 +667,11 @@ button:disabled {
 }
 
 .chat-messages {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0; /* wichtig bei flex children */
   overflow-y: auto;
-  padding: 24px 20px;
+  padding: 16px;
   background: #fafafa;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
 }
 
 .message {
@@ -722,20 +720,27 @@ button:disabled {
 
 .chat-input-form {
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
   background: var(--gray-lightest);
   border-top: 1px solid var(--gray-lighter);
-  padding: 12px 20px;
+  flex-shrink: 0; /* bleibt sichtbar, wird nicht weggedrückt */
+  position: sticky; /* optional: hält das Feld am unteren Rand beim Scrollen */
+  bottom: 0;
+  z-index: 5;
 }
 
 .chat-input-form input {
-  flex: 1;
-  padding: 14px 18px;
-  border-radius: var(--border-radius-pill);
-  min-height: 48px;
-  background: var(--white);
+  flex: 1 1 auto;
+  min-width: 0; /* zwingend bei flex-Layouts, verhindert Überlauf */
+  height: 44px; /* kompakter, touch-freundlich */
+  padding: 8px 12px;
+  border-radius: 999px;
   border: 1px solid var(--gray-light);
+  background: var(--white);
   font-size: 1rem;
+  line-height: 1;
 }
 
 .chat-input-form input:focus {
@@ -745,24 +750,30 @@ button:disabled {
 }
 
 .chat-input-form button {
-  border: none;
-  padding: 0 16px;
-  min-width: 48px;
-  min-height: 48px;
-  display: flex;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.125rem;
   background: var(--black);
   color: #fff;
-  border-radius: var(--border-radius-full);
-  transition: all var(--transition-fast);
+  border: none;
+  font-size: 18px;
+  transition: transform var(--transition-fast);
 }
 
 .chat-input-form button:hover {
-  background: #000;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-sm);
+}
+
+.chat-input-form .send-text {
+  padding: 10px 16px;
+  border-radius: 24px;
+  width: auto;
 }
 
 /* === SMARTPHONE-OPTIMIERUNG (MOBILE-FIRST) === */
@@ -770,6 +781,24 @@ button:disabled {
   .search-row {
     grid-template-columns: 1fr 1fr;
   }
+  .chat-input-form {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .chat-input-form input {
+    height: 50px;
+    font-size: 1.05rem;
+  }
+  .chat-input-form button {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+}
+
+/* Schutz vor Chat-List Überschreiben: falls Chat-Liste oberhalb liegt */
+.chat-list {
+  z-index: 1;
 }
 
 @media (min-width: 640px) {
