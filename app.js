@@ -1166,57 +1166,7 @@ async function loadOpenMats() {
     .order("event_date", { ascending: true });
 
   if (data) {
-    const list = document.getElementById("openmats-list");
-    list.innerHTML = data
-      .map((om) => {
-        const date = new Date(om.event_date);
-        // Jeder kann sein eigenes Open Mat bearbeiten/löschen
-        const canEdit = currentUser && om.created_by === currentUser.id;
-
-        return `
-                <div class="event-card">
-                    ${
-                      canEdit
-                        ? `
-                        <div class="event-actions">
-                            <button class="btn btn-small btn-danger" onclick="deleteOpenMat('${om.id}')">🗑️</button>
-                        </div>
-                    `
-                        : ""
-                    }
-                    <div class="event-date">${date.toLocaleDateString("de-DE", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}</div>
-                    <h3>${om.title}</h3>
-                    <p><strong>${om.gyms?.name || ""}</strong></p>
-                    ${om.gyms?.street ? `<p>📍 ${om.gyms.street}</p>` : ""}
-                    ${
-                      om.gyms?.city
-                        ? `<p>🏙️ ${om.gyms.postal_code || ""} ${
-                            om.gyms.city
-                          }</p>`
-                        : ""
-                    }
-                    ${om.description ? `<p>${om.description}</p>` : ""}
-                    <p>⏱️ Dauer: ${om.duration_minutes} Minuten</p>
-                    ${
-                      myProfile?.type === "athlete"
-                        ? `
-                        <button class="btn event-chat-btn" onclick="openOpenMatChat('${om.id}', '${om.title}')">
-                            💬 Chat beitreten
-                        </button>
-                    `
-                        : ""
-                    }
-                </div>
-            `;
-      })
-      .join("");
+    displayOpenMats();
   }
 
   // Event-Erstellungs-Formular für alle eingeloggten Benutzer anzeigen
@@ -1224,6 +1174,83 @@ async function loadOpenMats() {
   if (createSection) {
     createSection.style.display = currentUser ? "block" : "none";
   }
+}
+
+function displayOpenMats(openMats) {
+  const list = document.getElementById("openmats-list");
+
+  if (!list) return;
+
+  if (openMats && openMats.length > 0) {
+    list.innerHTML = openMats
+      .map((om) => {
+        const date = new Date(om.event_date);
+        const canEdit = currentUser && om.created_by === currentUser.id;
+
+        return `
+          <div class="event-card">
+              ${
+                canEdit
+                  ? `
+                  <div class="event-actions">
+                      <button class="btn btn-small btn-danger" onclick="deleteOpenMat('${om.id}')">🗑️</button>
+                  </div>
+              `
+                  : ""
+              }
+              <div class="event-date">${date.toLocaleDateString("de-DE", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}</div>
+              <h3>${om.title}</h3>
+              <p><strong>${om.gyms?.name || ""}</strong></p>
+              ${om.gyms?.street ? `<p>📍 ${om.gyms.street}</p>` : ""}
+              ${
+                om.gyms?.city
+                  ? `<p>🏙️ ${om.gyms.postal_code || ""} ${om.gyms.city}</p>`
+                  : ""
+              }
+              ${om.description ? `<p>${om.description}</p>` : ""}
+              <p>⏱️ Dauer: ${om.duration_minutes} Minuten</p>
+              ${
+                myProfile?.type === "athlete"
+                  ? `
+                  <button class="btn event-chat-btn" onclick="openOpenMatChat('${
+                    om.id
+                  }', '${escapeHTML(om.title)}')">
+                      💬 Chat beitreten
+                  </button>
+              `
+                  : ""
+              }
+          </div>
+        `;
+      })
+      .join("");
+  } else {
+    list.innerHTML =
+      '<p style="color: #666;">Noch keine kommenden Open Mats</p>';
+  }
+
+  // Event-Erstellungs-Formular für eingeloggte Benutzer anzeigen/ausblenden
+  const createSection = document.getElementById("create-openmat-section");
+  if (createSection) {
+    createSection.style.display = currentUser ? "block" : "none";
+  }
+}
+
+// Kleine Hilfsfunktion, um Titel sicher in onclick-HTML einzubetten
+function escapeHTML(str = "") {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 document
