@@ -2021,8 +2021,6 @@ if (menuIcon && mainMenu) {
 }
 
 function updateMenuVisibility() {
-  const menuIcon = document.getElementById("menu-icon");
-  const mainMenu = document.getElementById("main-menu");
 
   if (menuIcon && mainMenu) {
     if (currentUser) {
