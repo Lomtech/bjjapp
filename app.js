@@ -2004,3 +2004,17 @@ function showNotification(message, type = "success") {
   setTimeout(() => notif.classList.remove("show"), 3000);
 }
 
+const menuIcon = document.getElementById("menu-icon");
+const logoutBtn = document.getElementById("logout-btn");
+
+// Menü öffnen/schließen
+menuIcon.addEventListener("click", () => {
+  mainMenu.classList.toggle("open");
+});
+
+// Menü schließen, wenn man auf Menüpunkt klickt (mobile only)
+mainMenu.querySelectorAll("button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    mainMenu.classList.remove("open");
+  });
+});
