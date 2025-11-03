@@ -819,6 +819,120 @@ button:disabled {
   }
 }
 
+/* === NAVIGATION === */
+.main-nav {
+  margin-top: 16px;
+  background: var(--white);
+  border: 1px solid var(--gray-lighter);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: max-height var(--transition-slow), opacity var(--transition-slow);
+}
+
+.main-nav ul {
+  list-style: none;
+}
+
+.main-nav li {
+  border-bottom: 1px solid var(--gray-lighter);
+}
+
+.main-nav li:last-child {
+  border-bottom: none;
+}
+
+.main-nav a {
+  display: block;
+  padding: 14px 20px;
+  text-decoration: none;
+  color: var(--black-soft);
+  font-weight: 500;
+  font-size: 0.9375rem;
+  transition: background var(--transition-base);
+}
+
+.main-nav a:hover {
+  background: var(--gray-lightest);
+  color: var(--black);
+}
+
+.main-nav a.active {
+  background: var(--black);
+  color: var(--white);
+  font-weight: 600;
+}
+
+/* === Menü-Toggle-Button (Mobile) === */
+.menu-toggle {
+  background: var(--black);
+  color: var(--white);
+  border: none;
+  font-size: 1.25rem;
+  padding: 10px 14px;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-base);
+}
+
+.menu-toggle:hover {
+  background: var(--black-medium);
+}
+
+/* Standardmäßig Menü auf Mobilgeräten ausgeblendet */
+.main-nav {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.main-nav.open {
+  max-height: 600px; /* genug für mehrere Einträge */
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* === Desktop-Ansicht === */
+@media (min-width: 768px) {
+  .menu-toggle {
+    display: none;
+  }
+
+  .main-nav {
+    display: block;
+    opacity: 1 !important;
+    max-height: none;
+    pointer-events: all;
+    box-shadow: none;
+    border: none;
+    background: transparent;
+    margin-top: 0;
+  }
+
+  .main-nav ul {
+    display: flex;
+    gap: 16px;
+  }
+
+  .main-nav li {
+    border: none;
+  }
+
+  .main-nav a {
+    padding: 10px 16px;
+    border-radius: var(--border-radius-pill);
+  }
+
+  .main-nav a.active {
+    background: var(--black);
+    color: var(--white);
+  }
+
+  .main-nav a:hover {
+    background: var(--gray-lightest);
+  }
+}
+
 @media (min-width: 768px) {
   .messages-container {
     height: calc(100dvh - 100px);
