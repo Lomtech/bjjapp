@@ -1129,6 +1129,12 @@ async function submitGymCreationForm(e) {
     }, 3000);
   }
 
+  // Gym-Erstellungsformular im Gyms-Tab verknüpfen
+  const gymCreationForm = document.getElementById("gym-creation-form-element");
+  if (gymCreationForm) {
+    gymCreationForm.addEventListener("submit", submitGymCreationForm);
+  }
+
   console.log("=== GYM FORM SUBMIT END ===");
 }
 
