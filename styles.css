@@ -790,15 +790,41 @@ button:disabled {
 
 @media (min-width: 768px) {
   .messages-container {
-    grid-template-columns: 300px 1fr;
-    height: 600px;
-    border-radius: var(--border-radius-md);
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--gray-lighter);
+    height: calc(100dvh - 100px);
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
   }
+
   .chat-list {
-    border-bottom: none;
-    border-right: 1px solid var(--gray-lighter);
+    max-height: 240px;
+    border-bottom: 1px solid var(--gray-lighter);
+  }
+
+  .chat-messages {
+    padding: 16px 12px;
+    gap: 14px;
+  }
+
+  .message {
+    max-width: 85%;
+  }
+
+  .chat-input-form {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .chat-input-form input {
+    font-size: 1.0625rem;
+    min-height: 56px;
+    padding: 16px 18px;
+  }
+
+  .chat-input-form button {
+    width: 52px;
+    height: 52px;
+    font-size: 1.375rem;
   }
 }
 
