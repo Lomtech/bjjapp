@@ -2005,10 +2005,3 @@ function showNotification(message, type = "success") {
   if (type) notif.classList.add(type);
   setTimeout(() => notif.classList.remove("show"), 3000);
 }
-
-const toggleBtn = document.querySelector(".menu-toggle");
-const nav = document.querySelector(".main-nav");
-
-toggleBtn.addEventListener("click", () => {
-  nav.classList.toggle("open");
-});

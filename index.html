@@ -14,24 +14,45 @@
     <div class="container">
       <header>
         <div class="header-top">
-          <h1>Mein Dashboard</h1>
-
-          <!-- Menü-Button (Mobile) -->
-          <button class="menu-toggle" aria-label="Menü öffnen oder schließen">
-            ☰
+          <h1>🥋 BJJ Community</h1>
+          <div class="auth-section" id="auth-section"></div>
+        </div>
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('dashboard', this)">
+            Dashboard
+          </button>
+          <button class="tab-btn" onclick="switchTab('profile', this)">
+            Mein Profil
+          </button>
+          <button class="tab-btn" onclick="switchTab('athletes', this)">
+            Athleten
+          </button>
+          <button class="tab-btn" onclick="switchTab('gyms', this)">
+            Gyms
+          </button>
+          <button class="tab-btn" onclick="switchTab('openmats', this)">
+            Open Mats
+          </button>
+          <button class="tab-btn" onclick="switchTab('friends', this)">
+            Freunde
+            <span
+              id="friend-requests-badge"
+              class="notification-badge"
+              style="display: none"
+            ></span>
+          </button>
+          <button class="tab-btn" onclick="switchTab('messages', this)">
+            Nachrichten
+            <span
+              id="messages-badge"
+              class="notification-badge"
+              style="display: none"
+            ></span>
+          </button>
+          <button class="tab-btn" onclick="switchTab('map', this)">
+            Karte
           </button>
         </div>
-
-        <!-- Navigationsmenü -->
-        <nav class="main-nav">
-          <ul>
-            <li><a href="#dashboard" class="active">Dashboard</a></li>
-            <li><a href="#athleten">Athleten</a></li>
-            <li><a href="#events">Events</a></li>
-            <li><a href="#nachrichten">Nachrichten</a></li>
-            <li><a href="#einstellungen">Einstellungen</a></li>
-          </ul>
-        </nav>
       </header>
 
       <!-- Welcome Screen für nicht-angemeldete User -->
