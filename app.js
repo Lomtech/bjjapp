@@ -820,6 +820,19 @@ async function loadGyms() {
   }
 }
 
+// Bei jedem Menü-Button-Klick
+document.querySelectorAll(".main-menu button").forEach((button) => {
+  button.addEventListener("click", function () {
+    // Entferne 'active' von allen Buttons
+    document.querySelectorAll(".main-menu button").forEach((btn) => {
+      btn.classList.remove("active");
+    });
+
+    // Füge 'active' nur zum geklickten Button hinzu
+    this.classList.add("active");
+  });
+});
+
 function displayGyms(gyms) {
   const list = document.getElementById("gyms-list");
   list.innerHTML = gyms
@@ -2017,3 +2030,22 @@ mainMenu.querySelectorAll("button").forEach((btn) => {
     mainMenu.classList.remove("open");
   });
 });
+
+// ================================================
+// COOKIE MANAGEMENT
+// ================================================
+
+function initCookieBanner() {
+  const cookieConsent = localStorage.getItem("cookieConsent");
+  if (!cookieConsent) {
+    document.getElementById("cookie-banner").classList.add("show");
+  }
+}
+
+function acceptCookies() {
+  localStorage.setItem("cookieConsent", "accepted");
+  document.getElementById("cookie-banner").classList.remove("show");
+}
+
+// Cookie Banner beim Laden initialisieren
+window.addEventListener("load", initCookieBanner);
