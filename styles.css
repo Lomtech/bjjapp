@@ -1418,11 +1418,11 @@ button[type="submit"]:hover,
   background: var(--gray-lightest);
   color: var(--black);
 }
-/* .main-menu button.active {
+.main-menu button.active {
   background: var(--black);
   color: var(--white);
   font-weight: 600;
-} */
+}
 .main-menu .notification-badge {
   background: #dc3545;
   color: white;
