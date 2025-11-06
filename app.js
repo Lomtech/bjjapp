@@ -17,18 +17,77 @@ let messagePollingInterval = null;
 // INITIALISIERUNG
 // ================================================
 
-(function init() {
-  if (
-    SUPABASE_URL &&
-    SUPABASE_ANON_KEY &&
-    SUPABASE_URL !== "SUPABASE_URL_PLACEHOLDER" &&
-    SUPABASE_ANON_KEY !== "SUPABASE_KEY_PLACEHOLDER"
-  ) {
-    initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
-  } else {
-    showNotification("⚠️ Umgebungsvariablen nicht gefunden", "warning");
+// ================================================
+// SESSION PERSISTENCE & RECOVERY
+// ================================================
+
+// Prüfe Session beim App-Start (wichtig für iOS PWA)
+async function checkAndRecoverSession() {
+  if (!supabase) return;
+
+  console.log("[Session] Prüfe gespeicherte Session...");
+
+  try {
+    // Versuche Session aus localStorage zu laden
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
+    if (error) {
+      console.error("[Session] Fehler beim Laden:", error);
+      return;
+    }
+
+    if (session) {
+      console.log("[Session] Gültige Session gefunden");
+      currentUser = session.user;
+
+      // Prüfe ob Token noch gültig ist
+      const expiresAt = session.expires_at;
+      const now = Math.floor(Date.now() / 1000);
+
+      if (expiresAt && expiresAt < now) {
+        console.log("[Session] Token abgelaufen, erneuere...");
+        const { data, error: refreshError } =
+          await supabase.auth.refreshSession();
+
+        if (refreshError) {
+          console.error("[Session] Refresh fehlgeschlagen:", refreshError);
+          await supabase.auth.signOut();
+          return;
+        }
+
+        console.log("[Session] Token erfolgreich erneuert");
+        currentUser = data.session.user;
+      }
+
+      await loadUserProfile();
+      updateAuthUI();
+      await initializeData();
+    } else {
+      console.log("[Session] Keine gültige Session gefunden");
+    }
+  } catch (error) {
+    console.error("[Session] Unerwarteter Fehler:", error);
   }
-})();
+}
+
+// Rufe diese Funktion auf wenn die App in den Vordergrund kommt
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState === "visible" && supabase) {
+    console.log("[App] App in den Vordergrund gekommen");
+    await checkAndRecoverSession();
+  }
+});
+
+// iOS-spezifisch: pageshow event
+window.addEventListener("pageshow", async (event) => {
+  if (event.persisted && supabase) {
+    console.log("[App] Seite aus Cache wiederhergestellt");
+    await checkAndRecoverSession();
+  }
+});
 
 // ================================================
 // GOOGLE OAUTH
@@ -64,43 +123,75 @@ async function signInWithGoogle() {
 
 // Erweitere die initSupabase Funktion um OAuth-Handling
 async function initSupabase(url, key) {
-  supabase = window.supabase.createClient(url, key);
+  // WICHTIG: persistSession auf true und storage explizit setzen
+  supabase = window.supabase.createClient(url, key, {
+    auth: {
+      persistSession: true,
+      storageKey: "bjj-community-auth",
+      storage: window.localStorage, // Explizit localStorage nutzen
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: "pkce", // Wichtig für OAuth (Google)
+    },
+  });
 
+  console.log("[Auth] Supabase Client initialisiert");
+
+  // Versuche Session wiederherzustellen
   const {
     data: { session },
+    error,
   } = await supabase.auth.getSession();
 
+  if (error) {
+    console.error("[Auth] Fehler beim Laden der Session:", error);
+  }
+
   if (session) {
+    console.log("[Auth] Session gefunden:", session.user.email);
     currentUser = session.user;
     await loadUserProfile();
     updateAuthUI();
     await initializeData();
   } else {
+    console.log("[Auth] Keine gespeicherte Session gefunden");
     updateAuthUI();
   }
 
+  // Auth State Listener
   supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log("Auth event:", event); // Zum Debugging
+    console.log("[Auth] State Change:", event, session?.user?.email);
 
     currentUser = session?.user || null;
 
     if (event === "SIGNED_IN") {
+      console.log("[Auth] User angemeldet:", session.user.email);
       await loadUserProfile();
       updateAuthUI();
       await initializeData();
-      closeModalForce(); // Schließe Modal nach erfolgreicher Anmeldung
+      closeModalForce();
       showNotification("Erfolgreich angemeldet!");
     } else if (event === "SIGNED_OUT") {
+      console.log("[Auth] User abgemeldet");
       myProfile = null;
       updateAuthUI();
       if (messagePollingInterval) {
         clearInterval(messagePollingInterval);
       }
+    } else if (event === "TOKEN_REFRESHED") {
+      console.log("[Auth] Token wurde erneuert");
+    } else if (event === "USER_UPDATED") {
+      console.log("[Auth] User-Daten wurden aktualisiert");
     }
   });
 }
 
 async function initializeData() {
+  console.log("[Data] Initialisiere Daten...");
+
+  // Starte Session Keep-Alive
+  startSessionKeepAlive();
+
   loadGymsForAthleteSelect();
   loadGymsForFilter();
   loadGymsForOpenMatSelect();
@@ -215,8 +306,33 @@ function toggleAuthMode(e) {
 }
 
 async function logout() {
-  await supabase.auth.signOut();
-  showNotification("Erfolgreich abgemeldet", "info");
+  if (!supabase) return;
+
+  try {
+    // Wichtig: scope auf 'local' setzen für vollständiges Logout
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+
+    if (error) {
+      console.error("[Auth] Logout-Fehler:", error);
+      showNotification("Fehler beim Abmelden: " + error.message, "error");
+    } else {
+      console.log("[Auth] Erfolgreich abgemeldet");
+
+      // Lösche alle lokalen Daten
+      currentUser = null;
+      myProfile = null;
+
+      // Stoppe Polling
+      if (messagePollingInterval) {
+        clearInterval(messagePollingInterval);
+      }
+
+      showNotification("Erfolgreich abgemeldet", "info");
+      updateAuthUI();
+    }
+  } catch (error) {
+    console.error("[Auth] Unerwarteter Logout-Fehler:", error);
+  }
 }
 
 document.getElementById("auth-form").addEventListener("submit", async (e) => {
@@ -2233,3 +2349,133 @@ function closeIOSHint() {
 
 // Zeige Hint nach 2 Sekunden
 setTimeout(showIOSInstallHint, 2000);
+
+// ================================================
+// SESSION PERSISTENCE & RECOVERY
+// ================================================
+
+// Prüfe Session beim App-Start (wichtig für iOS PWA)
+async function checkAndRecoverSession() {
+  if (!supabase) return;
+
+  console.log("[Session] Prüfe gespeicherte Session...");
+
+  try {
+    // Versuche Session aus localStorage zu laden
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
+    if (error) {
+      console.error("[Session] Fehler beim Laden:", error);
+      return;
+    }
+
+    if (session) {
+      console.log("[Session] Gültige Session gefunden");
+      currentUser = session.user;
+
+      // Prüfe ob Token noch gültig ist
+      const expiresAt = session.expires_at;
+      const now = Math.floor(Date.now() / 1000);
+
+      if (expiresAt && expiresAt < now) {
+        console.log("[Session] Token abgelaufen, erneuere...");
+        const { data, error: refreshError } =
+          await supabase.auth.refreshSession();
+
+        if (refreshError) {
+          console.error("[Session] Refresh fehlgeschlagen:", refreshError);
+          await supabase.auth.signOut();
+          return;
+        }
+
+        console.log("[Session] Token erfolgreich erneuert");
+        currentUser = data.session.user;
+      }
+
+      await loadUserProfile();
+      updateAuthUI();
+      await initializeData();
+    } else {
+      console.log("[Session] Keine gültige Session gefunden");
+    }
+  } catch (error) {
+    console.error("[Session] Unerwarteter Fehler:", error);
+  }
+}
+
+// Rufe diese Funktion auf wenn die App in den Vordergrund kommt
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState === "visible" && supabase) {
+    console.log("[App] App in den Vordergrund gekommen");
+    await checkAndRecoverSession();
+  }
+});
+
+// iOS-spezifisch: pageshow event
+window.addEventListener("pageshow", async (event) => {
+  if (event.persisted && supabase) {
+    console.log("[App] Seite aus Cache wiederhergestellt");
+    await checkAndRecoverSession();
+  }
+});
+
+// ================================================
+// SESSION KEEP-ALIVE
+// ================================================
+
+let sessionKeepAliveInterval = null;
+
+function startSessionKeepAlive() {
+  // Prüfe alle 5 Minuten ob Session noch gültig ist
+  sessionKeepAliveInterval = setInterval(async () => {
+    if (!supabase || !currentUser) {
+      if (sessionKeepAliveInterval) {
+        clearInterval(sessionKeepAliveInterval);
+      }
+      return;
+    }
+
+    console.log("[Session] Keep-alive check...");
+
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
+    if (error || !session) {
+      console.log("[Session] Session ungültig, leite zu Login...");
+      currentUser = null;
+      updateAuthUI();
+      if (sessionKeepAliveInterval) {
+        clearInterval(sessionKeepAliveInterval);
+      }
+      return;
+    }
+
+    // Prüfe ob Token bald abläuft (innerhalb der nächsten 10 Minuten)
+    const expiresAt = session.expires_at;
+    const now = Math.floor(Date.now() / 1000);
+    const tenMinutes = 10 * 60;
+
+    if (expiresAt && expiresAt - now < tenMinutes) {
+      console.log("[Session] Token läuft bald ab, erneuere...");
+      const { error: refreshError } = await supabase.auth.refreshSession();
+
+      if (refreshError) {
+        console.error("[Session] Refresh fehlgeschlagen:", refreshError);
+      } else {
+        console.log("[Session] Token erfolgreich erneuert");
+      }
+    }
+  }, 5 * 60 * 1000); // Alle 5 Minuten
+}
+
+function stopSessionKeepAlive() {
+  if (sessionKeepAliveInterval) {
+    clearInterval(sessionKeepAliveInterval);
+    sessionKeepAliveInterval = null;
+  }
+}
