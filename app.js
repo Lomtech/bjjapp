@@ -41,7 +41,7 @@ function loadActiveTab() {
   ) {
     initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
   } else {
-    showNotification("⚠️ Umgebungsvariablen nicht gefunden", "warning");
+    showNotification("⚠️ Umgebungsvariablen nicht gefunden oder fehlerhaft", "warning");
   }
 })();
 
