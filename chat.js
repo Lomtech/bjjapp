@@ -52,6 +52,52 @@ let sessionKeepAliveInterval = null;
   }
 })();
 
+// ================================================
+// TEXTAREA AUTO-RESIZE & SEND BUTTON VISIBILITY
+// ================================================
+
+document.addEventListener("DOMContentLoaded", () => {
+  const textarea = document.getElementById("message-input");
+  const sendBtn = document.querySelector(".send-btn");
+  const inputContainer = document.querySelector(".chat-page-input");
+
+  const adjustHeight = () => {
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+    inputContainer.style.minHeight = `${Math.max(
+      56,
+      textarea.scrollHeight + 24
+    )}px`;
+  };
+
+  const toggleSendBtn = () => {
+    if (textarea.value.trim()) {
+      sendBtn.classList.add("visible");
+    } else {
+      sendBtn.classList.remove("visible");
+    }
+  };
+
+  textarea.addEventListener("input", () => {
+    adjustHeight();
+    toggleSendBtn();
+  });
+
+  // Enter ohne Shift = senden
+  textarea.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      document
+        .getElementById("chat-page-form")
+        .dispatchEvent(new Event("submit"));
+    }
+  });
+
+  // Initial
+  adjustHeight();
+  toggleSendBtn();
+});
+
 async function initSupabase() {
   try {
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
