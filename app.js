@@ -2214,3 +2214,51 @@ window.addEventListener("appinstalled", () => {
 if (window.matchMedia("(display-mode: standalone)").matches) {
   console.log("✅ App läuft im Standalone-Modus (installiert)");
 }
+
+// ================================================
+// iOS INSTALLATION HINT
+// ================================================
+
+function showIOSInstallHint() {
+  // Nur auf iOS Safari zeigen, wenn nicht bereits installiert
+  const isIOS =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isInStandaloneMode = window.navigator.standalone === true;
+  const hasSeenHint = localStorage.getItem("ios-install-hint-seen");
+
+  if (isIOS && !isInStandaloneMode && !hasSeenHint) {
+    const hintDiv = document.createElement("div");
+    hintDiv.className = "ios-install-hint";
+    hintDiv.innerHTML = `
+      <div class="ios-hint-content">
+        <div class="ios-hint-icon">📱</div>
+        <div class="ios-hint-text">
+          <strong>App installieren</strong>
+          <p>Tippe auf <span style="font-size: 1.2em;">⬆️</span> und dann auf "Zum Home-Bildschirm"</p>
+        </div>
+        <button class="ios-hint-close" onclick="closeIOSHint()">✕</button>
+      </div>
+    `;
+
+    document.body.appendChild(hintDiv);
+
+    // Auto-hide nach 10 Sekunden
+    setTimeout(() => {
+      closeIOSHint();
+    }, 10000);
+  }
+}
+
+function closeIOSHint() {
+  const hint = document.querySelector(".ios-install-hint");
+  if (hint) {
+    hint.style.animation = "slideOutDown 0.5s ease";
+    setTimeout(() => {
+      hint.remove();
+      localStorage.setItem("ios-install-hint-seen", "true");
+    }, 500);
+  }
+}
+
+// Zeige Hint nach 2 Sekunden
+setTimeout(showIOSInstallHint, 2000);
