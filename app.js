@@ -31,7 +31,7 @@ function loadActiveTab() {
   return savedTab || "dashboard";
 }
 
-(function init() {
+function init() {
   if (
     SUPABASE_URL &&
     SUPABASE_ANON_KEY &&
@@ -42,7 +42,7 @@ function loadActiveTab() {
   } else {
     showNotification("⚠️ Umgebungsvariablen nicht gefunden", "warning");
   }
-})();
+}
 
 async function initSupabase(url, key) {
   try {
