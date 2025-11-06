@@ -32,14 +32,23 @@ let sessionKeepAliveInterval = null;
     return;
   }
 
-  // Supabase initialisieren
+  // Besser:
   if (
-    SUPABASE_URL.includes("PLACEHOLDER") ||
-    SUPABASE_ANON_KEY.includes("PLACEHOLDER")
+    SUPABASE_URL &&
+    SUPABASE_ANON_KEY &&
+    !SUPABASE_URL.includes("PLACEHOLDER") &&
+    !SUPABASE_ANON_KEY.includes("PLACEHOLDER")
   ) {
     await initSupabase();
   } else {
-    showNotification("⚠️ Umgebungsvariablen nicht gefunden", "warning");
+    showNotification("⚠️ Ungültige oder fehlende Umgebungsvariablen", "error");
+    console.error("SUPABASE_URL:", SUPABASE_URL);
+    console.error(
+      "SUPABASE_ANON_KEY:",
+      SUPABASE_ANON_KEY
+        ? "vorhanden (Länge: " + SUPABASE_ANON_KEY.length + ")"
+        : "fehlt"
+    );
   }
 })();
 
