@@ -2121,20 +2121,22 @@ async function initGoogleMap() {
           lng: parseFloat(gym.longitude),
         };
 
-        const marker = new google.maps.Marker({
+        // Hilfsfunktion für SVG-Content
+        function createGymPin() {
+          const div = document.createElement("div");
+          div.innerHTML = `
+    <svg width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="15" cy="15" r="12" fill="#000000" stroke="#ffffff" stroke-width="3"/>
+    </svg>
+  `;
+          return div.firstElementChild;
+        }
+
+        const marker = new google.maps.marker.AdvancedMarkerElement({
           position: position,
           map: googleMap,
           title: gym.name,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 12,
-            fillColor: "#000000",
-            fillOpacity: 1,
-            strokeColor: "#ffffff",
-            strokeWeight: 3,
-          },
-          animation: google.maps.Animation.DROP,
-          // Zusätzliche Daten für Routenplanung
+          content: createGymPin(),
           gymData: gym,
         });
 
