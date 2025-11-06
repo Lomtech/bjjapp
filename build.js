@@ -22,15 +22,16 @@ fs.copyFileSync("agb.html", "dist/agb.html");
 console.log("🎨 Kopiere CSS...");
 fs.copyFileSync("styles.css", "dist/styles.css");
 
-// Kopiere Web App Manifest
-console.log("📱 Kopiere Manifest...");
+// Kopiere PWA-Dateien
+console.log("📱 Kopiere PWA-Dateien...");
 if (fs.existsSync("manifest.json")) {
   fs.copyFileSync("manifest.json", "dist/manifest.json");
-} else {
-  console.warn("⚠️  manifest.json nicht gefunden - wird übersprungen");
+}
+if (fs.existsSync("service-worker.js")) {
+  fs.copyFileSync("service-worker.js", "dist/service-worker.js");
 }
 
-// Kopiere Icons (falls vorhanden)
+// Kopiere Icons
 console.log("🎯 Kopiere Icons...");
 if (fs.existsSync("icons")) {
   const iconFiles = [
@@ -53,40 +54,31 @@ if (fs.existsSync("icons")) {
     }
   });
 
-  if (copiedIcons > 0) {
-    console.log(`   ✓ ${copiedIcons} Icon-Datei(en) kopiert`);
-  } else {
-    console.warn("   ⚠️  Keine Icon-Dateien gefunden");
-  }
-} else {
-  console.warn("   ⚠️  icons/ Ordner nicht gefunden");
+  console.log(`   ✓ ${copiedIcons} Icon-Datei(en) kopiert`);
 }
 
-// Lese app.js und ersetze Platzhalter
+// Verarbeite app.js
 console.log("⚙️  Verarbeite JavaScript...");
 const js = fs.readFileSync("app.js", "utf8");
 const resultJs = js
   .replace("SUPABASE_URL_PLACEHOLDER", process.env.SUPABASE_URL || "")
   .replace("SUPABASE_KEY_PLACEHOLDER", process.env.SUPABASE_ANON_KEY || "");
 
-// Schreibe app.js in dist
 fs.writeFileSync("dist/app.js", resultJs);
 
 // Zusammenfassung
-console.log("\n✅ Build completed successfully!");
-console.log("\n📊 Status:");
-console.log("   HTML-Dateien: ✓");
+console.log("\n✅ PWA Build completed!");
+console.log("\n📊 Build-Inhalt:");
+console.log("   HTML: ✓");
 console.log("   CSS: ✓");
 console.log("   JavaScript: ✓");
+console.log(
+  "   Service Worker:",
+  fs.existsSync("service-worker.js") ? "✓" : "✗"
+);
 console.log("   Manifest:", fs.existsSync("manifest.json") ? "✓" : "✗");
 console.log("   Icons:", fs.existsSync("icons") ? "✓" : "✗");
 console.log("\n🔐 Umgebungsvariablen:");
-console.log(
-  "   SUPABASE_URL:",
-  process.env.SUPABASE_URL ? "✓ gesetzt" : "✗ fehlt"
-);
-console.log(
-  "   SUPABASE_ANON_KEY:",
-  process.env.SUPABASE_ANON_KEY ? "✓ gesetzt" : "✗ fehlt"
-);
-console.log("\n📦 Deployment bereit in ./dist/\n");
+console.log("   SUPABASE_URL:", process.env.SUPABASE_URL ? "✓" : "✗");
+console.log("   SUPABASE_ANON_KEY:", process.env.SUPABASE_ANON_KEY ? "✓" : "✗");
+console.log("\n📦 PWA bereit für Deployment!\n");

@@ -1,24 +1,64 @@
 {
   "name": "BJJ Community Platform",
   "short_name": "BJJ Community",
-  "description": "Vernetze dich mit BJJ Athleten, finde Gyms und Open Mat Events",
+  "description": "Vernetze dich mit BJJ Athleten, finde Gyms und Open Mat Events in deiner Nähe",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
   "orientation": "portrait-primary",
+  "categories": ["sports", "social", "lifestyle"],
+  "dir": "ltr",
+  "lang": "de",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Open Mats",
+      "short_name": "Events",
+      "description": "Finde kommende Open Mat Events",
+      "url": "/?tab=openmats",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Nachrichten",
+      "short_name": "Chat",
+      "description": "Öffne deine Nachrichten",
+      "url": "/?tab=messages",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow"
     }
   ]
 }

@@ -1152,3 +1152,28 @@ button:disabled {
     justify-content: center;
   }
 }
+
+/* PWA Install Button */
+.install-btn {
+  animation: slideInUp 0.5s ease;
+  white-space: nowrap;
+  width: auto !important;
+}
+
+@keyframes slideOutDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(120px);
+    opacity: 0;
+  }
+}
+
+/* iOS Safari spezifisch */
+@supports (-webkit-touch-callout: none) {
+  .install-btn {
+    display: none; /* iOS zeigt eigenen Install-Banner */
+  }
+}
