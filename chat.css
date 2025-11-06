@@ -250,8 +250,8 @@
 
 /* Send-Button */
 .send-btn {
-  width: 10px;
-  height: 10px; /* iPhone-konform */
+  width: 5px;
+  height: 5px; /* iPhone-konform */
   border-radius: 50%;
   background: linear-gradient(135deg, #667eea, #764ba2); /* Passend zum Theme */
   color: white;
