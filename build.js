@@ -67,7 +67,7 @@ const resultJs = js
 
 fs.writeFileSync("dist/app.js", resultJs);
 
-// Zusammenfassung
+// Zusammenfassungs
 console.log("\n✅ PWA Build completed!");
 console.log("\n📊 Build-Inhalt:");
 console.log("   HTML-Seiten:", htmlFiles.length);
