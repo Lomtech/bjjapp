@@ -21,17 +21,17 @@ let googleMap = null;
 // INITIALISIERUNG
 // ================================================
 
-function saveActiveTab(tabName) {
-  localStorage.setItem("activeTab", tabName);
-  currentActiveTab = tabName;
-}
+// function saveActiveTab(tabName) {
+//   localStorage.setItem("activeTab", tabName);
+//   currentActiveTab = tabName;
+// }
 
-function loadActiveTab() {
-  const savedTab = localStorage.getItem("activeTab");
-  return savedTab || "dashboard";
-}
+// function loadActiveTab() {
+//   const savedTab = localStorage.getItem("activeTab");
+//   return savedTab || "dashboard";
+// }
 
-function init() {
+(function init() {
   if (
     SUPABASE_URL &&
     SUPABASE_ANON_KEY &&
@@ -42,7 +42,7 @@ function init() {
   } else {
     showNotification("⚠️ Umgebungsvariablen nicht gefunden", "warning");
   }
-}
+})();
 
 async function initSupabase(url, key) {
   try {
