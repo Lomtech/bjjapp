@@ -1,6 +1,8 @@
 // Umgebungsvariablen - werden von build.js ersetzt
 const SUPABASE_URL = "SUPABASE_URL_PLACEHOLDER";
 const SUPABASE_ANON_KEY = "SUPABASE_KEY_PLACEHOLDER";
+// const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Am Anfang mit anderen Konstanten
+const GOOGLE_MAPS_API_KEY = "AIzaSyApjVqlhwhzIT1U4NOHHf3eDp72dBhOiVA"; // Am Anfang mit anderen Konstanten
 
 let supabase = null;
 let map = null;
@@ -13,10 +15,22 @@ let currentChatPartner = null;
 let currentOpenMatChat = null;
 let messagePollingInterval = null;
 let sessionKeepAliveInterval = null;
+let currentActiveTab = "dashboard";
+let googleMap = null;
 
 // ================================================
 // INITIALISIERUNG
 // ================================================
+
+function saveActiveTab(tabName) {
+  localStorage.setItem("activeTab", tabName);
+  currentActiveTab = tabName;
+}
+
+function loadActiveTab() {
+  const savedTab = localStorage.setItem("activeTab");
+  return savedTab || "dashboard";
+}
 
 (function init() {
   if (
@@ -55,6 +69,8 @@ async function initSupabase(url, key) {
       await initializeData();
     } else {
       updateAuthUI();
+      const savedTab = loadActiveTab();
+      switchTab(savedTab);
     }
 
     supabase.auth.onAuthStateChange(async (event, session) => {
@@ -64,6 +80,8 @@ async function initSupabase(url, key) {
         updateAuthUI();
         await initializeData();
         closeModalForce();
+        const savedTab = loadActiveTab();
+        switchTab(savedTab);
         showNotification("Erfolgreich angemeldet!");
       } else if (event === "SIGNED_OUT") {
         myProfile = null;
@@ -1346,6 +1364,20 @@ async function loadOpenMats() {
   }
 }
 
+function toggleOpenMatForm() {
+  const container = document.getElementById("openmat-form-container");
+  const btn = document.getElementById("toggle-openmat-btn");
+
+  if (container.style.display === "none" || !container.style.display) {
+    container.style.display = "block";
+    btn.textContent = "➖ Formular schließen";
+    container.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } else {
+    container.style.display = "none";
+    btn.textContent = "➕ Neues Open Mat Event erstellen";
+  }
+}
+
 function displayOpenMats(openMats) {
   const list = document.getElementById("openmats-list");
 
@@ -1713,24 +1745,24 @@ async function loadChats() {
     list.innerHTML = chatItems
       .map(
         (item) => `
-            <div class="chat-item ${
-              currentChatPartner === item.friend.id ? "active" : ""
-            }" onclick="openChat('${item.friend.id}')">
-                <div class="name">
-                    ${item.friend.name}
-                    ${
-                      item.unreadCount > 0
-                        ? `<span class="unread-badge">${item.unreadCount}</span>`
-                        : ""
-                    }
-                </div>
-                ${
-                  item.lastMsg
-                    ? `<div class="last-message">${item.lastMsg.message}</div>`
-                    : ""
-                }
-            </div>
-        `
+      <div class="chat-item ${
+        currentChatPartner === item.friend.id ? "active" : ""
+      }" onclick="openChat('${item.friend.id}')">
+        <div class="name">
+          ${item.friend.name}
+          ${
+            item.unreadCount > 0
+              ? `<span class="unread-badge">${item.unreadCount}</span>`
+              : ""
+          }
+        </div>
+        ${
+          item.lastMsg
+            ? `<div class="last-message">${item.lastMsg.message}</div>`
+            : ""
+        }
+      </div>
+    `
       )
       .join("");
   } else {
@@ -1740,29 +1772,12 @@ async function loadChats() {
 }
 
 async function openChat(friendId) {
-  currentChatPartner = friendId;
-  switchTab("messages");
+  // Speichere Chat-Partner in localStorage
+  localStorage.setItem("currentChatPartner", friendId);
+  localStorage.setItem("returnToTab", "messages");
 
-  const { data: friend } = await supabase
-    .from("athletes")
-    .select("id, name, image_url")
-    .eq("id", friendId)
-    .single();
-
-  const chatWindow = document.getElementById("chat-window");
-  chatWindow.innerHTML = `
-        <div class="chat-header">
-            <h3>${friend.name}</h3>
-        </div>
-        <div class="chat-messages" id="current-chat-messages"></div>
-        <form class="chat-input-form" onsubmit="sendPrivateMessage(event, '${friendId}')">
-            <input type="text" name="message" placeholder="Nachricht schreiben..." required />
-            <button type="submit">🥊</button>
-        </form>
-    `;
-
-  await loadMessages(friendId);
-  loadChats();
+  // Weiterleitung zur Chat-Seite
+  window.location.href = `chat.html?friend=${friendId}`;
 }
 
 async function loadMessages(friendId) {
@@ -2009,41 +2024,116 @@ async function loadDashboard() {
 // ================================================
 
 async function initMap() {
+  return initGoogleMap(); // Neue Funktion aufrufen
+}
+
+async function initGoogleMap() {
   if (!supabase) return;
 
-  if (map) map.remove();
+  // Prüfe ob Google Maps geladen ist
+  if (typeof google === "undefined" || !google.maps) {
+    console.error("Google Maps API nicht geladen");
+    showNotification("Karte konnte nicht geladen werden", "error");
+    return;
+  }
 
-  map = L.map("map").setView([51.1657, 10.4515], 6);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "© OpenStreetMap",
-  }).addTo(map);
+  const mapElement = document.getElementById("map");
+  if (!mapElement) return;
 
+  // Entferne alte Map falls vorhanden
+  if (googleMap) {
+    googleMap = null;
+  }
+
+  // Google Map erstellen
+  googleMap = new google.maps.Map(mapElement, {
+    center: { lat: 51.1657, lng: 10.4515 },
+    zoom: 6,
+    styles: [
+      {
+        featureType: "poi.business",
+        stylers: [{ visibility: "off" }],
+      },
+    ],
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: true,
+    zoomControl: true,
+  });
+
+  const bounds = new google.maps.LatLngBounds();
+  let hasMarkers = false;
+
+  // Gyms laden und Marker setzen
   const { data: gyms } = await supabase.from("gyms").select("*");
+
+  if (gyms && gyms.length > 0) {
+    gyms.forEach((gym) => {
+      if (gym.latitude && gym.longitude) {
+        const position = {
+          lat: parseFloat(gym.latitude),
+          lng: parseFloat(gym.longitude),
+        };
+
+        const marker = new google.maps.Marker({
+          position: position,
+          map: googleMap,
+          title: gym.name,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: "#000000",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+          animation: google.maps.Animation.DROP,
+        });
+
+        const infoWindow = new google.maps.InfoWindow({
+          content: `
+            <div style="padding: 12px; font-family: system-ui;">
+              <h3 style="margin: 0 0 8px 0; font-size: 1.1em;">${gym.name}</h3>
+              <p style="margin: 4px 0; color: #666;">${gym.street || ""}</p>
+              <p style="margin: 4px 0; color: #666;">${gym.postal_code || ""} ${
+            gym.city || ""
+          }</p>
+              ${
+                gym.phone ? `<p style="margin: 4px 0;">📞 ${gym.phone}</p>` : ""
+              }
+              ${
+                gym.website
+                  ? `<p style="margin: 4px 0;"><a href="${gym.website}" target="_blank">🌐 Website</a></p>`
+                  : ""
+              }
+            </div>
+          `,
+        });
+
+        marker.addListener("click", () => {
+          infoWindow.open(googleMap, marker);
+        });
+
+        bounds.extend(position);
+        hasMarkers = true;
+      }
+    });
+  }
+
+  // Open Mats laden und Marker setzen
   const { data: openMats } = await supabase
     .from("open_mats")
     .select("*, gyms(name, city, street, postal_code, latitude, longitude)")
     .gte("event_date", new Date().toISOString());
 
-  let bounds = [];
-
-  if (gyms && gyms.length > 0) {
-    gyms.forEach((gym) => {
-      if (gym.latitude && gym.longitude) {
-        L.marker([gym.latitude, gym.longitude])
-          .addTo(map)
-          .bindPopup(
-            `<strong>${gym.name}</strong><br>${gym.street || ""}<br>${
-              gym.postal_code || ""
-            } ${gym.city || ""}`
-          );
-        bounds.push([gym.latitude, gym.longitude]);
-      }
-    });
-  }
-
   if (openMats && openMats.length > 0) {
     openMats.forEach((om) => {
       if (om.gyms?.latitude && om.gyms?.longitude) {
+        const position = {
+          lat: parseFloat(om.gyms.latitude),
+          lng: parseFloat(om.gyms.longitude),
+        };
+
         const date = new Date(om.event_date).toLocaleDateString("de-DE", {
           day: "2-digit",
           month: "2-digit",
@@ -2051,28 +2141,70 @@ async function initMap() {
           hour: "2-digit",
           minute: "2-digit",
         });
-        L.marker([om.gyms.latitude, om.gyms.longitude], {
-          icon: L.divIcon({
-            className: "custom-icon",
-            html: "📅",
-            iconSize: [30, 30],
-          }),
-        })
-          .addTo(map)
-          .bindPopup(
-            `<strong>${om.title}</strong><br>${om.gyms.name}<br>${
-              om.gyms.street || ""
-            }<br>${om.gyms.postal_code || ""} ${
-              om.gyms.city || ""
-            }<br>📅 ${date}`
-          );
-        bounds.push([om.gyms.latitude, om.gyms.longitude]);
+
+        // Custom Event Marker
+        const marker = new google.maps.Marker({
+          position: position,
+          map: googleMap,
+          title: om.title,
+          icon: {
+            url:
+              "data:image/svg+xml;charset=UTF-8," +
+              encodeURIComponent(`
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+                <circle cx="20" cy="20" r="18" fill="#dc3545" stroke="white" stroke-width="2"/>
+                <text x="20" y="28" font-size="20" text-anchor="middle" fill="white">📅</text>
+              </svg>
+            `),
+            scaledSize: new google.maps.Size(40, 40),
+            anchor: new google.maps.Point(20, 20),
+          },
+          animation: google.maps.Animation.DROP,
+        });
+
+        const infoWindow = new google.maps.InfoWindow({
+          content: `
+            <div style="padding: 12px; font-family: system-ui;">
+              <h3 style="margin: 0 0 8px 0; font-size: 1.1em; color: #dc3545;">📅 ${
+                om.title
+              }</h3>
+              <p style="margin: 4px 0;"><strong>${om.gyms.name}</strong></p>
+              <p style="margin: 4px 0; color: #666;">${om.gyms.street || ""}</p>
+              <p style="margin: 4px 0; color: #666;">${
+                om.gyms.postal_code || ""
+              } ${om.gyms.city || ""}</p>
+              <p style="margin: 8px 0 4px 0;"><strong>📅 ${date}</strong></p>
+              <p style="margin: 4px 0;">⏱️ ${om.duration_minutes} Minuten</p>
+              ${
+                om.description
+                  ? `<p style="margin: 8px 0 0 0; color: #666; font-size: 0.9em;">${om.description}</p>`
+                  : ""
+              }
+            </div>
+          `,
+        });
+
+        marker.addListener("click", () => {
+          infoWindow.open(googleMap, marker);
+        });
+
+        bounds.extend(position);
+        hasMarkers = true;
       }
     });
   }
 
-  if (bounds.length > 0) {
-    map.fitBounds(bounds, { padding: [50, 50] });
+  // Map an Marker anpassen
+  if (hasMarkers) {
+    googleMap.fitBounds(bounds);
+
+    // Verhindere zu starkes Zoom bei einzelnem Marker
+    const listener = google.maps.event.addListener(googleMap, "idle", () => {
+      if (googleMap.getZoom() > 15) {
+        googleMap.setZoom(15);
+      }
+      google.maps.event.removeListener(listener);
+    });
   }
 }
 
@@ -2081,6 +2213,7 @@ async function initMap() {
 // ================================================
 
 function switchTab(tabName, eventTarget = null) {
+  saveActiveTab(tabName);
   if (!currentUser) return;
 
   document

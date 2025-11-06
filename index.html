@@ -10,22 +10,18 @@
       content="Die BJJ Community Plattform. Finde Gyms, vernetze dich mit Athleten und entdecke Open Mat Events in deiner Nähe."
     />
 
-    <head>
-      <!-- Bestehende Meta-Tags ... -->
+    <!-- PWA Meta Tags -->
+    <meta name="application-name" content="BJJ Community" />
+    <meta name="format-detection" content="telephone=no" />
 
-      <!-- PWA Meta Tags -->
-      <meta name="application-name" content="BJJ Community" />
-      <meta name="format-detection" content="telephone=no" />
+    <!-- iOS Splash Screens (optional aber empfohlen) -->
+    <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png" />
 
-      <!-- iOS Splash Screens (optional aber empfohlen) -->
-      <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png" />
-
-      <!-- Verhindere Zoom auf Inputs (bessere Mobile UX) -->
-      <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes"
-      />
-    </head>
+    <!-- Verhindere Zoom auf Inputs (bessere Mobile UX) -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes"
+    />
 
     <!-- Favicon für Browser -->
     <link
@@ -65,10 +61,10 @@
     <!-- Web App Manifest -->
     <link rel="manifest" href="/manifest.json" />
     <title>BJJ Community Platform</title>
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    />
+
+    <!-- Google Maps statt Leaflet -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyApjVqlhwhzIT1U4NOHHf3eDp72dBhOiVA&libraries=places"></script>
+
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -553,60 +549,92 @@
         <div id="gyms-list" class="profiles-grid"></div>
       </div>
 
-      <!-- OPEN MATS TAB - MIT ANGEPASSTEM FORMULAR -->
+      <!-- OPEN MATS TAB - MIT TOGGLE BUTTON -->
       <div id="openmats-tab" class="tab-content">
         <h2>📅 Open Mat Events</h2>
 
         <div id="create-openmat-section" style="display: none">
-          <h3>Neues Event erstellen</h3>
-          <form id="openmat-form">
-            <!-- NEU: Gym-Auswahl Dropdown -->
-            <div class="form-group">
-              <label>Gym auswählen *</label>
-              <select id="openmat-gym-select" name="gym_id" required>
-                <option value="">Gym auswählen...</option>
-              </select>
-            </div>
+          <!-- Button zum Toggle des Formulars -->
+          <button
+            class="btn"
+            onclick="toggleOpenMatForm()"
+            id="toggle-openmat-btn"
+            style="margin-bottom: 20px"
+          >
+            ➕ Neues Open Mat Event erstellen
+          </button>
 
-            <div class="form-group">
-              <label>Event Titel *</label>
-              <input
-                type="text"
-                name="title"
-                required
-                placeholder="z.B. Samstag Open Mat"
-              />
-            </div>
+          <!-- Formular initial versteckt -->
+          <div
+            id="openmat-form-container"
+            style="
+              display: none;
+              margin-bottom: 30px;
+              overflow: hidden;
+              transition: all 0.3s ease;
+            "
+          >
+            <div class="profile-card">
+              <h3>Neues Event erstellen</h3>
+              <form id="openmat-form">
+                <!-- Gym-Auswahl Dropdown -->
+                <div class="form-group">
+                  <label>Gym auswählen *</label>
+                  <select id="openmat-gym-select" name="gym_id" required>
+                    <option value="">Gym auswählen...</option>
+                  </select>
+                </div>
 
-            <div class="form-group">
-              <label>Beschreibung</label>
-              <textarea
-                name="description"
-                rows="3"
-                placeholder="Details zum Event..."
-              ></textarea>
-            </div>
+                <div class="form-group">
+                  <label>Event Titel *</label>
+                  <input
+                    type="text"
+                    name="title"
+                    required
+                    placeholder="z.B. Samstag Open Mat"
+                  />
+                </div>
 
-            <div class="form-row">
-              <div class="form-group">
-                <label>Datum & Uhrzeit *</label>
-                <input type="datetime-local" name="event_date" required />
-              </div>
-              <div class="form-group">
-                <label>Dauer (Minuten) *</label>
-                <input
-                  type="number"
-                  name="duration_minutes"
-                  value="120"
-                  min="30"
-                  step="15"
-                  required
-                />
-              </div>
-            </div>
+                <div class="form-group">
+                  <label>Beschreibung</label>
+                  <textarea
+                    name="description"
+                    rows="3"
+                    placeholder="Details zum Event..."
+                  ></textarea>
+                </div>
 
-            <button type="submit" class="btn">Event erstellen</button>
-          </form>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Datum & Uhrzeit *</label>
+                    <input type="datetime-local" name="event_date" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Dauer (Minuten) *</label>
+                    <input
+                      type="number"
+                      name="duration_minutes"
+                      value="120"
+                      min="30"
+                      step="15"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div style="display: flex; gap: 10px">
+                  <button type="submit" class="btn">Event erstellen</button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="toggleOpenMatForm()"
+                  >
+                    Abbrechen
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
 
         <h3 style="margin-top: 40px">Kommende Open Mats</h3>
@@ -628,19 +656,12 @@
         </div>
       </div>
 
-      <!-- NEUER TAB: Nachrichten -->
+      <!-- NACHRICHTEN TAB - VEREINFACHT -->
       <div id="messages-tab" class="tab-content">
         <h2>💬 Nachrichten</h2>
-        <div class="messages-container">
-          <div class="chat-list">
-            <h3>Chats</h3>
-            <div id="chat-list"></div>
-          </div>
-          <div class="chat-window" id="chat-window">
-            <p style="text-align: center; color: #999; padding: 40px">
-              Wähle einen Chat aus der Liste
-            </p>
-          </div>
+        <div class="chat-list" id="chat-list-container">
+          <h3>Chats</h3>
+          <div id="chat-list"></div>
         </div>
       </div>
 
@@ -774,7 +795,7 @@
         </div>
       </div>
     </div>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
   </body>
