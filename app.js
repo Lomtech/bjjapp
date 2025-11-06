@@ -31,21 +31,22 @@ function loadActiveTab() {
   return savedTab || "dashboard";
 }
 
-// (function init() {
-//   if (
-//     SUPABASE_URL &&
-//     SUPABASE_ANON_KEY &&
-//     SUPABASE_URL !== "SUPABASE_URL_PLACEHOLDER" &&
-//     SUPABASE_ANON_KEY !== "SUPABASE_KEY_PLACEHOLDER"
-//   ) {
-//     initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
-//   } else {
-//     showNotification(
-//       "⚠️ Umgebungsvariablen nicht gefunden oder fehlerhaft",
-//       "warning"
-//     );
-//   }
-// })();
+(function init() {
+  if (
+    SUPABASE_URL &&
+    SUPABASE_ANON_KEY &&
+    SUPABASE_URL !== "SUPABASE_URL_PLACEHOLDER" &&
+    SUPABASE_ANON_KEY !== "SUPABASE_KEY_PLACEHOLDER"
+  ) {
+    initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } else {
+    console.error("Supabase-Konfiguration fehlt");
+    showNotification(
+      "⚠️ Supabase nicht konfiguriert – bitte Build-Prozess prüfen",
+      "error"
+    );
+  }
+})();
 
 async function initSupabase(url, key) {
   try {
