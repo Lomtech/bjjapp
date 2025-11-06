@@ -75,6 +75,20 @@
             Willkommen bei der BJJ Community! 🥋
           </h2>
           <button
+            class="btn btn-google"
+            onclick="signInWithGoogle()"
+            style="
+              font-size: 1.1em;
+              padding: 15px 40px;
+              margin-bottom: 20px;
+              max-width: 400px;
+            "
+          >
+            <span style="margin-right: 10px">🔐</span> Mit Google anmelden
+          </button>
+
+          <div style="margin: 20px 0; color: #666">oder</div>
+          <button
             class="btn"
             onclick="openAuthModal('signup')"
             style="font-size: 1.2em; padding: 15px 40px"
