@@ -40,11 +40,13 @@ function loadActiveTab() {
   ) {
     initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
   } else {
-    console.error("Supabase-Konfiguration fehlt");
+    console.error("Supabase-Konfiguration fehlt oder ungültig");
     showNotification(
-      "⚠️ Supabase nicht konfiguriert – bitte Build-Prozess prüfen",
+      "⚠️ Supabase nicht konfiguriert – prüfen Sie .env und Build",
       "error"
     );
+    console.log(supabase); // Sollte ein Client-Objekt sein
+    console.log(SUPABASE_URL, SUPABASE_ANON_KEY); // Gültige Werte
   }
 })();
 
