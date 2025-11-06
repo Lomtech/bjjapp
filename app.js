@@ -17,62 +17,6 @@ let messagePollingInterval = null;
 // INITIALISIERUNG
 // ================================================
 
-// ================================================
-// SESSION PERSISTENCE & RECOVERY
-// ================================================
-
-// Prüfe Session beim App-Start (wichtig für iOS PWA)
-async function checkAndRecoverSession() {
-  if (!supabase) return;
-
-  console.log("[Session] Prüfe gespeicherte Session...");
-
-  try {
-    // Versuche Session aus localStorage zu laden
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.getSession();
-
-    if (error) {
-      console.error("[Session] Fehler beim Laden:", error);
-      return;
-    }
-
-    if (session) {
-      console.log("[Session] Gültige Session gefunden");
-      currentUser = session.user;
-
-      // Prüfe ob Token noch gültig ist
-      const expiresAt = session.expires_at;
-      const now = Math.floor(Date.now() / 1000);
-
-      if (expiresAt && expiresAt < now) {
-        console.log("[Session] Token abgelaufen, erneuere...");
-        const { data, error: refreshError } =
-          await supabase.auth.refreshSession();
-
-        if (refreshError) {
-          console.error("[Session] Refresh fehlgeschlagen:", refreshError);
-          await supabase.auth.signOut();
-          return;
-        }
-
-        console.log("[Session] Token erfolgreich erneuert");
-        currentUser = data.session.user;
-      }
-
-      await loadUserProfile();
-      updateAuthUI();
-      await initializeData();
-    } else {
-      console.log("[Session] Keine gültige Session gefunden");
-    }
-  } catch (error) {
-    console.error("[Session] Unerwarteter Fehler:", error);
-  }
-}
-
 // Rufe diese Funktion auf wenn die App in den Vordergrund kommt
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible" && supabase) {
@@ -93,7 +37,6 @@ window.addEventListener("pageshow", async (event) => {
 // GOOGLE OAUTH
 // ================================================
 
-// 3. GOOGLE SIGNIN - WENN DU ES SCHON HAST, ERSETZE ES
 async function signInWithGoogle() {
   if (!supabase) {
     showNotification("Bitte zuerst Supabase konfigurieren!", "warning");
@@ -105,10 +48,17 @@ async function signInWithGoogle() {
       provider: "google",
       options: {
         redirectTo: window.location.origin,
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
+        },
       },
     });
 
     if (error) throw error;
+
+    // Der User wird zu Google weitergeleitet
+    // Nach erfolgreicher Anmeldung wird er zurück zur App geleitet
   } catch (error) {
     console.error("Google Sign-In Error:", error);
     showNotification("Fehler bei Google-Anmeldung: " + error.message, "error");
