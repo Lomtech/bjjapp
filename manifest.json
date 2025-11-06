@@ -1,7 +1,8 @@
 {
+  "id": "/",
   "name": "BJJ Community Platform",
   "short_name": "BJJ Community",
-  "description": "Vernetze dich mit BJJ Athleten, finde Gyms und Open Mat Events in deiner Nähe",
+  "description": "Vernetze dich mit BJJ Athleten, finde Gyms und Open Mat Events",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

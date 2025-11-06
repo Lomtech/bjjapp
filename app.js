@@ -2270,3 +2270,209 @@ function closeIOSHint() {
 }
 
 setTimeout(showIOSInstallHint, 2000);
+
+// ================================================
+// iOS PWA INSTALLATION GUIDE (ERWEITERT)
+// ================================================
+
+function detectIOSBrowser() {
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+
+  if (!isIOS) return null;
+
+  // Check welcher Browser
+  if (/CriOS/.test(ua)) return "chrome";
+  if (/FxiOS/.test(ua)) return "firefox";
+  if (/EdgiOS/.test(ua)) return "edge";
+  if (/Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua)) return "safari";
+
+  return "other";
+}
+
+function showIOSPWAGuide() {
+  const browser = detectIOSBrowser();
+  const isInStandaloneMode = window.navigator.standalone === true;
+  const hasSeenGuide = localStorage.getItem("ios-pwa-guide-seen");
+
+  // Nur auf iOS zeigen, wenn nicht installiert und noch nicht gesehen
+  if (browser && !isInStandaloneMode && !hasSeenGuide) {
+    // Wenn nicht Safari, zeige Hinweis zum Browser-Wechsel
+    if (browser !== "safari") {
+      showBrowserSwitchHint(browser);
+    } else {
+      // Wenn Safari, zeige Installations-Anleitung
+      showSafariInstallGuide();
+    }
+  }
+}
+
+function showBrowserSwitchHint(currentBrowser) {
+  const browserNames = {
+    chrome: "Chrome",
+    firefox: "Firefox",
+    edge: "Edge",
+  };
+
+  const hintDiv = document.createElement("div");
+  hintDiv.className = "ios-browser-hint";
+  hintDiv.innerHTML = `
+    <div class="ios-hint-content">
+      <div class="ios-hint-header">
+        <div class="ios-hint-icon">🥋</div>
+        <button class="ios-hint-close" onclick="closeIOSHint()">✕</button>
+      </div>
+      <div class="ios-hint-body">
+        <h3>App auf dem iPhone installieren</h3>
+        <p style="margin: 12px 0; color: #666;">
+          ${browserNames[currentBrowser]} unterstützt leider keine App-Installation auf iOS.
+        </p>
+        <div class="ios-hint-steps">
+          <div class="step-item">
+            <span class="step-number">1</span>
+            <span>Öffne diese Seite in <strong>Safari</strong></span>
+          </div>
+          <div class="step-item">
+            <span class="step-number">2</span>
+            <span>Tippe auf das Teilen-Symbol <strong>⬆️</strong></span>
+          </div>
+          <div class="step-item">
+            <span class="step-number">3</span>
+            <span>Wähle <strong>"Zum Home-Bildschirm"</strong></span>
+          </div>
+        </div>
+        <button class="btn copy-url-btn" onclick="copyCurrentURL()">
+          🔗 Link kopieren für Safari
+        </button>
+        <button class="btn btn-secondary" onclick="closeIOSHint()" style="margin-top: 10px;">
+          Später
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(hintDiv);
+
+  // Auto-hide nach 15 Sekunden
+  setTimeout(() => {
+    closeIOSHint();
+  }, 15000);
+}
+
+function showSafariInstallGuide() {
+  const hintDiv = document.createElement("div");
+  hintDiv.className = "ios-browser-hint";
+  hintDiv.innerHTML = `
+    <div class="ios-hint-content">
+      <div class="ios-hint-header">
+        <div class="ios-hint-icon">📱</div>
+        <button class="ios-hint-close" onclick="closeIOSHint()">✕</button>
+      </div>
+      <div class="ios-hint-body">
+        <h3>Als App installieren</h3>
+        <p style="margin: 12px 0; color: #666;">
+          Installiere BJJ Community auf deinem Home-Bildschirm für schnellen Zugriff!
+        </p>
+        <div class="ios-hint-steps">
+          <div class="step-item">
+            <span class="step-number">1</span>
+            <span>Tippe auf das Teilen-Symbol <strong style="font-size: 1.3em;">⬆️</strong></span>
+          </div>
+          <div class="step-item">
+            <span class="step-number">2</span>
+            <span>Scrolle und tippe auf <strong>"Zum Home-Bildschirm"</strong></span>
+          </div>
+          <div class="step-item">
+            <span class="step-number">3</span>
+            <span>Tippe auf <strong>"Hinzufügen"</strong></span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 16px;">
+          <button class="btn" onclick="markGuideAsSeen()">
+            ✓ Verstanden
+          </button>
+          <button class="btn btn-secondary" onclick="remindMeLater()">
+            Später erinnern
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(hintDiv);
+
+  // Auto-hide nach 20 Sekunden
+  setTimeout(() => {
+    closeIOSHint();
+  }, 20000);
+}
+
+function copyCurrentURL() {
+  const url = window.location.href;
+
+  // Moderne Clipboard API
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        showNotification("✓ Link kopiert! Jetzt in Safari öffnen", "success");
+        setTimeout(() => {
+          closeIOSHint();
+        }, 2000);
+      })
+      .catch(() => {
+        fallbackCopyURL(url);
+      });
+  } else {
+    fallbackCopyURL(url);
+  }
+}
+
+function fallbackCopyURL(url) {
+  // Fallback für ältere Browser
+  const textarea = document.createElement("textarea");
+  textarea.value = url;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+
+  try {
+    document.execCommand("copy");
+    showNotification("✓ Link kopiert!", "success");
+    setTimeout(() => {
+      closeIOSHint();
+    }, 2000);
+  } catch (err) {
+    showNotification("Bitte Link manuell kopieren", "info");
+  }
+
+  document.body.removeChild(textarea);
+}
+
+function markGuideAsSeen() {
+  localStorage.setItem("ios-pwa-guide-seen", "true");
+  closeIOSHint();
+}
+
+function remindMeLater() {
+  // Erinnere in 24 Stunden
+  const tomorrow = new Date();
+  tomorrow.setHours(tomorrow.getHours() + 24);
+  localStorage.setItem("ios-pwa-remind-after", tomorrow.toISOString());
+  closeIOSHint();
+}
+
+// Initialisiere PWA Guide (ersetzt die einfache Version)
+setTimeout(() => {
+  const remindAfter = localStorage.getItem("ios-pwa-remind-after");
+
+  if (remindAfter) {
+    const remindDate = new Date(remindAfter);
+    if (new Date() < remindDate) {
+      return; // Noch nicht Zeit für Erinnerung
+    }
+  }
+
+  showIOSPWAGuide();
+}, 3000); // Nach 3 Sekunden zeigen
