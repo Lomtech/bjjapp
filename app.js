@@ -123,65 +123,41 @@ async function signInWithGoogle() {
 
 // Erweitere die initSupabase Funktion um OAuth-Handling
 async function initSupabase(url, key) {
-  // WICHTIG: persistSession auf true und storage explizit setzen
   supabase = window.supabase.createClient(url, key, {
     auth: {
       persistSession: true,
-      storageKey: "bjj-community-auth",
-      storage: window.localStorage, // Explizit localStorage nutzen
       autoRefreshToken: true,
       detectSessionInUrl: true,
-      flowType: "pkce", // Wichtig für OAuth (Google)
     },
   });
 
-  console.log("[Auth] Supabase Client initialisiert");
-
-  // Versuche Session wiederherzustellen
   const {
     data: { session },
-    error,
   } = await supabase.auth.getSession();
 
-  if (error) {
-    console.error("[Auth] Fehler beim Laden der Session:", error);
-  }
-
   if (session) {
-    console.log("[Auth] Session gefunden:", session.user.email);
     currentUser = session.user;
     await loadUserProfile();
     updateAuthUI();
     await initializeData();
   } else {
-    console.log("[Auth] Keine gespeicherte Session gefunden");
     updateAuthUI();
   }
 
-  // Auth State Listener
   supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log("[Auth] State Change:", event, session?.user?.email);
-
     currentUser = session?.user || null;
-
     if (event === "SIGNED_IN") {
-      console.log("[Auth] User angemeldet:", session.user.email);
       await loadUserProfile();
       updateAuthUI();
       await initializeData();
       closeModalForce();
       showNotification("Erfolgreich angemeldet!");
     } else if (event === "SIGNED_OUT") {
-      console.log("[Auth] User abgemeldet");
       myProfile = null;
       updateAuthUI();
       if (messagePollingInterval) {
         clearInterval(messagePollingInterval);
       }
-    } else if (event === "TOKEN_REFRESHED") {
-      console.log("[Auth] Token wurde erneuert");
-    } else if (event === "USER_UPDATED") {
-      console.log("[Auth] User-Daten wurden aktualisiert");
     }
   });
 }
