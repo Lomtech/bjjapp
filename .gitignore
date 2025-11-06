@@ -4,3 +4,4 @@ node_modules/
 dist/
 .netlify/
 .DS_Store
+Thumbs.db
