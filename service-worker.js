@@ -1,143 +1,171 @@
-const CACHE_NAME = "bjj-community-v1";
-const urlsToCache = [
-  "/",
-  "/index.html",
-  "/styles.css",
-  "/app.js",
-  "/manifest.json",
-  "/icons/icon-192x192.png",
-  "/icons/icon-512x512.png",
-  "/icons/apple-touch-icon.png",
-];
+// BJJ Community Service Worker mit Workbox
+importScripts(
+  "https://storage.googleapis.com/workbox-cdn/releases/6.5.4/workbox-sw.js"
+);
 
-// Installation
+const CACHE_NAME = "bjj-community-v1";
+const offlineFallbackPage = "/offline.html";
+
+// Konfiguriere Workbox
+workbox.setConfig({
+  debug: false,
+});
+
+// Precache wichtige Dateien beim Install
 self.addEventListener("install", (event) => {
   console.log("[Service Worker] Installing...");
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => {
-        console.log("[Service Worker] Caching app shell");
-        // Füge URLs einzeln hinzu für bessere Fehlerbehandlung
-        return Promise.all(
-          urlsToCache.map((url) => {
-            return cache.add(url).catch((err) => {
-              console.error("[Service Worker] Failed to cache:", url, err);
-            });
-          })
-        );
-      })
-      .then(() => {
-        console.log("[Service Worker] Skip waiting");
-        return self.skipWaiting();
-      })
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log("[Service Worker] Caching offline page");
+      return cache
+        .addAll([
+          offlineFallbackPage,
+          "/",
+          "/index.html",
+          "/styles.css",
+          "/app.js",
+          "/manifest.json",
+          "/icons/icon-192x192.png",
+          "/icons/icon-512x512.png",
+        ])
+        .catch((err) => {
+          console.error("[Service Worker] Cache addAll error:", err);
+        });
+    })
   );
+  self.skipWaiting();
 });
 
-// Activation
+// Aktiviere neuen Service Worker sofort
 self.addEventListener("activate", (event) => {
   console.log("[Service Worker] Activating...");
   event.waitUntil(
-    caches
-      .keys()
-      .then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
-              console.log("[Service Worker] Removing old cache:", cacheName);
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      })
-      .then(() => {
-        console.log("[Service Worker] Claiming clients");
-        return self.clients.claim();
-      })
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log("[Service Worker] Deleting old cache:", cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
   );
+  return self.clients.claim();
 });
 
-// Fetch - Vereinfachte Version für iOS
-self.addEventListener("fetch", (event) => {
-  const { request } = event;
-
-  // Ignoriere Chrome Extension requests
-  if (request.url.startsWith("chrome-extension://")) {
-    return;
+// Message Handler für Skip Waiting
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
   }
+});
 
-  // Ignoriere nicht-GET requests
-  if (request.method !== "GET") {
-    return;
-  }
+// Navigation Preload aktivieren (wenn unterstützt)
+if (workbox.navigationPreload.isSupported()) {
+  workbox.navigationPreload.enable();
+}
 
-  const url = new URL(request.url);
+// Caching Strategien
 
-  // Für Supabase immer Network First
-  if (
+// 1. HTML-Seiten: Network First (immer frische Daten versuchen)
+workbox.routing.registerRoute(
+  ({ request }) => request.mode === "navigate",
+  new workbox.strategies.NetworkFirst({
+    cacheName: "pages-cache",
+    plugins: [
+      new workbox.expiration.ExpirationPlugin({
+        maxEntries: 50,
+        maxAgeSeconds: 7 * 24 * 60 * 60, // 7 Tage
+      }),
+    ],
+  })
+);
+
+// 2. CSS & JavaScript: Stale While Revalidate
+workbox.routing.registerRoute(
+  ({ request }) =>
+    request.destination === "style" || request.destination === "script",
+  new workbox.strategies.StaleWhileRevalidate({
+    cacheName: "assets-cache",
+    plugins: [
+      new workbox.expiration.ExpirationPlugin({
+        maxEntries: 60,
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Tage
+      }),
+    ],
+  })
+);
+
+// 3. Bilder: Cache First (Bilder ändern sich selten)
+workbox.routing.registerRoute(
+  ({ request }) => request.destination === "image",
+  new workbox.strategies.CacheFirst({
+    cacheName: "images-cache",
+    plugins: [
+      new workbox.expiration.ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 60 * 24 * 60 * 60, // 60 Tage
+      }),
+      new workbox.cacheableResponse.CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
+
+// 4. Google Fonts: Stale While Revalidate
+workbox.routing.registerRoute(
+  ({ url }) =>
+    url.origin === "https://fonts.googleapis.com" ||
+    url.origin === "https://fonts.gstatic.com",
+  new workbox.strategies.StaleWhileRevalidate({
+    cacheName: "google-fonts-cache",
+    plugins: [
+      new workbox.expiration.ExpirationPlugin({
+        maxEntries: 20,
+        maxAgeSeconds: 365 * 24 * 60 * 60, // 1 Jahr
+      }),
+    ],
+  })
+);
+
+// 5. CDN-Ressourcen (Leaflet, Supabase): Stale While Revalidate
+workbox.routing.registerRoute(
+  ({ url }) =>
+    url.origin === "https://unpkg.com" ||
+    url.origin === "https://cdn.jsdelivr.net" ||
+    url.origin === "https://cdnjs.cloudflare.com",
+  new workbox.strategies.StaleWhileRevalidate({
+    cacheName: "cdn-cache",
+    plugins: [
+      new workbox.expiration.ExpirationPlugin({
+        maxEntries: 30,
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Tage
+      }),
+    ],
+  })
+);
+
+// 6. Supabase API: Network Only (immer aktuelle Daten)
+workbox.routing.registerRoute(
+  ({ url }) =>
     url.hostname.includes("supabase.co") ||
-    url.hostname.includes("supabase.io")
-  ) {
-    event.respondWith(
-      fetch(request).catch(() => {
-        return new Response("Offline - Keine Verbindung zu Supabase", {
-          status: 503,
-          statusText: "Service Unavailable",
-        });
-      })
-    );
-    return;
+    url.hostname.includes("supabase.io"),
+  new workbox.strategies.NetworkOnly()
+);
+
+// Offline Fallback für Navigation
+workbox.routing.setCatchHandler(({ event }) => {
+  if (event.request.destination === "document") {
+    return caches.match(offlineFallbackPage);
   }
-
-  // Für externe CDN-Ressourcen (Leaflet, Supabase JS)
-  if (
-    url.hostname.includes("unpkg.com") ||
-    url.hostname.includes("cdn.jsdelivr.net") ||
-    url.hostname.includes("cdnjs.cloudflare.com")
-  ) {
-    event.respondWith(fetch(request).catch(() => caches.match(request)));
-    return;
-  }
-
-  // Für eigene Ressourcen: Cache First
-  event.respondWith(
-    caches
-      .match(request)
-      .then((response) => {
-        if (response) {
-          return response;
-        }
-
-        return fetch(request).then((response) => {
-          // Prüfe ob Response gültig ist
-          if (
-            !response ||
-            response.status !== 200 ||
-            response.type === "error"
-          ) {
-            return response;
-          }
-
-          // Nur same-origin cachen
-          if (url.origin === location.origin) {
-            const responseToCache = response.clone();
-            caches
-              .open(CACHE_NAME)
-              .then((cache) => cache.put(request, responseToCache))
-              .catch((err) =>
-                console.error("[Service Worker] Cache put error:", err)
-              );
-          }
-
-          return response;
-        });
-      })
-      .catch((err) => {
-        console.error("[Service Worker] Fetch error:", err);
-        return new Response("Offline", {
-          status: 503,
-          statusText: "Service Unavailable",
-        });
-      })
-  );
+  return Response.error();
 });
+
+// Background Sync für zukünftige Features (optional)
+if ("sync" in self.registration) {
+  console.log("[Service Worker] Background Sync ist verfügbar");
+}
+
+console.log("[Service Worker] Loaded successfully");

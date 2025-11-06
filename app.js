@@ -2135,84 +2135,55 @@ if ("serviceWorker" in navigator) {
 }
 
 // ================================================
-// PWA INSTALLATION PROMPT
+// PWA - SERVICE WORKER REGISTRATION
 // ================================================
 
-let deferredPrompt;
-let installButton = null;
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/service-worker.js")
+      .then((registration) => {
+        console.log("✅ Service Worker registriert:", registration.scope);
 
-window.addEventListener("beforeinstallprompt", (e) => {
-  // Verhindere automatisches Prompt
-  e.preventDefault();
-  deferredPrompt = e;
+        // Check für Updates
+        registration.addEventListener("updatefound", () => {
+          const newWorker = registration.installing;
+          newWorker.addEventListener("statechange", () => {
+            if (
+              newWorker.state === "installed" &&
+              navigator.serviceWorker.controller
+            ) {
+              // Neue Version verfügbar
+              if (confirm("Neue Version verfügbar! Jetzt aktualisieren?")) {
+                newWorker.postMessage({ type: "SKIP_WAITING" });
+                window.location.reload();
+              }
+            }
+          });
+        });
+      })
+      .catch((error) => {
+        console.error("❌ Service Worker Registrierung fehlgeschlagen:", error);
+      });
+  });
 
-  // Zeige eigenen Install-Button
-  showInstallButton();
-});
-
-function showInstallButton() {
-  // Erstelle Install-Button nur wenn noch nicht installiert
-  if (
-    !installButton &&
-    !window.matchMedia("(display-mode: standalone)").matches
-  ) {
-    installButton = document.createElement("button");
-    installButton.className = "btn install-btn";
-    installButton.innerHTML = "📱 App installieren";
-    installButton.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      z-index: 1000;
-      box-shadow: var(--shadow-xl);
-      animation: slideInUp 0.5s ease;
-    `;
-
-    installButton.addEventListener("click", async () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-
-        if (outcome === "accepted") {
-          showNotification("App wird installiert! 🎉");
-        }
-
-        deferredPrompt = null;
-        installButton.remove();
-        installButton = null;
-      }
-    });
-
-    document.body.appendChild(installButton);
-
-    // Auto-hide nach 10 Sekunden
-    setTimeout(() => {
-      if (installButton) {
-        installButton.style.animation = "slideOutDown 0.5s ease";
-        setTimeout(() => {
-          if (installButton) {
-            installButton.remove();
-            installButton = null;
-          }
-        }, 500);
-      }
-    }, 10000);
-  }
+  // Reagiere auf Controller-Änderung
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
 }
 
-// Erkenne ob App bereits installiert ist
-window.addEventListener("appinstalled", () => {
-  console.log("✅ PWA wurde installiert");
-  showNotification("App erfolgreich installiert! 🎉");
-  if (installButton) {
-    installButton.remove();
-    installButton = null;
-  }
-});
-
-// Check ob App im Standalone-Modus läuft
-if (window.matchMedia("(display-mode: standalone)").matches) {
-  console.log("✅ App läuft im Standalone-Modus (installiert)");
+// Check ob App installiert ist
+if (
+  window.matchMedia("(display-mode: standalone)").matches ||
+  window.navigator.standalone === true
+) {
+  console.log("✅ App läuft im Standalone-Modus");
+  // Optinal: Analytics Event senden
 }
 
 // ================================================

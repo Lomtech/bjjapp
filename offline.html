@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - BJJ Community</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e5e5e5 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            color: #1a1a1a;
+        }
+        
+        .offline-container {
+            text-align: center;
+            max-width: 500px;
+            background: white;
+            padding: 40px 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .offline-icon {
+            font-size: 5em;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        h1 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            font-weight: 700;
+            color: #000;
+        }
+        
+        p {
+            font-size: 1.1em;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        
+        .retry-btn {
+            background: #000;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .retry-btn:hover {
+            background: #333;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .features {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #e5e5e5;
+        }
+        
+        .feature-list {
+            text-align: left;
+            display: inline-block;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            font-size: 0.95em;
+            color: #666;
+        }
+        
+        .feature-icon {
+            font-size: 1.5em;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">🥋</div>
+        <h1>Du bist offline</h1>
+        <p>Keine Internetverbindung. Bitte überprüfe deine Verbindung und versuche es erneut.</p>
+        
+        <button class="retry-btn" onclick="window.location.reload()">
+            Erneut versuchen
+        </button>
+        
+        <div class="features">
+            <div class="feature-list">
+                <div class="feature-item">
+                    <span class="feature-icon">✓</span>
+                    <span>Manche Inhalte sind zwischengespeichert</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">✓</span>
+                    <span>App funktioniert wieder bei Verbindung</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">✓</span>
+                    <span>Deine Daten bleiben sicher</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-reload when online
+        window.addEventListener('online', () => {
+            window.location.reload();
+        });
+        
+        // Check connection status
+        if (navigator.onLine) {
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>

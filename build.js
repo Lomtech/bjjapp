@@ -13,10 +13,21 @@ if (!fs.existsSync("dist/icons")) {
 
 // Kopiere HTML-Dateien
 console.log("📄 Kopiere HTML-Dateien...");
-fs.copyFileSync("index.html", "dist/index.html");
-fs.copyFileSync("datenschutz.html", "dist/datenschutz.html");
-fs.copyFileSync("impressum.html", "dist/impressum.html");
-fs.copyFileSync("agb.html", "dist/agb.html");
+const htmlFiles = [
+  "index.html",
+  "offline.html",
+  "datenschutz.html",
+  "impressum.html",
+  "agb.html",
+];
+
+htmlFiles.forEach((file) => {
+  if (fs.existsSync(file)) {
+    fs.copyFileSync(file, path.join("dist", file));
+  } else {
+    console.warn(`   ⚠️  ${file} nicht gefunden`);
+  }
+});
 
 // Kopiere CSS
 console.log("🎨 Kopiere CSS...");
@@ -34,24 +45,14 @@ if (fs.existsSync("service-worker.js")) {
 // Kopiere Icons
 console.log("🎯 Kopiere Icons...");
 if (fs.existsSync("icons")) {
-  const iconFiles = [
-    "icon-16x16.png",
-    "icon-32x32.png",
-    "icon-192x192.png",
-    "icon-512x512.png",
-    "apple-touch-icon.png",
-    "favicon.ico",
-  ];
-
+  const iconFiles = fs.readdirSync("icons");
   let copiedIcons = 0;
+
   iconFiles.forEach((file) => {
     const sourcePath = path.join("icons", file);
     const destPath = path.join("dist", "icons", file);
-
-    if (fs.existsSync(sourcePath)) {
-      fs.copyFileSync(sourcePath, destPath);
-      copiedIcons++;
-    }
+    fs.copyFileSync(sourcePath, destPath);
+    copiedIcons++;
   });
 
   console.log(`   ✓ ${copiedIcons} Icon-Datei(en) kopiert`);
@@ -69,13 +70,14 @@ fs.writeFileSync("dist/app.js", resultJs);
 // Zusammenfassung
 console.log("\n✅ PWA Build completed!");
 console.log("\n📊 Build-Inhalt:");
-console.log("   HTML: ✓");
+console.log("   HTML-Seiten:", htmlFiles.length);
 console.log("   CSS: ✓");
 console.log("   JavaScript: ✓");
 console.log(
   "   Service Worker:",
   fs.existsSync("service-worker.js") ? "✓" : "✗"
 );
+console.log("   Offline-Seite:", fs.existsSync("offline.html") ? "✓" : "✗");
 console.log("   Manifest:", fs.existsSync("manifest.json") ? "✓" : "✗");
 console.log("   Icons:", fs.existsSync("icons") ? "✓" : "✗");
 console.log("\n🔐 Umgebungsvariablen:");
