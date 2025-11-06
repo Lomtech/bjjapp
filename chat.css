@@ -225,59 +225,58 @@
 /* Chat Input - Instagram Inspired */
 .chat-page-input {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 10px;
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.9);
   border-top: 1px solid rgba(0, 0, 0, 0.05);
   position: sticky;
   bottom: 0;
   z-index: 100;
-  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(8px);
 }
 
-.chat-page-input input {
+.chat-page-input textarea {
   flex: 1;
-  height: 44px;
-  padding: 10px 18px;
+  min-height: 40px;
+  max-height: 120px;
+  padding: 10px 16px;
   border-radius: 22px;
   border: 1.5px solid rgba(0, 0, 0, 0.08);
   background: #f5f5f5;
   font-size: 0.9375rem;
+  line-height: 1.4;
+  resize: none;
+  outline: none;
+  overflow-y: auto;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  min-height: auto;
 }
 
-.chat-page-input input:focus {
+.chat-page-input textarea:focus {
   background: var(--white);
   border-color: #667eea;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-  transform: translateY(-1px);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .send-btn {
-  width: 44px;
-  height: 44px;
-  min-height: auto;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: var(--white);
+  background: transparent;
+  color: #667eea;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 1.25rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 1.4rem;
+  transition: all 0.2s ease;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .send-btn:hover {
-  transform: scale(1.08) translateY(-2px);
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+  transform: scale(1.1);
+  color: #764ba2;
 }
 
 .send-btn:active {
