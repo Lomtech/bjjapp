@@ -1256,3 +1256,134 @@ button:disabled {
     font-size: 0.85em;
   }
 }
+
+/* iOS PWA Guide - Erweitert */
+.ios-browser-hint {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(20px);
+  z-index: 10000;
+  animation: slideInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: 90vh;
+  overflow-y: auto;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.ios-hint-content {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 24px 20px 32px;
+}
+
+.ios-hint-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.ios-hint-icon {
+  font-size: 2.5em;
+}
+
+.ios-hint-close {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.4em;
+  transition: all 0.2s;
+  padding: 0;
+  min-height: unset;
+}
+
+.ios-hint-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.ios-hint-body {
+  color: white;
+}
+
+.ios-hint-body h3 {
+  font-size: 1.5em;
+  margin-bottom: 8px;
+  font-weight: 700;
+  color: white;
+}
+
+.ios-hint-steps {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 20px 0;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.95em;
+  line-height: 1.5;
+}
+
+.step-item:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.step-number {
+  background: white;
+  color: black;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9em;
+  flex-shrink: 0;
+}
+
+.copy-url-btn {
+  background: white !important;
+  color: black !important;
+  border: none !important;
+}
+
+.copy-url-btn:hover {
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .ios-hint-content {
+    padding: 20px 16px 28px;
+  }
+  
+  .ios-hint-icon {
+    font-size: 2em;
+  }
+  
+  .ios-hint-body h3 {
+    font-size: 1.3em;
+  }
+  
+  .step-item {
+    font-size: 0.9em;
+  }
+}
