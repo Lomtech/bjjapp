@@ -27,7 +27,7 @@ function saveActiveTab(tabName) {
 }
 
 function loadActiveTab() {
-  const savedTab = localStorage.setItem("activeTab");
+  const savedTab = localStorage.getItem("activeTab");
   return savedTab || "dashboard";
 }
 
