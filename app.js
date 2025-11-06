@@ -178,19 +178,35 @@ function openAuthModal(mode) {
 }
 
 function closeModal() {
-  if (!currentUser) {
-    showNotification("Bitte melde dich an, um fortzufahren", "warning");
-    return;
-  }
-  closeModalForce();
+  // Auth-Modal kann immer geschlossen werden
+  const modal = document.getElementById("auth-modal");
+  if (modal) modal.classList.remove("show");
+  const form = document.getElementById("auth-form");
+  if (form) form.reset();
 }
 
+// Separate Funktion falls du woanders prüfen willst
 function closeModalForce() {
   const modal = document.getElementById("auth-modal");
   if (modal) modal.classList.remove("show");
   const form = document.getElementById("auth-form");
   if (form) form.reset();
 }
+
+// Modal mit ESC-Taste schließen
+document.addEventListener("keydown", function (event) {
+  if (event.key === "Escape") {
+    const authModal = document.getElementById("auth-modal");
+    const chatModal = document.getElementById("openmat-chat-modal");
+
+    if (authModal && authModal.classList.contains("show")) {
+      closeModal();
+    }
+    if (chatModal && chatModal.classList.contains("show")) {
+      closeOpenMatChat();
+    }
+  }
+});
 
 function toggleAuthMode(e) {
   e.preventDefault();
