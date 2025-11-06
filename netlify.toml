@@ -26,26 +26,3 @@
   for = "/icons/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
-```
-
-## 9. Finale Projektstruktur
-```
-dein-projekt/
-├── build.js              ← Updated
-├── service-worker.js     ← NEU
-├── manifest.json         ← Updated
-├── netlify.toml          ← NEU
-├── package.json
-├── index.html           ← Updated (Meta-Tags)
-├── app.js               ← Updated (Service Worker + Install)
-├── styles.css           ← Updated (Install-Button)
-├── icons/
-│   ├── icon-16x16.png
-│   ├── icon-32x32.png
-│   ├── icon-192x192.png
-│   ├── icon-512x512.png
-│   ├── apple-touch-icon.png
-│   └── favicon.ico
-├── datenschutz.html
-├── impressum.html
-└── agb.html
