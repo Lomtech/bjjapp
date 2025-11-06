@@ -640,6 +640,19 @@
           <button type="submit" id="auth-submit-btn" class="btn">
             Anmelden
           </button>
+
+          <!-- NEU: Google OAuth Button -->
+          <div style="margin: 20px 0; text-align: center; color: #666">
+            <span>oder</span>
+          </div>
+          <button
+            type="button"
+            class="btn btn-google"
+            onclick="signInWithGoogle()"
+          >
+            <span style="margin-right: 10px">🔐</span> Mit Google anmelden
+          </button>
+
           <p style="margin-top: 15px; text-align: center">
             <a href="#" id="toggle-auth" onclick="toggleAuthMode(event)"
               >Noch kein Konto? Registrieren</a

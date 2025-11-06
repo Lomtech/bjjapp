@@ -30,12 +30,46 @@ let messagePollingInterval = null;
   }
 })();
 
+// ================================================
+// GOOGLE OAUTH
+// ================================================
+
+async function signInWithGoogle() {
+  if (!supabase) {
+    showNotification("Bitte zuerst Supabase konfigurieren!", "warning");
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
+        },
+      },
+    });
+
+    if (error) throw error;
+
+    // Der User wird zu Google weitergeleitet
+    // Nach erfolgreicher Anmeldung wird er zurück zur App geleitet
+  } catch (error) {
+    console.error("Google Sign-In Error:", error);
+    showNotification("Fehler bei Google-Anmeldung: " + error.message, "error");
+  }
+}
+
+// Erweitere die initSupabase Funktion um OAuth-Handling
 async function initSupabase(url, key) {
   supabase = window.supabase.createClient(url, key);
 
   const {
     data: { session },
   } = await supabase.auth.getSession();
+
   if (session) {
     currentUser = session.user;
     await loadUserProfile();
@@ -46,11 +80,16 @@ async function initSupabase(url, key) {
   }
 
   supabase.auth.onAuthStateChange(async (event, session) => {
+    console.log("Auth event:", event); // Zum Debugging
+
     currentUser = session?.user || null;
+
     if (event === "SIGNED_IN") {
       await loadUserProfile();
       updateAuthUI();
       await initializeData();
+      closeModalForce(); // Schließe Modal nach erfolgreicher Anmeldung
+      showNotification("Erfolgreich angemeldet!");
     } else if (event === "SIGNED_OUT") {
       myProfile = null;
       updateAuthUI();
