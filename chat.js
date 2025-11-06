@@ -441,7 +441,7 @@ function goBackToMessages() {
   // Zurück zur Hauptseite, Messages Tab
   localStorage.setItem("activeTab", "messages");
   window.location.href = "index.html";
-  switchTab("messages");
+  switchTab(activeTab);
 }
 
 function toggleChatMenu() {
