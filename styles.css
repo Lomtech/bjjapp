@@ -1374,16 +1374,238 @@ button:disabled {
   .ios-hint-content {
     padding: 20px 16px 28px;
   }
-  
+
   .ios-hint-icon {
     font-size: 2em;
   }
-  
+
   .ios-hint-body h3 {
     font-size: 1.3em;
   }
-  
+
   .step-item {
     font-size: 0.9em;
+  }
+}
+
+/* ================================================
+   PWA INSTALL BANNER & ICON
+   ================================================ */
+
+.pwa-install-banner {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 500px;
+  width: calc(100% - 32px);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pwa-install-banner.show {
+  opacity: 1;
+  visibility: visible;
+  animation: slideDown 0.4s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translate(-50%, -20px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+.pwa-banner-content {
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+}
+
+.pwa-icon {
+  font-size: 2.5rem;
+  flex-shrink: 0;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.pwa-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.pwa-text h3 {
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--black);
+}
+
+.pwa-text p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--gray);
+  line-height: 1.4;
+}
+
+.pwa-text strong {
+  color: var(--black);
+  font-weight: 600;
+}
+
+.pwa-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--gray);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 4px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  min-height: auto;
+}
+
+.pwa-close-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--black);
+  transform: scale(1.1);
+}
+
+.pwa-close-btn:active {
+  transform: scale(0.95);
+}
+
+/* PWA Install Icon (schwebendes Icon) */
+.pwa-install-icon {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  font-size: 1.75rem;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+  z-index: 999;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+  }
+  50% {
+    box-shadow: 0 4px 24px rgba(102, 126, 234, 0.6);
+  }
+}
+
+.pwa-install-icon.show {
+  display: flex;
+  animation: slideInRight 0.4s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.pwa-install-icon:hover {
+  transform: scale(1.1) translateY(-4px);
+  box-shadow: 0 6px 24px rgba(102, 126, 234, 0.5);
+}
+
+.pwa-install-icon:active {
+  transform: scale(0.95);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .pwa-install-banner {
+    top: 56px;
+    width: calc(100% - 24px);
+  }
+
+  .pwa-banner-content {
+    padding: 14px 16px;
+  }
+
+  .pwa-icon {
+    font-size: 2rem;
+  }
+
+  .pwa-text h3 {
+    font-size: 0.9375rem;
+  }
+
+  .pwa-text p {
+    font-size: 0.8125rem;
+  }
+
+  .pwa-install-icon {
+    bottom: 70px;
+    right: 16px;
+    width: 52px;
+    height: 52px;
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .pwa-install-banner {
+    top: 52px;
+  }
+
+  .pwa-banner-content {
+    padding: 12px 14px;
+    gap: 12px;
+  }
+
+  .pwa-icon {
+    font-size: 1.75rem;
   }
 }
