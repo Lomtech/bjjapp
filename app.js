@@ -33,15 +33,18 @@ function loadActiveTab() {
 
 (function init() {
   if (
-    SUPABASE_URL &&
-    SUPABASE_ANON_KEY &&
-    SUPABASE_URL !== "SUPABASE_URL_PLACEHOLDER" &&
-    SUPABASE_ANON_KEY !== "SUPABASE_KEY_PLACEHOLDER"
+    SUPABASE_URL.includes("PLACEHOLDER") ||
+    SUPABASE_ANON_KEY.includes("PLACEHOLDER")
   ) {
-    initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
-  } else {
-    showNotification("⚠️ Umgebungsvariablen nicht gefunden", "warning");
+    showNotification(
+      "⚠️ Build fehlgeschlagen: Umgebungsvariablen nicht ersetzt",
+      "error"
+    );
+    console.error("Prüfen Sie build.js und .env-Datei.");
+    return;
   }
+
+  initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
 })();
 
 async function initSupabase(url, key) {
