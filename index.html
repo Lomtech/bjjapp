@@ -129,6 +129,37 @@
         </nav>
       </header>
 
+      <!-- PWA Install Anleitung -->
+      <div class="pwa-install-banner" id="pwa-install-banner">
+        <div class="pwa-banner-content">
+          <div class="pwa-icon">📱</div>
+          <div class="pwa-text">
+            <h3>Als App installieren</h3>
+            <p id="pwa-instructions">
+              Tippe auf <strong id="share-icon">⬆️</strong> und dann auf
+              <strong>"Zum Home-Bildschirm"</strong>
+            </p>
+          </div>
+          <button
+            class="pwa-close-btn"
+            onclick="closePWABanner()"
+            aria-label="Schließen"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- PWA Install Icon (erscheint nach Schließen) -->
+      <button
+        class="pwa-install-icon"
+        id="pwa-install-icon"
+        onclick="openPWABanner()"
+        aria-label="App installieren"
+      >
+        📱
+      </button>
+
       <!-- Welcome Screen für nicht-angemeldete User -->
       <div id="welcome-screen" class="tab-content">
         <div style="text-align: center; padding: 60px 20px">
