@@ -3,7 +3,6 @@ const SUPABASE_URL = "SUPABASE_URL_PLACEHOLDER";
 const SUPABASE_ANON_KEY = "SUPABASE_KEY_PLACEHOLDER";
 const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Am Anfang mit anderen Konstanten
 
-
 let supabase = null;
 let map = null;
 let currentUser = null;
@@ -32,18 +31,21 @@ function loadActiveTab() {
   return savedTab || "dashboard";
 }
 
-(function init() {
-  if (
-    SUPABASE_URL &&
-    SUPABASE_ANON_KEY &&
-    SUPABASE_URL !== "SUPABASE_URL_PLACEHOLDER" &&
-    SUPABASE_ANON_KEY !== "SUPABASE_KEY_PLACEHOLDER"
-  ) {
-    initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
-  } else {
-    showNotification("⚠️ Umgebungsvariablen nicht gefunden oder fehlerhaft", "warning");
-  }
-})();
+// (function init() {
+//   if (
+//     SUPABASE_URL &&
+//     SUPABASE_ANON_KEY &&
+//     SUPABASE_URL !== "SUPABASE_URL_PLACEHOLDER" &&
+//     SUPABASE_ANON_KEY !== "SUPABASE_KEY_PLACEHOLDER"
+//   ) {
+//     initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
+//   } else {
+//     showNotification(
+//       "⚠️ Umgebungsvariablen nicht gefunden oder fehlerhaft",
+//       "warning"
+//     );
+//   }
+// })();
 
 async function initSupabase(url, key) {
   try {
