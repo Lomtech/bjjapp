@@ -81,7 +81,7 @@ if (fs.existsSync("icons")) {
   console.warn("   ⚠️  icons Ordner nicht gefunden");
 }
 
-// Verarbeite JavaScript-Dateien
+// Verarbeite JavaScript-Dateien U1
 console.log("⚙️  Verarbeite JavaScript...");
 
 // app.js
