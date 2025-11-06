@@ -2765,53 +2765,53 @@ function showBrowserSwitchHint(currentBrowser) {
   }, 15000);
 }
 
-function showSafariInstallGuide() {
-  const hintDiv = document.createElement("div");
-  hintDiv.className = "ios-browser-hint";
-  hintDiv.innerHTML = `
-    <div class="ios-hint-content">
-      <div class="ios-hint-header">
-        <div class="ios-hint-icon">📱</div>
-        <button class="ios-hint-close" onclick="closeIOSHint()">✕</button>
-      </div>
-      <div class="ios-hint-body">
-        <h3>Als App installieren</h3>
-        <p style="margin: 12px 0; color: #666;">
-          Installiere BJJ Community auf deinem Home-Bildschirm für schnellen Zugriff!
-        </p>
-        <div class="ios-hint-steps">
-          <div class="step-item">
-            <span class="step-number">1</span>
-            <span>Tippe auf das Teilen-Symbol <strong style="font-size: 1.3em;">⬆️</strong></span>
-          </div>
-          <div class="step-item">
-            <span class="step-number">2</span>
-            <span>Scrolle und tippe auf <strong>"Zum Home-Bildschirm"</strong></span>
-          </div>
-          <div class="step-item">
-            <span class="step-number">3</span>
-            <span>Tippe auf <strong>"Hinzufügen"</strong></span>
-          </div>
-        </div>
-        <div style="display: flex; gap: 10px; margin-top: 16px;">
-          <button class="btn" onclick="markGuideAsSeen()">
-            ✓ Verstanden
-          </button>
-          <button class="btn btn-secondary" onclick="remindMeLater()">
-            Später erinnern
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
+// function showSafariInstallGuide() {
+//   const hintDiv = document.createElement("div");
+//   hintDiv.className = "ios-browser-hint";
+//   hintDiv.innerHTML = `
+//     <div class="ios-hint-content">
+//       <div class="ios-hint-header">
+//         <div class="ios-hint-icon">📱</div>
+//         <button class="ios-hint-close" onclick="closeIOSHint()">✕</button>
+//       </div>
+//       <div class="ios-hint-body">
+//         <h3>Als App installieren</h3>
+//         <p style="margin: 12px 0; color: #666;">
+//           Installiere BJJ Community auf deinem Home-Bildschirm für schnellen Zugriff!
+//         </p>
+//         <div class="ios-hint-steps">
+//           <div class="step-item">
+//             <span class="step-number">1</span>
+//             <span>Tippe auf das Teilen-Symbol <strong style="font-size: 1.3em;">⬆️</strong></span>
+//           </div>
+//           <div class="step-item">
+//             <span class="step-number">2</span>
+//             <span>Scrolle und tippe auf <strong>"Zum Home-Bildschirm"</strong></span>
+//           </div>
+//           <div class="step-item">
+//             <span class="step-number">3</span>
+//             <span>Tippe auf <strong>"Hinzufügen"</strong></span>
+//           </div>
+//         </div>
+//         <div style="display: flex; gap: 10px; margin-top: 16px;">
+//           <button class="btn" onclick="markGuideAsSeen()">
+//             ✓ Verstanden
+//           </button>
+//           <button class="btn btn-secondary" onclick="remindMeLater()">
+//             Später erinnern
+//           </button>
+//         </div>
+//       </div>
+//     </div>
+//   `;
 
-  document.body.appendChild(hintDiv);
+//   document.body.appendChild(hintDiv);
 
-  // Auto-hide nach 20 Sekunden
-  setTimeout(() => {
-    closeIOSHint();
-  }, 20000);
-}
+//   // Auto-hide nach 20 Sekunden
+//   setTimeout(() => {
+//     closeIOSHint();
+//   }, 20000);
+// }
 
 function copyCurrentURL() {
   const url = window.location.href;
