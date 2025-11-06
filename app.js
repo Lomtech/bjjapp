@@ -2227,51 +2227,6 @@ if (
 }
 
 // ================================================
-// iOS INSTALLATION HINT
-// ================================================
-
-function showIOSInstallHint() {
-  const isIOS =
-    /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  const isInStandaloneMode = window.navigator.standalone === true;
-  const hasSeenHint = localStorage.getItem("ios-install-hint-seen");
-
-  if (isIOS && !isInStandaloneMode && !hasSeenHint) {
-    const hintDiv = document.createElement("div");
-    hintDiv.className = "ios-install-hint";
-    hintDiv.innerHTML = `
-      <div class="ios-hint-content">
-        <div class="ios-hint-icon">📱</div>
-        <div class="ios-hint-text">
-          <strong>App installieren</strong>
-          <p>Tippe auf <span style="font-size: 1.2em;">⬆️</span> und dann auf "Zum Home-Bildschirm"</p>
-        </div>
-        <button class="ios-hint-close" onclick="closeIOSHint()">✕</button>
-      </div>
-    `;
-
-    document.body.appendChild(hintDiv);
-
-    setTimeout(() => {
-      closeIOSHint();
-    }, 10000);
-  }
-}
-
-function closeIOSHint() {
-  const hint = document.querySelector(".ios-install-hint");
-  if (hint) {
-    hint.style.animation = "slideOutDown 0.5s ease";
-    setTimeout(() => {
-      hint.remove();
-      localStorage.setItem("ios-install-hint-seen", "true");
-    }, 500);
-  }
-}
-
-setTimeout(showIOSInstallHint, 2000);
-
-// ================================================
 // iOS PWA INSTALLATION GUIDE (ERWEITERT)
 // ================================================
 
