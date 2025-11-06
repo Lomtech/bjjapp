@@ -69,6 +69,14 @@ async function initSupabase(url, key) {
       await loadUserProfile();
       updateAuthUI();
       await initializeData();
+
+      // Lade gespeicherten Tab NACH dem Laden der Daten
+      const savedTab = loadActiveTab();
+      if (savedTab) {
+        setTimeout(() => {
+          switchTab(savedTab);
+        }, 100);
+      }
     } else {
       updateAuthUI();
     }
@@ -80,10 +88,11 @@ async function initSupabase(url, key) {
         updateAuthUI();
         await initializeData();
         updateAuthUI();
+
+        // Lade gespeicherten Tab nach Login
         const savedTab = loadActiveTab();
         switchTab(savedTab);
         closeModalForce();
-        switchTab(savedTab);
         showNotification("Erfolgreich angemeldet!");
       } else if (event === "SIGNED_OUT") {
         myProfile = null;
@@ -1175,6 +1184,13 @@ async function submitGymCreationForm(e) {
   }
 
   const submitBtn = document.getElementById("gym-create-submit-btn");
+
+  // Verhindere mehrfache Submissions
+  if (submitBtn.disabled) {
+    console.log("Submit bereits in Progress - ignoriere");
+    return;
+  }
+
   submitBtn.disabled = true;
   const originalText = submitBtn.textContent;
   submitBtn.textContent = "Wird gespeichert...";
@@ -1265,38 +1281,45 @@ async function submitGymCreationForm(e) {
         .eq("id", gymId);
 
       if (error) {
-        showNotification("Fehler: " + error.message, "error");
-      } else {
-        showNotification("Gym aktualisiert!");
-        cancelGymCreation();
-        await loadGyms();
-        await loadGymsForAthleteSelect();
-        await loadGymsForFilter();
-        await loadGymsForOpenMatSelect();
-        if (map) await initMap();
+        throw new Error(error.message);
       }
+
+      showNotification("✅ Gym erfolgreich aktualisiert!");
+      cancelGymCreation();
+
+      // Lade Daten nach erfolgreicher Speicherung neu
+      await Promise.all([
+        loadGyms(),
+        loadGymsForAthleteSelect(),
+        loadGymsForFilter(),
+        loadGymsForOpenMatSelect(),
+      ]);
+
+      if (map) await initMap();
     } else {
       const { error } = await supabase.from("gyms").insert([data]);
 
       if (error) {
-        showNotification("Fehler: " + error.message, "error");
-      } else {
-        showNotification("Gym erstellt!");
-        cancelGymCreation();
-        await loadGyms();
-        await loadGymsForAthleteSelect();
-        await loadGymsForFilter();
-        await loadGymsForOpenMatSelect();
-        await loadDashboard();
-        if (map) await initMap();
+        throw new Error(error.message);
       }
+
+      showNotification("✅ Gym erfolgreich erstellt!");
+      cancelGymCreation();
+
+      // Lade Daten nach erfolgreicher Speicherung neu
+      await Promise.all([
+        loadGyms(),
+        loadGymsForAthleteSelect(),
+        loadGymsForFilter(),
+        loadGymsForOpenMatSelect(),
+        loadDashboard(),
+      ]);
+
+      if (map) await initMap();
     }
   } catch (error) {
-    console.error("Unexpected error in submitGymCreationForm:", error);
-    showNotification(
-      "Ein unerwarteter Fehler ist aufgetreten: " + error.message,
-      "error"
-    );
+    console.error("Fehler beim Speichern des Gyms:", error);
+    showNotification("❌ Fehler beim Speichern: " + error.message, "error");
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = originalText;
@@ -2859,3 +2882,114 @@ setTimeout(() => {
 
   showIOSPWAGuide();
 }, 3000); // Nach 3 Sekunden zeigen
+
+// ================================================
+// PWA INSTALL BANNER
+// ================================================
+
+function initPWABanner() {
+  const banner = document.getElementById("pwa-install-banner");
+  const icon = document.getElementById("pwa-install-icon");
+  const bannerDismissed = localStorage.getItem("pwa-banner-dismissed");
+
+  // Zeige Banner nur wenn nicht dismissed und nicht standalone
+  if (
+    !bannerDismissed &&
+    !window.matchMedia("(display-mode: standalone)").matches
+  ) {
+    setTimeout(() => {
+      banner.classList.add("show");
+
+      // Aktualisiere Anweisungen basierend auf Browser/OS
+      updatePWAInstructions();
+    }, 2000);
+  } else if (
+    bannerDismissed &&
+    !window.matchMedia("(display-mode: standalone)").matches
+  ) {
+    // Zeige nur das Icon wenn Banner dismissed wurde
+    icon.classList.add("show");
+  }
+}
+
+function updatePWAInstructions() {
+  const instructions = document.getElementById("pwa-instructions");
+  const shareIcon = document.getElementById("share-icon");
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+  if (isIOS && isSafari) {
+    shareIcon.textContent = "⬆️";
+    instructions.innerHTML = `Tippe auf <strong>⬆️</strong> und dann auf <strong>"Zum Home-Bildschirm"</strong>`;
+  } else if (isIOS) {
+    shareIcon.textContent = "⬆️";
+    instructions.innerHTML = `Öffne in Safari und tippe auf <strong>⬆️</strong> → <strong>"Zum Home-Bildschirm"</strong>`;
+  } else {
+    // Android Chrome oder andere
+    shareIcon.textContent = "⋮";
+    instructions.innerHTML = `Tippe auf <strong>⋮</strong> (Menü) und dann auf <strong>"Zum Startbildschirm hinzufügen"</strong>`;
+  }
+}
+
+function closePWABanner() {
+  const banner = document.getElementById("pwa-install-banner");
+  const icon = document.getElementById("pwa-install-icon");
+
+  banner.classList.remove("show");
+  localStorage.setItem("pwa-banner-dismissed", "true");
+
+  // Zeige das floating Icon nach Animation
+  setTimeout(() => {
+    icon.classList.add("show");
+  }, 300);
+}
+
+function openPWABanner() {
+  const banner = document.getElementById("pwa-install-banner");
+  const icon = document.getElementById("pwa-install-icon");
+
+  icon.classList.remove("show");
+
+  setTimeout(() => {
+    banner.classList.add("show");
+    updatePWAInstructions();
+  }, 300);
+}
+
+// Initialisiere PWA Banner beim Laden
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initPWABanner);
+} else {
+  initPWABanner();
+}
+
+// ================================================
+// VERBESSERTE TAB-PERSISTENZ
+// ================================================
+
+// Überschreibe saveActiveTab Funktion für bessere Persistenz
+const originalSaveActiveTab = saveActiveTab;
+function saveActiveTab(tabName) {
+  localStorage.setItem("activeTab", tabName);
+  localStorage.setItem("lastActiveTab", tabName);
+  currentActiveTab = tabName;
+}
+
+// Stelle beim Laden den letzten Tab wieder her
+window.addEventListener("load", () => {
+  const savedTab =
+    localStorage.getItem("activeTab") || localStorage.getItem("lastActiveTab");
+  if (savedTab && currentUser) {
+    // Warte kurz damit alles geladen ist
+    setTimeout(() => {
+      switchTab(savedTab);
+    }, 100);
+  }
+});
+
+// Beim Verlassen der Seite Tab speichern
+window.addEventListener("beforeunload", () => {
+  if (currentActiveTab) {
+    localStorage.setItem("lastActiveTab", currentActiveTab);
+  }
+});
