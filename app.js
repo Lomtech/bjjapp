@@ -1,7 +1,9 @@
 // Umgebungsvariablen - werden von build.js ersetzt
 const SUPABASE_URL = "SUPABASE_URL_PLACEHOLDER";
 const SUPABASE_ANON_KEY = "SUPABASE_KEY_PLACEHOLDER";
-const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Am Anfang mit anderen Konstanten
+// const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Am Anfang mit anderen Konstanten
+const GOOGLE_MAPS_API_KEY = "AIzaSyApjVqlhwhzIT1U4NOHHf3eDp72dBhOiVA"; // Am Anfang mit anderen Konstanten
+
 
 let supabase = null;
 let map = null;
