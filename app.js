@@ -93,6 +93,7 @@ window.addEventListener("pageshow", async (event) => {
 // GOOGLE OAUTH
 // ================================================
 
+// 3. GOOGLE SIGNIN - WENN DU ES SCHON HAST, ERSETZE ES
 async function signInWithGoogle() {
   if (!supabase) {
     showNotification("Bitte zuerst Supabase konfigurieren!", "warning");
@@ -104,17 +105,10 @@ async function signInWithGoogle() {
       provider: "google",
       options: {
         redirectTo: window.location.origin,
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent",
-        },
       },
     });
 
     if (error) throw error;
-
-    // Der User wird zu Google weitergeleitet
-    // Nach erfolgreicher Anmeldung wird er zurück zur App geleitet
   } catch (error) {
     console.error("Google Sign-In Error:", error);
     showNotification("Fehler bei Google-Anmeldung: " + error.message, "error");
@@ -123,43 +117,50 @@ async function signInWithGoogle() {
 
 // Erweitere die initSupabase Funktion um OAuth-Handling
 async function initSupabase(url, key) {
-  supabase = window.supabase.createClient(url, key, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
-  });
+  try {
+    supabase = window.supabase.createClient(url, key, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    });
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    console.log("✓ Supabase initialisiert");
 
-  if (session) {
-    currentUser = session.user;
-    await loadUserProfile();
-    updateAuthUI();
-    await initializeData();
-  } else {
-    updateAuthUI();
-  }
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    currentUser = session?.user || null;
-    if (event === "SIGNED_IN") {
+    if (session) {
+      currentUser = session.user;
       await loadUserProfile();
       updateAuthUI();
       await initializeData();
-      closeModalForce();
-      showNotification("Erfolgreich angemeldet!");
-    } else if (event === "SIGNED_OUT") {
-      myProfile = null;
+    } else {
       updateAuthUI();
-      if (messagePollingInterval) {
-        clearInterval(messagePollingInterval);
-      }
     }
-  });
+
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      currentUser = session?.user || null;
+      if (event === "SIGNED_IN") {
+        await loadUserProfile();
+        updateAuthUI();
+        await initializeData();
+        closeModalForce();
+        showNotification("Erfolgreich angemeldet!");
+      } else if (event === "SIGNED_OUT") {
+        myProfile = null;
+        updateAuthUI();
+        if (messagePollingInterval) {
+          clearInterval(messagePollingInterval);
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Fehler bei Supabase Init:", error);
+    showNotification("Fehler beim Laden", "error");
+  }
 }
 
 async function initializeData() {
@@ -2383,10 +2384,16 @@ async function checkAndRecoverSession() {
 }
 
 // Rufe diese Funktion auf wenn die App in den Vordergrund kommt
+// 2. SESSION CHECK - FÜGE DIESE NEUE FUNKTION HINZU
 document.addEventListener("visibilitychange", async () => {
-  if (document.visibilityState === "visible" && supabase) {
-    console.log("[App] App in den Vordergrund gekommen");
-    await checkAndRecoverSession();
+  if (document.visibilityState === "visible" && supabase && currentUser) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      currentUser = null;
+      updateAuthUI();
+    }
   }
 });
 
