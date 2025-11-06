@@ -14,7 +14,7 @@ let currentChatPartner = null;
 let currentOpenMatChat = null;
 let messagePollingInterval = null;
 let sessionKeepAliveInterval = null;
-let currentActiveTab = "dashboard";
+let currentActiveTab = null;
 let googleMap = null;
 
 // ================================================
