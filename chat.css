@@ -202,6 +202,8 @@
 
 /* Chat Input - Verbessert: Längeres Eingabefeld, iPhone-optimiert, Laptop-kompatibel */
 .chat-page-input {
+  height: 44px;
+  width: 44px;
   display: flex;
   align-items: flex-end;
   gap: 12px; /* Etwas mehr Abstand für bessere Lesbarkeit */
@@ -248,8 +250,8 @@
 
 /* Send-Button */
 .send-btn {
-  width: 44px;
-  height: 44px; /* iPhone-konform */
+  width: 10px;
+  height: 10px; /* iPhone-konform */
   border-radius: 50%;
   background: linear-gradient(135deg, #667eea, #764ba2); /* Passend zum Theme */
   color: white;
