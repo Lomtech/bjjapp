@@ -1,4 +1,5 @@
-/* Chat-Seite spezifische Styles */
+/* Chat-Seite spezifische Styles – angepasst an Instagram-Chat-Ästhetik mit Integration der globalen Style-Variablen */
+
 .chat-page {
   background: #fafafa;
   overflow: hidden;
@@ -16,7 +17,7 @@
   background: var(--white);
 }
 
-/* Chat Header */
+/* Chat Header – Instagram-ähnlich: minimalistisch, sticky, mit Avatar und Status */
 .chat-page-header {
   display: flex;
   align-items: center;
@@ -27,7 +28,7 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .back-btn {
@@ -39,7 +40,7 @@
   align-items: center;
   justify-content: center;
   color: var(--black);
-  border-radius: var(--border-radius-sm);
+  border-radius: var(--border-radius-full);
   transition: background var(--transition-base);
   min-height: auto;
   width: auto;
@@ -98,7 +99,7 @@
   padding: 8px;
   cursor: pointer;
   color: var(--gray);
-  border-radius: var(--border-radius-sm);
+  border-radius: var(--border-radius-full);
   transition: all var(--transition-base);
   min-height: auto;
   width: auto;
@@ -109,7 +110,7 @@
   color: var(--black);
 }
 
-/* Chat Messages Container */
+/* Chat Messages Container – Instagram-Hintergrund, glattes Scrollen */
 .chat-page-messages {
   flex: 1;
   overflow-y: auto;
@@ -128,7 +129,7 @@
   font-size: 0.9375rem;
 }
 
-/* Einzelne Nachricht */
+/* Einzelne Nachricht – Instagram-Bubbles: abgerundet, asymmetrisch, mit Tail-Effekt */
 .chat-message {
   display: flex;
   flex-direction: column;
@@ -159,25 +160,26 @@
 
 .message-bubble {
   padding: 12px 16px;
-  border-radius: 18px;
+  border-radius: var(--border-radius-lg);
   font-size: 0.9375rem;
   line-height: 1.5;
   word-wrap: break-word;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
   max-width: 100%;
+  position: relative;
 }
 
 .chat-message.own .message-bubble {
-  background: var(--black);
+  background: #000000; /* Instagram: dunkles Grau/Schwarz für eigene Nachrichten */
   color: var(--white);
-  border-bottom-right-radius: 4px;
+  border-bottom-right-radius: 4px; /* Kleiner "Tail" */
 }
 
 .chat-message.other .message-bubble {
   background: var(--white);
   color: var(--black-soft);
   border: 1px solid var(--gray-lighter);
-  border-bottom-left-radius: 4px;
+  border-bottom-left-radius: 4px; /* Kleiner "Tail" */
 }
 
 .message-time {
@@ -187,7 +189,7 @@
   padding: 0 4px;
 }
 
-/* Chat Input */
+/* Chat Input – Instagram-ähnlich: pill-shaped, Fokus-Effekt, Send-Button mit Icon */
 .chat-page-input {
   display: flex;
   align-items: center;
@@ -198,14 +200,14 @@
   position: sticky;
   bottom: 0;
   z-index: 100;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .chat-page-input input {
   flex: 1;
   height: 44px;
   padding: 10px 16px;
-  border-radius: 22px;
+  border-radius: var(--border-radius-pill);
   border: 1.5px solid var(--gray-light);
   background: var(--gray-lightest);
   font-size: 0.9375rem;
@@ -223,7 +225,7 @@
   width: 44px;
   height: 44px;
   min-height: auto;
-  border-radius: 50%;
+  border-radius: var(--border-radius-full);
   background: var(--black);
   color: var(--white);
   border: none;
@@ -238,14 +240,14 @@
 
 .send-btn:hover {
   transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
 }
 
 .send-btn:active {
   transform: scale(0.95);
 }
 
-/* Datum Trenner */
+/* Datum Trenner – Instagram-Stil: subtil, zentriert */
 .date-divider {
   text-align: center;
   margin: 20px 0;
@@ -255,21 +257,21 @@
 .date-divider span {
   background: var(--gray-lightest);
   padding: 6px 16px;
-  border-radius: 12px;
+  border-radius: var(--border-radius-pill);
   font-size: 0.8125rem;
   color: var(--gray);
   font-weight: 500;
   display: inline-block;
 }
 
-/* Typing Indicator */
+/* Typing Indicator – Instagram-ähnliche Dots */
 .typing-indicator {
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 12px 16px;
   background: var(--white);
-  border-radius: 18px;
+  border-radius: var(--border-radius-lg);
   border: 1px solid var(--gray-lighter);
   width: fit-content;
 }
@@ -303,7 +305,7 @@
   }
 }
 
-/* Responsive */
+/* Responsive – Anpassungen für größere Bildschirme, Instagram-ähnlich */
 @media (min-width: 768px) {
   .chat-container {
     max-width: 800px;
@@ -337,7 +339,7 @@
   }
 }
 
-/* Safe Area für iOS */
+/* Safe Area für iOS – unverändert */
 @supports (padding: env(safe-area-inset-bottom)) {
   .chat-page-input {
     padding-bottom: calc(12px + env(safe-area-inset-bottom));

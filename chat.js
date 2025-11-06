@@ -34,10 +34,8 @@ let sessionKeepAliveInterval = null;
 
   // Supabase initialisieren
   if (
-    SUPABASE_URL &&
-    SUPABASE_ANON_KEY &&
-    SUPABASE_URL !== "SUPABASE_URL_PLACEHOLDER" &&
-    SUPABASE_ANON_KEY !== "SUPABASE_KEY_PLACEHOLDER"
+    SUPABASE_URL.includes("PLACEHOLDER") ||
+    SUPABASE_ANON_KEY.includes("PLACEHOLDER")
   ) {
     await initSupabase();
   } else {
