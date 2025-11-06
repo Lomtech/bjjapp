@@ -1,5 +1,5 @@
 // ================================================
-// CHAT.JS - Separate Chat-Seite
+// CHAT.JS - Separate Chat-Seite (aktualisiert & konsistent)
 // ================================================
 
 // Umgebungsvariablen - sollten die gleichen wie in app.js sein
@@ -53,47 +53,89 @@ let sessionKeepAliveInterval = null;
 })();
 
 // ================================================
-// TEXTAREA AUTO-RESIZE & SEND BUTTON VISIBILITY
+// TEXTAREA AUTO-RESIZE & SEND BUTTON CONTROL
 // ================================================
 
 document.addEventListener("DOMContentLoaded", () => {
   const textarea = document.getElementById("message-input");
   const sendBtn = document.querySelector(".send-btn");
   const inputContainer = document.querySelector(".chat-page-input");
+  const form = document.getElementById("chat-page-form");
 
   const adjustHeight = () => {
     textarea.style.height = "auto";
     textarea.style.height = `${textarea.scrollHeight}px`;
-    inputContainer.style.minHeight = `${Math.max(
-      56,
-      textarea.scrollHeight + 24
-    )}px`;
+    const newHeight = Math.max(56, textarea.scrollHeight + 24);
+    inputContainer.style.minHeight = `${newHeight}px`;
   };
 
   const toggleSendBtn = () => {
-    if (textarea.value.trim()) {
+    if (textarea.value.trim().length > 0) {
       sendBtn.classList.add("visible");
     } else {
       sendBtn.classList.remove("visible");
     }
   };
 
+  // Input-Änderung
   textarea.addEventListener("input", () => {
     adjustHeight();
     toggleSendBtn();
   });
 
-  // Enter ohne Shift = senden
+  // Enter = Senden (ohne Shift)
   textarea.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      document
-        .getElementById("chat-page-form")
-        .dispatchEvent(new Event("submit"));
+      form.dispatchEvent(new Event("submit"));
     }
   });
 
-  // Initial
+  // Formular-Submit (vollständig übernommen & erweitert)
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    if (!supabase || !currentUser || !chatPartnerId) return;
+
+    const message = textarea.value.trim();
+    if (!message) return;
+
+    try {
+      // Eigene Athlete ID holen
+      const { data: myProfileData } = await supabase
+        .from("athletes")
+        .select("id")
+        .eq("user_id", currentUser.id)
+        .single();
+
+      if (!myProfileData) return;
+
+      // Nachricht senden
+      const { error } = await supabase.from("private_messages").insert([
+        {
+          sender_id: myProfileData.id,
+          receiver_id: chatPartnerId,
+          message: message,
+        },
+      ]);
+
+      if (error) {
+        showNotification("Fehler beim Senden: " + error.message, "error");
+      } else {
+        // UI zurücksetzen
+        textarea.value = "";
+        adjustHeight();
+        toggleSendBtn();
+        await loadMessages();
+        scrollToBottom();
+      }
+    } catch (error) {
+      console.error("Fehler beim Senden:", error);
+      showNotification("Fehler beim Senden", "error");
+    }
+  });
+
+  // Initialisierung
   adjustHeight();
   toggleSendBtn();
 });
@@ -301,53 +343,6 @@ function scrollToBottom() {
   const container = document.getElementById("chat-page-messages");
   container.scrollTop = container.scrollHeight;
 }
-
-// ================================================
-// NACHRICHT SENDEN
-// ================================================
-
-document
-  .getElementById("chat-page-form")
-  .addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    if (!supabase || !currentUser || !chatPartnerId) return;
-
-    const formData = new FormData(e.target);
-    const message = formData.get("message");
-
-    if (!message || !message.trim()) return;
-
-    try {
-      // Eigene Athlete ID holen
-      const { data: myProfileData } = await supabase
-        .from("athletes")
-        .select("id")
-        .eq("user_id", currentUser.id)
-        .single();
-
-      if (!myProfileData) return;
-
-      // Nachricht senden
-      const { error } = await supabase.from("private_messages").insert([
-        {
-          sender_id: myProfileData.id,
-          receiver_id: chatPartnerId,
-          message: message.trim(),
-        },
-      ]);
-
-      if (error) {
-        showNotification("Fehler beim Senden: " + error.message, "error");
-      } else {
-        e.target.reset();
-        await loadMessages();
-      }
-    } catch (error) {
-      console.error("Fehler beim Senden:", error);
-      showNotification("Fehler beim Senden", "error");
-    }
-  });
 
 // ================================================
 // NACHRICHTEN ALS GELESEN MARKIEREN

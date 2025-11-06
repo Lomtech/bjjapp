@@ -244,7 +244,7 @@
   width: 100%;
   min-height: 44px;
   max-height: 140px;
-  padding: 11px 48px 11px 16px;
+  padding: 11px 52px 11px 16px; /* Mehr Platz rechts */
   border-radius: 22px;
   border: 1.5px solid rgba(0, 0, 0, 0.09);
   background: #f5f5f5;
@@ -278,8 +278,10 @@
   position: absolute;
   right: 6px;
   bottom: 6px;
-  width: 36px;
-  height: 36px;
+  width: 36px !important; /* WICHTIG: Feste Breite */
+  height: 36px !important;
+  min-width: 36px;
+  max-width: 36px;
   border-radius: 50%;
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
@@ -293,6 +295,7 @@
   opacity: 0;
   pointer-events: none;
   box-shadow: 0 2px 6px rgba(102, 126, 234, 0.25);
+  z-index: 10;
 }
 
 .send-btn.visible {
@@ -392,16 +395,44 @@
     gap: 14px;
   }
   .chat-page-input textarea {
-    min-height: 48px;
-    padding: 13px 52px 13px 18px;
-    font-size: 1rem;
+    width: 100%;
+    min-height: 44px;
+    max-height: 140px;
+    padding: 11px 52px 11px 16px; /* Mehr Platz rechts */
+    border-radius: 22px;
+    border: 1.5px solid rgba(0, 0, 0, 0.09);
+    background: #f5f5f5;
+    font-size: 0.9375rem;
+    line-height: 1.45;
+    resize: none;
+    outline: none;
+    overflow-y: hidden;
+    transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box;
+    scrollbar-width: none;
   }
   .send-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 1.2rem;
-    right: 8px;
-    bottom: 8px;
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    width: 36px !important; /* WICHTIG: Feste Breite */
+    height: 36px !important;
+    min-width: 36px;
+    max-width: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all 0.22s ease;
+    opacity: 0;
+    pointer-events: none;
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.25);
+    z-index: 10;
   }
 }
 
@@ -410,7 +441,21 @@
     max-width: 900px;
   }
   .chat-page-input textarea {
-    max-height: 160px;
+    width: 100%;
+    min-height: 44px;
+    max-height: 140px;
+    padding: 11px 52px 11px 16px; /* Mehr Platz rechts */
+    border-radius: 22px;
+    border: 1.5px solid rgba(0, 0, 0, 0.09);
+    background: #f5f5f5;
+    font-size: 0.9375rem;
+    line-height: 1.45;
+    resize: none;
+    outline: none;
+    overflow-y: hidden;
+    transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box;
+    scrollbar-width: none;
   }
 }
 
