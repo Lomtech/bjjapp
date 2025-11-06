@@ -92,6 +92,54 @@ header {
   flex-wrap: wrap;
 }
 
+/* Google OAuth Button */
+.btn-google {
+  background: white;
+  color: #333;
+  border: 2px solid var(--gray-light);
+  width: 100%;
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.btn-google:hover {
+  background: var(--gray-lightest);
+  border-color: var(--gray);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Divider für "oder" zwischen Buttons */
+.auth-divider {
+  text-align: center;
+  margin: 20px 0;
+  color: var(--gray-medium);
+  font-size: 0.875rem;
+  position: relative;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: calc(50% - 30px);
+  height: 1px;
+  background: var(--gray-lighter);
+}
+
+.auth-divider::before {
+  left: 0;
+}
+
+.auth-divider::after {
+  right: 0;
+}
+
 .user-info {
   display: flex;
   align-items: center;
@@ -1089,17 +1137,17 @@ button:disabled {
     flex-direction: column;
     text-align: center;
   }
-  
+
   .cookie-buttons {
     width: 100%;
     justify-content: center;
   }
-  
+
   .footer-content {
     flex-direction: column;
     text-align: center;
   }
-  
+
   .footer-links {
     justify-content: center;
   }
