@@ -21,15 +21,15 @@ let googleMap = null;
 // INITIALISIERUNG
 // ================================================
 
-// function saveActiveTab(tabName) {
-//   localStorage.setItem("activeTab", tabName);
-//   currentActiveTab = tabName;
-// }
+function saveActiveTab(tabName) {
+  localStorage.setItem("activeTab", tabName);
+  currentActiveTab = tabName;
+}
 
-// function loadActiveTab() {
-//   const savedTab = localStorage.getItem("activeTab");
-//   return savedTab || "dashboard";
-// }
+function loadActiveTab() {
+  const savedTab = localStorage.getItem("activeTab");
+  return savedTab || "dashboard";
+}
 
 (function init() {
   if (
@@ -2026,6 +2026,11 @@ async function initMap() {
   return initGoogleMap(); // Neue Funktion aufrufen
 }
 
+// ================================================
+// ERWEITERTE GOOGLE MAPS FUNKTIONEN
+// Diese Funktionen ersetzen/erweitern initGoogleMap() in app.js
+// ================================================
+
 async function initGoogleMap() {
   if (!supabase) return;
 
@@ -2044,7 +2049,7 @@ async function initGoogleMap() {
     googleMap = null;
   }
 
-  // Google Map erstellen
+  // Google Map erstellen mit erweiterten Optionen
   googleMap = new google.maps.Map(mapElement, {
     center: { lat: 51.1657, lng: 10.4515 },
     zoom: 6,
@@ -2054,14 +2059,53 @@ async function initGoogleMap() {
         stylers: [{ visibility: "off" }],
       },
     ],
-    mapTypeControl: false,
-    streetViewControl: false,
+    mapTypeControl: true,
+    mapTypeControlOptions: {
+      style: google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+      position: google.maps.ControlPosition.TOP_RIGHT,
+      mapTypeIds: ["roadmap", "satellite", "hybrid", "terrain"],
+    },
+    streetViewControl: true,
+    streetViewControlOptions: {
+      position: google.maps.ControlPosition.RIGHT_BOTTOM,
+    },
     fullscreenControl: true,
+    fullscreenControlOptions: {
+      position: google.maps.ControlPosition.RIGHT_TOP,
+    },
     zoomControl: true,
+    zoomControlOptions: {
+      position: google.maps.ControlPosition.RIGHT_CENTER,
+    },
+    // Traffic Layer Option
+    gestureHandling: "cooperative",
   });
+
+  // Traffic Layer hinzufügen
+  const trafficLayer = new google.maps.TrafficLayer();
+  trafficLayer.setMap(googleMap);
+
+  // Directions Service & Renderer für Routenplanung
+  const directionsService = new google.maps.DirectionsService();
+  const directionsRenderer = new google.maps.DirectionsRenderer({
+    map: googleMap,
+    suppressMarkers: false,
+    polylineOptions: {
+      strokeColor: "#000000",
+      strokeWeight: 5,
+      strokeOpacity: 0.7,
+    },
+  });
+
+  // Custom Control: "Mein Standort" Button
+  addLocationButton(googleMap);
+
+  // Custom Control: Routenplaner
+  addDirectionsPanel(googleMap, directionsService, directionsRenderer);
 
   const bounds = new google.maps.LatLngBounds();
   let hasMarkers = false;
+  let allMarkers = [];
 
   // Gyms laden und Marker setzen
   const { data: gyms } = await supabase.from("gyms").select("*");
@@ -2080,39 +2124,61 @@ async function initGoogleMap() {
           title: gym.name,
           icon: {
             path: google.maps.SymbolPath.CIRCLE,
-            scale: 10,
+            scale: 12,
             fillColor: "#000000",
             fillOpacity: 1,
             strokeColor: "#ffffff",
-            strokeWeight: 2,
+            strokeWeight: 3,
           },
           animation: google.maps.Animation.DROP,
+          // Zusätzliche Daten für Routenplanung
+          gymData: gym,
         });
 
         const infoWindow = new google.maps.InfoWindow({
           content: `
-            <div style="padding: 12px; font-family: system-ui;">
-              <h3 style="margin: 0 0 8px 0; font-size: 1.1em;">${gym.name}</h3>
-              <p style="margin: 4px 0; color: #666;">${gym.street || ""}</p>
-              <p style="margin: 4px 0; color: #666;">${gym.postal_code || ""} ${
-            gym.city || ""
-          }</p>
+            <div style="padding: 12px; font-family: system-ui; min-width: 200px;">
+              <h3 style="margin: 0 0 8px 0; font-size: 1.1em; font-weight: 600;">${
+                gym.name
+              }</h3>
+              <p style="margin: 4px 0; color: #666; font-size: 0.9em;">📍 ${
+                gym.street || ""
+              }</p>
+              <p style="margin: 4px 0; color: #666; font-size: 0.9em;">🏙️ ${
+                gym.postal_code || ""
+              } ${gym.city || ""}</p>
               ${
-                gym.phone ? `<p style="margin: 4px 0;">📞 ${gym.phone}</p>` : ""
+                gym.phone
+                  ? `<p style="margin: 4px 0; font-size: 0.9em;">📞 ${gym.phone}</p>`
+                  : ""
               }
               ${
                 gym.website
-                  ? `<p style="margin: 4px 0;"><a href="${gym.website}" target="_blank">🌐 Website</a></p>`
+                  ? `<p style="margin: 4px 0; font-size: 0.9em;"><a href="${gym.website}" target="_blank" style="color: #000; text-decoration: underline;">🌐 Website</a></p>`
                   : ""
               }
+              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee;">
+                <button onclick="calculateRoute('${gym.latitude}', '${
+            gym.longitude
+          }', '${gym.name.replace(/'/g, "\\'")}')" 
+                        style="background: #000; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9em; width: 100%;">
+                  🧭 Route hierher
+                </button>
+              </div>
             </div>
           `,
         });
 
         marker.addListener("click", () => {
+          // Schließe alle anderen Info Windows
+          allMarkers.forEach((m) => {
+            if (m.infoWindow) m.infoWindow.close();
+          });
           infoWindow.open(googleMap, marker);
         });
 
+        marker.infoWindow = infoWindow;
+        allMarkers.push(marker);
         bounds.extend(position);
         hasMarkers = true;
       }
@@ -2141,7 +2207,7 @@ async function initGoogleMap() {
           minute: "2-digit",
         });
 
-        // Custom Event Marker
+        // Custom Event Marker mit SVG
         const marker = new google.maps.Marker({
           position: position,
           map: googleMap,
@@ -2151,7 +2217,7 @@ async function initGoogleMap() {
               "data:image/svg+xml;charset=UTF-8," +
               encodeURIComponent(`
               <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
-                <circle cx="20" cy="20" r="18" fill="#dc3545" stroke="white" stroke-width="2"/>
+                <circle cx="20" cy="20" r="18" fill="#dc3545" stroke="white" stroke-width="3"/>
                 <text x="20" y="28" font-size="20" text-anchor="middle" fill="white">📅</text>
               </svg>
             `),
@@ -2159,34 +2225,56 @@ async function initGoogleMap() {
             anchor: new google.maps.Point(20, 20),
           },
           animation: google.maps.Animation.DROP,
+          zIndex: 1000, // Höher als Gym-Marker
         });
 
         const infoWindow = new google.maps.InfoWindow({
           content: `
-            <div style="padding: 12px; font-family: system-ui;">
-              <h3 style="margin: 0 0 8px 0; font-size: 1.1em; color: #dc3545;">📅 ${
+            <div style="padding: 12px; font-family: system-ui; min-width: 250px;">
+              <h3 style="margin: 0 0 8px 0; font-size: 1.2em; color: #dc3545; font-weight: 600;">📅 ${
                 om.title
               }</h3>
-              <p style="margin: 4px 0;"><strong>${om.gyms.name}</strong></p>
-              <p style="margin: 4px 0; color: #666;">${om.gyms.street || ""}</p>
-              <p style="margin: 4px 0; color: #666;">${
-                om.gyms.postal_code || ""
-              } ${om.gyms.city || ""}</p>
-              <p style="margin: 8px 0 4px 0;"><strong>📅 ${date}</strong></p>
-              <p style="margin: 4px 0;">⏱️ ${om.duration_minutes} Minuten</p>
+              <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin: 8px 0;">
+                <p style="margin: 4px 0; font-weight: 600; font-size: 1em;">${
+                  om.gyms.name
+                }</p>
+                <p style="margin: 4px 0; color: #666; font-size: 0.9em;">📍 ${
+                  om.gyms.street || ""
+                }</p>
+                <p style="margin: 4px 0; color: #666; font-size: 0.9em;">🏙️ ${
+                  om.gyms.postal_code || ""
+                } ${om.gyms.city || ""}</p>
+              </div>
+              <p style="margin: 8px 0; padding: 8px; background: #fff3cd; border-radius: 4px; font-size: 0.9em;"><strong>📅 ${date}</strong></p>
+              <p style="margin: 4px 0; font-size: 0.9em;">⏱️ Dauer: ${
+                om.duration_minutes
+              } Minuten</p>
               ${
                 om.description
-                  ? `<p style="margin: 8px 0 0 0; color: #666; font-size: 0.9em;">${om.description}</p>`
+                  ? `<p style="margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 0.85em; color: #666;">${om.description}</p>`
                   : ""
               }
+              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee;">
+                <button onclick="calculateRoute('${om.gyms.latitude}', '${
+            om.gyms.longitude
+          }', '${om.gyms.name.replace(/'/g, "\\'")}')" 
+                        style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9em; width: 100%;">
+                  🧭 Route zum Event
+                </button>
+              </div>
             </div>
           `,
         });
 
         marker.addListener("click", () => {
+          allMarkers.forEach((m) => {
+            if (m.infoWindow) m.infoWindow.close();
+          });
           infoWindow.open(googleMap, marker);
         });
 
+        marker.infoWindow = infoWindow;
+        allMarkers.push(marker);
         bounds.extend(position);
         hasMarkers = true;
       }
@@ -2205,6 +2293,210 @@ async function initGoogleMap() {
       google.maps.event.removeListener(listener);
     });
   }
+
+  // Speichere für globalen Zugriff
+  window.googleMapInstance = googleMap;
+  window.directionsServiceInstance = directionsService;
+  window.directionsRendererInstance = directionsRenderer;
+  window.allMapMarkers = allMarkers;
+}
+
+// ================================================
+// CUSTOM CONTROLS
+// ================================================
+
+function addLocationButton(map) {
+  const locationButton = document.createElement("button");
+  locationButton.textContent = "📍 Mein Standort";
+  locationButton.classList.add("custom-map-control-button");
+  locationButton.style.cssText = `
+    background: white;
+    border: 2px solid #000;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    color: #000;
+    cursor: pointer;
+    font-family: system-ui;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 10px;
+    padding: 10px 16px;
+    transition: all 0.2s;
+  `;
+
+  locationButton.addEventListener("mouseover", () => {
+    locationButton.style.background = "#000";
+    locationButton.style.color = "white";
+  });
+
+  locationButton.addEventListener("mouseout", () => {
+    locationButton.style.background = "white";
+    locationButton.style.color = "#000";
+  });
+
+  locationButton.addEventListener("click", () => {
+    if (navigator.geolocation) {
+      locationButton.textContent = "🔄 Lokalisiere...";
+      locationButton.disabled = true;
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const pos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+
+          map.setCenter(pos);
+          map.setZoom(14);
+
+          // Marker für eigenen Standort
+          new google.maps.Marker({
+            position: pos,
+            map: map,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: "#4285F4",
+              fillOpacity: 1,
+              strokeColor: "white",
+              strokeWeight: 2,
+            },
+            title: "Dein Standort",
+          });
+
+          locationButton.textContent = "📍 Mein Standort";
+          locationButton.disabled = false;
+          showNotification("Standort gefunden!");
+        },
+        () => {
+          showNotification("Standort konnte nicht ermittelt werden", "warning");
+          locationButton.textContent = "📍 Mein Standort";
+          locationButton.disabled = false;
+        }
+      );
+    } else {
+      showNotification("Geolocation wird nicht unterstützt", "error");
+    }
+  });
+
+  map.controls[google.maps.ControlPosition.TOP_CENTER].push(locationButton);
+}
+
+function addDirectionsPanel(map, directionsService, directionsRenderer) {
+  const panel = document.createElement("div");
+  panel.id = "directions-panel";
+  panel.style.cssText = `
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    margin: 10px;
+    padding: 12px;
+    font-family: system-ui;
+    display: none;
+    max-width: 300px;
+  `;
+
+  panel.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h4 style="margin: 0; font-size: 14px; font-weight: 600;">🧭 Routenplaner</h4>
+      <button onclick="closeDirectionsPanel()" style="background: none; border: none; font-size: 18px; cursor: pointer; padding: 0; line-height: 1;">×</button>
+    </div>
+    <div id="directions-info" style="font-size: 12px; color: #666;"></div>
+  `;
+
+  map.controls[google.maps.ControlPosition.LEFT_TOP].push(panel);
+  window.directionsPanel = panel;
+}
+
+// ================================================
+// ROUTING FUNKTIONEN
+// ================================================
+
+function calculateRoute(destLat, destLng, destName) {
+  if (!navigator.geolocation) {
+    showNotification("Geolocation wird nicht unterstützt", "error");
+    return;
+  }
+
+  showNotification("Berechne Route...", "info");
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const origin = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      };
+      const destination = {
+        lat: parseFloat(destLat),
+        lng: parseFloat(destLng),
+      };
+
+      const request = {
+        origin: origin,
+        destination: destination,
+        travelMode: google.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: true,
+      };
+
+      window.directionsServiceInstance.route(request, (result, status) => {
+        if (status === google.maps.DirectionsStatus.OK) {
+          window.directionsRendererInstance.setDirections(result);
+
+          const route = result.routes[0].legs[0];
+          const panel = window.directionsPanel;
+
+          panel.style.display = "block";
+          document.getElementById("directions-info").innerHTML = `
+            <div style="margin: 8px 0;">
+              <strong style="color: #000;">Nach: ${destName}</strong>
+            </div>
+            <div style="background: #f8f9fa; padding: 8px; border-radius: 4px; margin: 8px 0;">
+              <div style="margin: 4px 0;">📏 <strong>${route.distance.text}</strong></div>
+              <div style="margin: 4px 0;">⏱️ <strong>${route.duration.text}</strong></div>
+            </div>
+            <div style="font-size: 11px; color: #999; margin-top: 8px;">
+              Start: ${route.start_address}
+            </div>
+          `;
+
+          showNotification(`Route gefunden: ${route.distance.text}`, "success");
+        } else {
+          showNotification("Route konnte nicht berechnet werden", "error");
+          console.error("Directions request failed:", status);
+        }
+      });
+    },
+    () => {
+      showNotification("Standort konnte nicht ermittelt werden", "error");
+    }
+  );
+}
+
+function closeDirectionsPanel() {
+  window.directionsPanel.style.display = "none";
+  window.directionsRendererInstance.setDirections({ routes: [] });
+  showNotification("Routenanzeige geschlossen");
+}
+
+// ================================================
+// ZUSÄTZLICHE FEATURES
+// ================================================
+
+// Marker Clustering für bessere Performance bei vielen Markern
+// Wird geladen wenn @googlemaps/markerclusterer verfügbar ist
+function enableMarkerClustering() {
+  if (typeof MarkerClusterer !== "undefined" && window.allMapMarkers) {
+    new MarkerClusterer({
+      map: window.googleMapInstance,
+      markers: window.allMapMarkers,
+    });
+  }
+}
+
+// Measure Distance Tool
+function addMeasureTool(map) {
+  // Optional: Distanz-Messwerkzeug hinzufügen
+  // Kann später implementiert werden
 }
 
 // ================================================
