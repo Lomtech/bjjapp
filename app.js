@@ -8,64 +8,29 @@ let currentUser = null;
 let isLogin = true;
 let allAthletes = [];
 let allGyms = [];
-let myProfile = null; // { type: 'athlete'|'gym', id: uuid, data: {...} }test
+let myProfile = null;
 let currentChatPartner = null;
 let currentOpenMatChat = null;
 let messagePollingInterval = null;
+let sessionKeepAliveInterval = null;
 
 // ================================================
 // INITIALISIERUNG
 // ================================================
 
-// Rufe diese Funktion auf wenn die App in den Vordergrund kommt
-document.addEventListener("visibilitychange", async () => {
-  if (document.visibilityState === "visible" && supabase) {
-    console.log("[App] App in den Vordergrund gekommen");
-    await checkAndRecoverSession();
+(function init() {
+  if (
+    SUPABASE_URL &&
+    SUPABASE_ANON_KEY &&
+    SUPABASE_URL !== "SUPABASE_URL_PLACEHOLDER" &&
+    SUPABASE_ANON_KEY !== "SUPABASE_KEY_PLACEHOLDER"
+  ) {
+    initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } else {
+    showNotification("⚠️ Umgebungsvariablen nicht gefunden", "warning");
   }
-});
+})();
 
-// iOS-spezifisch: pageshow event
-window.addEventListener("pageshow", async (event) => {
-  if (event.persisted && supabase) {
-    console.log("[App] Seite aus Cache wiederhergestellt");
-    await checkAndRecoverSession();
-  }
-});
-
-// ================================================
-// GOOGLE OAUTH
-// ================================================
-
-async function signInWithGoogle() {
-  if (!supabase) {
-    showNotification("Bitte zuerst Supabase konfigurieren!", "warning");
-    return;
-  }
-
-  try {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: window.location.origin,
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent",
-        },
-      },
-    });
-
-    if (error) throw error;
-
-    // Der User wird zu Google weitergeleitet
-    // Nach erfolgreicher Anmeldung wird er zurück zur App geleitet
-  } catch (error) {
-    console.error("Google Sign-In Error:", error);
-    showNotification("Fehler bei Google-Anmeldung: " + error.message, "error");
-  }
-}
-
-// Erweitere die initSupabase Funktion um OAuth-Handling
 async function initSupabase(url, key) {
   try {
     supabase = window.supabase.createClient(url, key, {
@@ -73,6 +38,7 @@ async function initSupabase(url, key) {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        storage: window.localStorage,
       },
     });
 
@@ -105,6 +71,7 @@ async function initSupabase(url, key) {
         if (messagePollingInterval) {
           clearInterval(messagePollingInterval);
         }
+        stopSessionKeepAlive();
       }
     });
   } catch (error) {
@@ -133,7 +100,6 @@ async function initializeData() {
     loadChats();
     updateNotificationBadges();
 
-    // Polling für neue Nachrichten (alle 5 Sekunden)
     messagePollingInterval = setInterval(() => {
       updateNotificationBadges();
       if (currentChatPartner) {
@@ -144,19 +110,140 @@ async function initializeData() {
 }
 
 // ================================================
+// SESSION PERSISTENCE & RECOVERY
+// ================================================
+
+async function checkAndRecoverSession() {
+  if (!supabase) return;
+
+  console.log("[Session] Prüfe gespeicherte Session...");
+
+  try {
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
+    if (error) {
+      console.error("[Session] Fehler beim Laden:", error);
+      return;
+    }
+
+    if (session) {
+      console.log("[Session] Gültige Session gefunden");
+      currentUser = session.user;
+
+      const expiresAt = session.expires_at;
+      const now = Math.floor(Date.now() / 1000);
+
+      if (expiresAt && expiresAt < now) {
+        console.log("[Session] Token abgelaufen, erneuere...");
+        const { data, error: refreshError } =
+          await supabase.auth.refreshSession();
+
+        if (refreshError) {
+          console.error("[Session] Refresh fehlgeschlagen:", refreshError);
+          await supabase.auth.signOut();
+          return;
+        }
+
+        console.log("[Session] Token erfolgreich erneuert");
+        currentUser = data.session.user;
+      }
+
+      await loadUserProfile();
+      updateAuthUI();
+      await initializeData();
+    } else {
+      console.log("[Session] Keine gültige Session gefunden");
+    }
+  } catch (error) {
+    console.error("[Session] Unerwarteter Fehler:", error);
+  }
+}
+
+function startSessionKeepAlive() {
+  sessionKeepAliveInterval = setInterval(async () => {
+    if (!supabase || !currentUser) {
+      if (sessionKeepAliveInterval) {
+        clearInterval(sessionKeepAliveInterval);
+      }
+      return;
+    }
+
+    console.log("[Session] Keep-alive check...");
+
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
+    if (error || !session) {
+      console.log("[Session] Session ungültig, leite zu Login...");
+      currentUser = null;
+      updateAuthUI();
+      if (sessionKeepAliveInterval) {
+        clearInterval(sessionKeepAliveInterval);
+      }
+      return;
+    }
+
+    const expiresAt = session.expires_at;
+    const now = Math.floor(Date.now() / 1000);
+    const tenMinutes = 10 * 60;
+
+    if (expiresAt && expiresAt - now < tenMinutes) {
+      console.log("[Session] Token läuft bald ab, erneuere...");
+      const { error: refreshError } = await supabase.auth.refreshSession();
+
+      if (refreshError) {
+        console.error("[Session] Refresh fehlgeschlagen:", refreshError);
+      } else {
+        console.log("[Session] Token erfolgreich erneuert");
+      }
+    }
+  }, 5 * 60 * 1000);
+}
+
+function stopSessionKeepAlive() {
+  if (sessionKeepAliveInterval) {
+    clearInterval(sessionKeepAliveInterval);
+    sessionKeepAliveInterval = null;
+  }
+}
+
+// Visibility Change Handler
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState === "visible" && supabase && currentUser) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      currentUser = null;
+      myProfile = null;
+      updateAuthUI();
+    }
+  }
+});
+
+// iOS pageshow event
+window.addEventListener("pageshow", async (event) => {
+  if (event.persisted && supabase) {
+    console.log("[App] Seite aus Cache wiederhergestellt");
+    await checkAndRecoverSession();
+  }
+});
+
+// ================================================
 // AUTHENTIFIZIERUNG
 // ================================================
 
 function updateAuthUI() {
   const authSection = document.getElementById("auth-section");
   if (currentUser) {
-    authSection.innerHTML = `
-        `;
+    authSection.innerHTML = ``;
   } else {
-    // authSection.innerHTML = `
-    //         <button class="auth-btn" onclick="openAuthModal('login')">Login</button>
-    //         <button class="auth-btn" onclick="openAuthModal('signup')">Registrieren</button>
-    //     `;
+    authSection.innerHTML = ``;
   }
   updateVisibility();
 }
@@ -196,19 +283,75 @@ function openAuthModal(mode) {
 }
 
 function closeModal() {
-  // Auth-Modal kann immer geschlossen werden
   const modal = document.getElementById("auth-modal");
   if (modal) modal.classList.remove("show");
   const form = document.getElementById("auth-form");
   if (form) form.reset();
 }
 
-// Separate Funktion falls du woanders prüfen willst
 function closeModalForce() {
   const modal = document.getElementById("auth-modal");
   if (modal) modal.classList.remove("show");
   const form = document.getElementById("auth-form");
   if (form) form.reset();
+}
+
+function toggleAuthMode(e) {
+  e.preventDefault();
+  isLogin = !isLogin;
+  openAuthModal(isLogin ? "login" : "signup");
+}
+
+async function logout() {
+  if (!supabase) return;
+
+  try {
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+
+    if (error) {
+      console.error("[Auth] Logout-Fehler:", error);
+      showNotification("Fehler beim Abmelden: " + error.message, "error");
+    } else {
+      console.log("[Auth] Erfolgreich abgemeldet");
+      currentUser = null;
+      myProfile = null;
+
+      if (messagePollingInterval) {
+        clearInterval(messagePollingInterval);
+      }
+
+      stopSessionKeepAlive();
+      showNotification("Erfolgreich abgemeldet", "info");
+      updateAuthUI();
+    }
+  } catch (error) {
+    console.error("[Auth] Unerwarteter Logout-Fehler:", error);
+  }
+}
+
+async function signInWithGoogle() {
+  if (!supabase) {
+    showNotification("Bitte zuerst Supabase konfigurieren!", "warning");
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
+        },
+      },
+    });
+
+    if (error) throw error;
+  } catch (error) {
+    console.error("Google Sign-In Error:", error);
+    showNotification("Fehler bei Google-Anmeldung: " + error.message, "error");
+  }
 }
 
 // Modal mit ESC-Taste schließen
@@ -225,42 +368,6 @@ document.addEventListener("keydown", function (event) {
     }
   }
 });
-
-function toggleAuthMode(e) {
-  e.preventDefault();
-  isLogin = !isLogin;
-  openAuthModal(isLogin ? "login" : "signup");
-}
-
-async function logout() {
-  if (!supabase) return;
-
-  try {
-    // Wichtig: scope auf 'local' setzen für vollständiges Logout
-    const { error } = await supabase.auth.signOut({ scope: "local" });
-
-    if (error) {
-      console.error("[Auth] Logout-Fehler:", error);
-      showNotification("Fehler beim Abmelden: " + error.message, "error");
-    } else {
-      console.log("[Auth] Erfolgreich abgemeldet");
-
-      // Lösche alle lokalen Daten
-      currentUser = null;
-      myProfile = null;
-
-      // Stoppe Polling
-      if (messagePollingInterval) {
-        clearInterval(messagePollingInterval);
-      }
-
-      showNotification("Erfolgreich abgemeldet", "info");
-      updateAuthUI();
-    }
-  } catch (error) {
-    console.error("[Auth] Unerwarteter Logout-Fehler:", error);
-  }
-}
 
 document.getElementById("auth-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -360,7 +467,6 @@ function cancelProfileEdit() {
     displayProfileSelector();
   }
 
-  // Reset forms
   document.getElementById("athlete-form").reset();
   document.getElementById("gym-form").reset();
   document.getElementById("current-image-preview").innerHTML = "";
@@ -509,7 +615,6 @@ document
 
     let imageUrl = myProfile?.data?.image_url || null;
 
-    // Bild hochladen wenn vorhanden
     if (imageFile && imageFile.size > 0) {
       const fileExt = imageFile.name.split(".").pop();
       const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
@@ -646,7 +751,6 @@ document.getElementById("gym-form").addEventListener("submit", async (e) => {
   const postalCode = formData.get("postal_code");
   const city = formData.get("city");
 
-  // Duplikat-Check
   const isDuplicate = await checkGymDuplicate(name, street, gymId);
   if (isDuplicate) {
     showNotification(
@@ -829,7 +933,6 @@ function displayAthletes(athletes) {
     .map((a) => {
       const isMyProfile =
         myProfile && myProfile.type === "athlete" && myProfile.id === a.id;
-      const isFriend = false; // Wird später implementiert mit loadFriendships
 
       return `
             <div class="profile-card">
@@ -918,15 +1021,11 @@ async function loadGyms() {
   }
 }
 
-// Bei jedem Menü-Button-Klick
 document.querySelectorAll(".main-menu button").forEach((button) => {
   button.addEventListener("click", function () {
-    // Entferne 'active' von allen Buttons
     document.querySelectorAll(".main-menu button").forEach((btn) => {
       btn.classList.remove("active");
     });
-
-    // Füge 'active' nur zum geklickten Button hinzu
     this.classList.add("active");
   });
 });
@@ -935,8 +1034,6 @@ function displayGyms(gyms) {
   const list = document.getElementById("gyms-list");
   list.innerHTML = gyms
     .map((g) => {
-      const isMyGym =
-        myProfile && myProfile.type === "gym" && myProfile.id === g.id;
       const canEdit = currentUser && g.user_id === currentUser.id;
 
       return `
@@ -971,34 +1068,25 @@ function displayGyms(gyms) {
     .join("");
 }
 
-// Zeige Gym-Erstellungsformular im Gyms-Tab
 function showCreateGymForm() {
   const form = document.getElementById("gym-creation-form");
   const formElement = document.getElementById("gym-creation-form-element");
   const title = document.getElementById("gym-creation-title");
   const submitBtn = document.getElementById("gym-create-submit-btn");
 
-  // Reset form
   formElement.reset();
   document.getElementById("gym-edit-id").value = "";
   document.getElementById("gym-create-image-preview").innerHTML = "";
   document.getElementById("gym-geocoding-status").textContent = "";
 
-  // Set title
   title.textContent = "Neues Gym erstellen";
   submitBtn.textContent = "Gym erstellen";
 
-  // Show form
   form.style.display = "block";
-
-  // Scroll to form
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-// Bearbeite Gym im Gyms-Tab
 async function editGymInTab(gymId) {
-  console.log("Bearbeite Gym:", gymId);
-
   const { data: gym, error } = await supabase
     .from("gyms")
     .select("*")
@@ -1012,18 +1100,11 @@ async function editGymInTab(gymId) {
   }
 
   if (gym) {
-    console.log("Gym geladen:", gym);
-
     const form = document.getElementById("gym-creation-form");
     const title = document.getElementById("gym-creation-title");
     const submitBtn = document.getElementById("gym-create-submit-btn");
 
-    // WICHTIG: Setze gym_id im hidden field
-    const hiddenIdField = document.getElementById("gym-edit-id");
-    hiddenIdField.value = gym.id;
-    console.log("Hidden ID gesetzt:", hiddenIdField.value);
-
-    // Fill form
+    document.getElementById("gym-edit-id").value = gym.id;
     document.getElementById("gym-create-name").value = gym.name || "";
     document.getElementById("gym-create-description").value =
       gym.description || "";
@@ -1034,7 +1115,6 @@ async function editGymInTab(gymId) {
     document.getElementById("gym-create-postal").value = gym.postal_code || "";
     document.getElementById("gym-create-city").value = gym.city || "";
 
-    // Clear previous image preview
     const imagePreview = document.getElementById("gym-create-image-preview");
     if (gym.image_url) {
       imagePreview.innerHTML = `
@@ -1047,22 +1127,16 @@ async function editGymInTab(gymId) {
       imagePreview.innerHTML = "";
     }
 
-    // Clear geocoding status
     document.getElementById("gym-geocoding-status").textContent = "";
 
-    // Update title and button
     title.textContent = "Gym bearbeiten";
     submitBtn.textContent = "Änderungen speichern";
 
-    // Show form
     form.style.display = "block";
-
-    // Scroll to form
     form.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
 
-// Abbrechen der Gym-Erstellung
 function cancelGymCreation() {
   const form = document.getElementById("gym-creation-form");
   form.style.display = "none";
@@ -1072,10 +1146,8 @@ function cancelGymCreation() {
   document.getElementById("gym-geocoding-status").textContent = "";
 }
 
-// Submit Handler für Gym-Erstellungsformular
 async function submitGymCreationForm(e) {
   e.preventDefault();
-  console.log("=== GYM FORM SUBMIT ===");
 
   if (!supabase || !currentUser) {
     showNotification("Bitte melde dich an!", "error");
@@ -1092,17 +1164,11 @@ async function submitGymCreationForm(e) {
     const gymId = formData.get("gym_id");
     const isEditing = !!gymId;
 
-    console.log("Form Data:");
-    console.log("- gym_id:", gymId);
-    console.log("- isEditing:", isEditing);
-    console.log("- name:", formData.get("name"));
-
     const name = formData.get("name");
     const street = formData.get("street");
     const postalCode = formData.get("postal_code");
     const city = formData.get("city");
 
-    // Duplikat-Check
     const isDuplicate = await checkGymDuplicate(name, street, gymId);
     if (isDuplicate) {
       showNotification(
@@ -1119,7 +1185,6 @@ async function submitGymCreationForm(e) {
     statusDiv.className = "geocoding-status";
 
     const geoResult = await geocodeAddress(street, postalCode, city);
-    console.log("Geocoding Result:", geoResult);
 
     if (geoResult.fallback) {
       statusDiv.textContent = "⚠️ Adresse approximiert (München als Fallback)";
@@ -1132,20 +1197,16 @@ async function submitGymCreationForm(e) {
     const imageFile = formData.get("image");
     let imageUrl = null;
 
-    // Wenn bearbeitet wird, hole die existierende URL
     if (isEditing && gymId) {
-      console.log("Loading existing gym image...");
       const { data: existingGym } = await supabase
         .from("gyms")
         .select("image_url")
         .eq("id", gymId)
         .single();
       imageUrl = existingGym?.image_url;
-      console.log("Existing image URL:", imageUrl);
     }
 
     if (imageFile && imageFile.size > 0) {
-      console.log("Uploading new image...");
       const fileExt = imageFile.name.split(".").pop();
       const fileName = `gym_${currentUser.id}_${Date.now()}.${fileExt}`;
 
@@ -1158,9 +1219,6 @@ async function submitGymCreationForm(e) {
           data: { publicUrl },
         } = supabase.storage.from("profile-images").getPublicUrl(fileName);
         imageUrl = publicUrl;
-        console.log("New image URL:", imageUrl);
-      } else {
-        console.error("Image upload error:", uploadError);
       }
     }
 
@@ -1180,20 +1238,15 @@ async function submitGymCreationForm(e) {
       user_id: currentUser.id,
     };
 
-    console.log("Data to save:", data);
-
     if (isEditing) {
-      console.log("UPDATING gym with ID:", gymId);
       const { error } = await supabase
         .from("gyms")
         .update(data)
         .eq("id", gymId);
 
       if (error) {
-        console.error("Update error:", error);
         showNotification("Fehler: " + error.message, "error");
       } else {
-        console.log("Update successful!");
         showNotification("Gym aktualisiert!");
         cancelGymCreation();
         await loadGyms();
@@ -1203,14 +1256,11 @@ async function submitGymCreationForm(e) {
         if (map) await initMap();
       }
     } else {
-      console.log("CREATING new gym");
       const { error } = await supabase.from("gyms").insert([data]);
 
       if (error) {
-        console.error("Insert error:", error);
         showNotification("Fehler: " + error.message, "error");
       } else {
-        console.log("Insert successful!");
         showNotification("Gym erstellt!");
         cancelGymCreation();
         await loadGyms();
@@ -1235,14 +1285,11 @@ async function submitGymCreationForm(e) {
       statusDiv.textContent = "";
     }, 3000);
   }
+}
 
-  // Gym-Erstellungsformular im Gyms-Tab verknüpfen
-  const gymCreationForm = document.getElementById("gym-creation-form-element");
-  if (gymCreationForm) {
-    gymCreationForm.addEventListener("submit", submitGymCreationForm);
-  }
-
-  console.log("=== GYM FORM SUBMIT END ===");
+const gymCreationForm = document.getElementById("gym-creation-form-element");
+if (gymCreationForm) {
+  gymCreationForm.addEventListener("submit", submitGymCreationForm);
 }
 
 function filterGyms() {
@@ -1287,14 +1334,12 @@ async function loadOpenMats() {
       return;
     }
 
-    console.log("loadOpenMats - data:", data);
     displayOpenMats(data || []);
   } catch (err) {
     console.error("loadOpenMats - unexpected error:", err);
     showNotification("Unerwarteter Fehler beim Laden der Open Mats", "error");
   }
 
-  // Sichtbarkeit des Erstellungsbereichs setzen
   const createSection = document.getElementById("create-openmat-section");
   if (createSection) {
     createSection.style.display = currentUser ? "block" : "none";
@@ -1318,7 +1363,6 @@ function displayOpenMats(openMats) {
   list.innerHTML = openMats
     .map((om) => {
       const date = new Date(om.event_date);
-      // created_by sollte die user-id des Erstellers sein
       const canEdit = currentUser && om.created_by === currentUser.id;
 
       return `
@@ -1364,7 +1408,6 @@ function displayOpenMats(openMats) {
     .join("");
 }
 
-// Kleine Hilfsfunktion, um Titel sicher in onclick-HTML einzubetten
 function escapeHTML(str = "") {
   return String(str)
     .replace(/&/g, "&amp;")
@@ -1539,7 +1582,6 @@ async function sendFriendRequest(athleteId) {
     return;
   }
 
-  // Prüfe ob bereits Anfrage existiert
   const { data: existing } = await supabase
     .from("friendships")
     .select("id")
@@ -1643,7 +1685,6 @@ async function loadChats() {
         const friend =
           f.requester_id === myProfile.id ? f.addressee : f.requester;
 
-        // Lade letzte Nachricht
         const { data: lastMsg } = await supabase
           .from("private_messages")
           .select("message, created_at")
@@ -1654,7 +1695,6 @@ async function loadChats() {
           .limit(1)
           .single();
 
-        // Zähle ungelesene
         const { count: unreadCount } = await supabase
           .from("private_messages")
           .select("id", { count: "exact", head: true })
@@ -1703,7 +1743,6 @@ async function openChat(friendId) {
   currentChatPartner = friendId;
   switchTab("messages");
 
-  // Lade Friend-Info
   const { data: friend } = await supabase
     .from("athletes")
     .select("id, name, image_url")
@@ -1723,7 +1762,7 @@ async function openChat(friendId) {
     `;
 
   await loadMessages(friendId);
-  loadChats(); // Aktualisiere Chat-Liste
+  loadChats();
 }
 
 async function loadMessages(friendId) {
@@ -1760,10 +1799,8 @@ async function loadMessages(friendId) {
       })
       .join("");
 
-    // Scroll to bottom
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-    // Markiere als gelesen
     await supabase
       .from("private_messages")
       .update({ read: true })
@@ -1802,7 +1839,6 @@ async function sendPrivateMessage(event, receiverId) {
 async function updateNotificationBadges() {
   if (!supabase || !myProfile || myProfile.type !== "athlete") return;
 
-  // Ungelesene Nachrichten
   const { count: unreadCount } = await supabase
     .from("private_messages")
     .select("id", { count: "exact", head: true })
@@ -1828,7 +1864,6 @@ function openOpenMatChat(openmatId, title) {
   document.getElementById("openmat-chat-modal").classList.add("show");
   loadOpenMatMessages(openmatId);
 
-  // Auto-refresh alle 3 Sekunden
   if (window.openmatChatInterval) {
     clearInterval(window.openmatChatInterval);
   }
@@ -2114,15 +2149,12 @@ function showNotification(message, type = "success") {
 }
 
 const menuIcon = document.getElementById("menu-icon");
-const logoutBtn = document.getElementById("logout-btn");
 const mainMenu = document.getElementById("main-menu");
 
-// Menü öffnen/schließen
 menuIcon.addEventListener("click", () => {
   mainMenu.classList.toggle("open");
 });
 
-// Menü schließen, wenn man auf Menüpunkt klickt (mobile only)
 mainMenu.querySelectorAll("button").forEach((btn) => {
   btn.addEventListener("click", () => {
     mainMenu.classList.remove("open");
@@ -2145,7 +2177,6 @@ function acceptCookies() {
   document.getElementById("cookie-banner").classList.remove("show");
 }
 
-// Cookie Banner beim Laden initialisieren
 window.addEventListener("load", initCookieBanner);
 
 // ================================================
@@ -2159,36 +2190,6 @@ if ("serviceWorker" in navigator) {
       .then((registration) => {
         console.log("✅ Service Worker registriert:", registration.scope);
 
-        // Check für Updates alle 60 Sekunden
-        setInterval(() => {
-          registration.update();
-        }, 60000);
-      })
-      .catch((error) => {
-        console.log("❌ Service Worker Registrierung fehlgeschlagen:", error);
-      });
-  });
-
-  // Neue Version verfügbar
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (confirm("Neue Version verfügbar! Seite neu laden?")) {
-      window.location.reload();
-    }
-  });
-}
-
-// ================================================
-// PWA - SERVICE WORKER REGISTRATION
-// ================================================
-
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/service-worker.js")
-      .then((registration) => {
-        console.log("✅ Service Worker registriert:", registration.scope);
-
-        // Check für Updates
         registration.addEventListener("updatefound", () => {
           const newWorker = registration.installing;
           newWorker.addEventListener("statechange", () => {
@@ -2196,7 +2197,6 @@ if ("serviceWorker" in navigator) {
               newWorker.state === "installed" &&
               navigator.serviceWorker.controller
             ) {
-              // Neue Version verfügbar
               if (confirm("Neue Version verfügbar! Jetzt aktualisieren?")) {
                 newWorker.postMessage({ type: "SKIP_WAITING" });
                 window.location.reload();
@@ -2210,7 +2210,6 @@ if ("serviceWorker" in navigator) {
       });
   });
 
-  // Reagiere auf Controller-Änderung
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (!refreshing) {
@@ -2220,13 +2219,11 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-// Check ob App installiert ist
 if (
   window.matchMedia("(display-mode: standalone)").matches ||
   window.navigator.standalone === true
 ) {
   console.log("✅ App läuft im Standalone-Modus");
-  // Optinal: Analytics Event senden
 }
 
 // ================================================
@@ -2234,7 +2231,6 @@ if (
 // ================================================
 
 function showIOSInstallHint() {
-  // Nur auf iOS Safari zeigen, wenn nicht bereits installiert
   const isIOS =
     /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   const isInStandaloneMode = window.navigator.standalone === true;
@@ -2256,7 +2252,6 @@ function showIOSInstallHint() {
 
     document.body.appendChild(hintDiv);
 
-    // Auto-hide nach 10 Sekunden
     setTimeout(() => {
       closeIOSHint();
     }, 10000);
@@ -2274,141 +2269,4 @@ function closeIOSHint() {
   }
 }
 
-// Zeige Hint nach 2 Sekunden
 setTimeout(showIOSInstallHint, 2000);
-
-// ================================================
-// SESSION PERSISTENCE & RECOVERY
-// ================================================
-
-// Prüfe Session beim App-Start (wichtig für iOS PWA)
-async function checkAndRecoverSession() {
-  if (!supabase) return;
-
-  console.log("[Session] Prüfe gespeicherte Session...");
-
-  try {
-    // Versuche Session aus localStorage zu laden
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.getSession();
-
-    if (error) {
-      console.error("[Session] Fehler beim Laden:", error);
-      return;
-    }
-
-    if (session) {
-      console.log("[Session] Gültige Session gefunden");
-      currentUser = session.user;
-
-      // Prüfe ob Token noch gültig ist
-      const expiresAt = session.expires_at;
-      const now = Math.floor(Date.now() / 1000);
-
-      if (expiresAt && expiresAt < now) {
-        console.log("[Session] Token abgelaufen, erneuere...");
-        const { data, error: refreshError } =
-          await supabase.auth.refreshSession();
-
-        if (refreshError) {
-          console.error("[Session] Refresh fehlgeschlagen:", refreshError);
-          await supabase.auth.signOut();
-          return;
-        }
-
-        console.log("[Session] Token erfolgreich erneuert");
-        currentUser = data.session.user;
-      }
-
-      await loadUserProfile();
-      updateAuthUI();
-      await initializeData();
-    } else {
-      console.log("[Session] Keine gültige Session gefunden");
-    }
-  } catch (error) {
-    console.error("[Session] Unerwarteter Fehler:", error);
-  }
-}
-
-// Rufe diese Funktion auf wenn die App in den Vordergrund kommt
-// 2. SESSION CHECK - FÜGE DIESE NEUE FUNKTION HINZU
-document.addEventListener("visibilitychange", async () => {
-  if (document.visibilityState === "visible" && supabase && currentUser) {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      currentUser = null;
-      updateAuthUI();
-    }
-  }
-});
-
-// iOS-spezifisch: pageshow event
-window.addEventListener("pageshow", async (event) => {
-  if (event.persisted && supabase) {
-    console.log("[App] Seite aus Cache wiederhergestellt");
-    await checkAndRecoverSession();
-  }
-});
-
-// ================================================
-// SESSION KEEP-ALIVE
-// ================================================
-
-let sessionKeepAliveInterval = null;
-
-function startSessionKeepAlive() {
-  // Prüfe alle 5 Minuten ob Session noch gültig ist
-  sessionKeepAliveInterval = setInterval(async () => {
-    if (!supabase || !currentUser) {
-      if (sessionKeepAliveInterval) {
-        clearInterval(sessionKeepAliveInterval);
-      }
-      return;
-    }
-
-    console.log("[Session] Keep-alive check...");
-
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.getSession();
-
-    if (error || !session) {
-      console.log("[Session] Session ungültig, leite zu Login...");
-      currentUser = null;
-      updateAuthUI();
-      if (sessionKeepAliveInterval) {
-        clearInterval(sessionKeepAliveInterval);
-      }
-      return;
-    }
-
-    // Prüfe ob Token bald abläuft (innerhalb der nächsten 10 Minuten)
-    const expiresAt = session.expires_at;
-    const now = Math.floor(Date.now() / 1000);
-    const tenMinutes = 10 * 60;
-
-    if (expiresAt && expiresAt - now < tenMinutes) {
-      console.log("[Session] Token läuft bald ab, erneuere...");
-      const { error: refreshError } = await supabase.auth.refreshSession();
-
-      if (refreshError) {
-        console.error("[Session] Refresh fehlgeschlagen:", refreshError);
-      } else {
-        console.log("[Session] Token erfolgreich erneuert");
-      }
-    }
-  }, 5 * 60 * 1000); // Alle 5 Minuten
-}
-
-function stopSessionKeepAlive() {
-  if (sessionKeepAliveInterval) {
-    clearInterval(sessionKeepAliveInterval);
-    sessionKeepAliveInterval = null;
-  }
-}
