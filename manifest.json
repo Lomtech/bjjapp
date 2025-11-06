@@ -10,7 +10,8 @@
   "orientation": "portrait-primary",
   "categories": ["sports", "social", "lifestyle"],
   "dir": "ltr",
-  "lang": "de",
+  "lang": "de-DE",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
@@ -35,30 +36,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Open Mats",
-      "short_name": "Events",
-      "description": "Finde kommende Open Mat Events",
-      "url": "/?tab=openmats",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Nachrichten",
-      "short_name": "Chat",
-      "description": "Öffne deine Nachrichten",
-      "url": "/?tab=messages",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/icons/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "form_factor": "narrow"
     }
   ]
 }
