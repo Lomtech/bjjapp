@@ -2993,3 +2993,178 @@ window.addEventListener("beforeunload", () => {
     localStorage.setItem("lastActiveTab", currentActiveTab);
   }
 });
+// ================================================
+// GOOGLE PLACES API 2025+ – KORRIGIERT & OPTIMIERT
+// ================================================
+
+let googleMapsLoaded = false;
+let googleMapsLoadPromise = null;
+
+// --- API laden ---
+function loadGoogleMapsScript() {
+  if (googleMapsLoadPromise) return googleMapsLoadPromise;
+
+  googleMapsLoadPromise = new Promise((resolve, reject) => {
+    if (window.google?.maps?.places?.Place) {
+      googleMapsLoaded = true;
+      resolve();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&v=weekly&callback=onGoogleMapsLoaded`;
+    script.async = true;
+    script.defer = true;
+    script.onerror = () =>
+      reject(new Error("Google Maps API konnte nicht geladen werden"));
+
+    window.onGoogleMapsLoaded = () => {
+      if (window.google?.maps?.places?.Place) {
+        googleMapsLoaded = true;
+        console.log("✅ Google Places API geladen");
+        resolve();
+      } else {
+        reject(new Error("Places API nicht verfügbar"));
+      }
+    };
+
+    document.head.appendChild(script);
+  });
+
+  return googleMapsLoadPromise;
+}
+
+async function waitForGoogleMaps() {
+  if (googleMapsLoaded) return true;
+  try {
+    await loadGoogleMapsScript();
+    return true;
+  } catch (err) {
+    console.error("Ladefehler:", err);
+    showNotification("Google Maps nicht verfügbar", "error");
+    return false;
+  }
+}
+
+// --- Suche mit searchNearby (empfohlen) ---
+async function searchNearbyBJJGyms(location, radius = 50000) {
+  if (!(await waitForGoogleMaps())) return;
+
+  const resultsDiv = document.getElementById("places-results");
+  if (resultsDiv) {
+    resultsDiv.innerHTML = `<div class="loading">🔄 Suche läuft...</div>`;
+  }
+
+  try {
+    const request = {
+      includedTypes: ["gym", "martial_arts_school"],
+      locationRestriction: { center: location, radius },
+      maxResultCount: 20,
+      rankPreference: "DISTANCE",
+      fields: [
+        "id",
+        "displayName",
+        "formattedAddress",
+        "location",
+        "rating",
+        "userRatingCount",
+        "regularOpeningHours",
+        "nationalPhoneNumber",
+        "websiteURI",
+        "photos",
+      ],
+    };
+
+    const { places, status } = await google.maps.places.Place.searchNearby(
+      request
+    );
+
+    if (
+      status !== google.maps.places.PlacesServiceStatus.OK ||
+      !places?.length
+    ) {
+      throw new Error("Keine Ergebnisse oder API-Fehler: " + status);
+    }
+
+    // BJJ-Filter
+    const bjjPlaces = places.filter((p) => {
+      const name = (p.displayName || "").toLowerCase();
+      return /bjj|jiu.?jitsu|gracie|grappling/i.test(name);
+    });
+
+    displayPlaces(bjjPlaces);
+    showNotification(`${bjjPlaces.length} BJJ-Gyms gefunden`, "success");
+  } catch (error) {
+    console.error("searchNearby Fehler:", error);
+    showNotification("Suche fehlgeschlagen: " + error.message, "error");
+    if (resultsDiv) {
+      resultsDiv.innerHTML = `<div class="error">⚠️ Fehler: ${error.message}</div>`;
+    }
+  }
+}
+
+// --- Ergebnisse anzeigen (robust) ---
+function displayPlaces(places) {
+  const resultsDiv = document.getElementById("places-results");
+  if (!resultsDiv) return;
+
+  window.currentPlacesData = places;
+
+  const html = places
+    .map((place) => {
+      const name = place.displayName || "Unbekannt";
+      const address = place.formattedAddress || "Keine Adresse";
+      const rating = place.rating ? `${place.rating.toFixed(1)} ⭐` : "";
+      const openNow = place.regularOpeningHours?.openNow ? "🟢 Geöffnet" : "";
+
+      let photoUrl = "";
+      if (place.photos?.[0]?.getURI) {
+        try {
+          photoUrl = place.photos[0].getURI({ maxWidth: 400 });
+        } catch (e) {
+          /* ignore */
+        }
+      }
+
+      const lat =
+        typeof place.location?.lat === "function"
+          ? place.location.lat()
+          : place.location?.lat;
+      const lng =
+        typeof place.location?.lng === "function"
+          ? place.location.lng()
+          : place.location?.lng;
+
+      return `
+      <div class="place-card" data-id="${place.id}">
+        ${
+          photoUrl
+            ? `<img src="${photoUrl}" alt="${name}">`
+            : '<div class="placeholder">🥋</div>'
+        }
+        <div class="content">
+          <h3>${name}</h3>
+          <p>${rating} ${openNow}</p>
+          <p>📍 ${address}</p>
+          <button onclick="importPlace('${place.id}')">➕ Import</button>
+        </div>
+      </div>`;
+    })
+    .join("");
+
+  resultsDiv.innerHTML = html || "<p>Keine Ergebnisse</p>";
+}
+
+// --- Import (Beispiel) ---
+async function importPlace(placeId) {
+  const place = window.currentPlacesData.find((p) => p.id === placeId);
+  if (!place) return;
+
+  // ... Supabase-Insert wie in deinem Code ...
+}
+
+// --- Notification Helper ---
+function showNotification(msg, type = "info") {
+  // Implementiere Toast oder Alert
+  alert(`[${type.toUpperCase()}] ${msg}`);
+}
