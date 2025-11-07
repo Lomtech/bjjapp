@@ -3676,38 +3676,38 @@ let googleMapsLoadPromise = null;
 /**
  * Lädt Google Maps JavaScript API mit Places Library (weekly channel)
  */
-function loadGoogleMapsScript() {
-  if (googleMapsLoadPromise) return googleMapsLoadPromise;
+// function loadGoogleMapsScript() {
+//   if (googleMapsLoadPromise) return googleMapsLoadPromise;
 
-  googleMapsLoadPromise = new Promise((resolve, reject) => {
-    if (window.google?.maps?.places?.Place) {
-      googleMapsLoaded = true;
-      resolve();
-      return;
-    }
+//   googleMapsLoadPromise = new Promise((resolve, reject) => {
+//     if (window.google?.maps?.places?.Place) {
+//       googleMapsLoaded = true;
+//       resolve();
+//       return;
+//     }
 
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&v=weekly&callback=initGoogleMaps`;
-    script.async = true;
-    script.defer = true;
-    script.onerror = () =>
-      reject(new Error("Google Maps konnte nicht geladen werden"));
+//     const script = document.createElement("script");
+//     script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&v=weekly&callback=initGoogleMaps`;
+//     script.async = true;
+//     script.defer = true;
+//     script.onerror = () =>
+//       reject(new Error("Google Maps konnte nicht geladen werden"));
 
-    window.initGoogleMaps = () => {
-      if (window.google?.maps?.places?.Place) {
-        googleMapsLoaded = true;
-        console.log("Google Places API geladen");
-        resolve();
-      } else {
-        reject(new Error("Places API nicht verfügbar"));
-      }
-    };
+//     window.initGoogleMaps = () => {
+//       if (window.google?.maps?.places?.Place) {
+//         googleMapsLoaded = true;
+//         console.log("Google Places API geladen");
+//         resolve();
+//       } else {
+//         reject(new Error("Places API nicht verfügbar"));
+//       }
+//     };
 
-    document.head.appendChild(script);
-  });
+//     document.head.appendChild(script);
+//   });
 
-  return googleMapsLoadPromise;
-}
+//   return googleMapsLoadPromise;
+// }
 
 /**
  * Wartet, bis die API vollständig geladen ist
@@ -3718,8 +3718,8 @@ async function waitForGoogleMaps() {
     await loadGoogleMapsScript();
     return true;
   } catch (error) {
-    console.error('Ladefehler:', error);
-    showNotification('Google Maps nicht verfügbar', 'error');
+    console.error("Ladefehler:", error);
+    showNotification("Google Maps nicht verfügbar", "error");
     return false;
   }
 }
