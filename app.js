@@ -3359,7 +3359,7 @@ async function showPlaceOnMap(placeId, lat, lng) {
 // RESTLICHER CODE (Places-Suche, Import, etc.) – unverändert, aber robust
 // ================================================
 
-async function searchBJJGyms(location, radius = 50000) {
+async function searchBJJGyms(location, radius = 100000) {
   const resultsDiv = document.getElementById("places-results");
   if (resultsDiv) {
     resultsDiv.innerHTML = `<div style="text-align:center;padding:40px;"><div style="font-size:3em;animation:spin 1s linear infinite;">Suche</div><p style="margin-top:20px;">Suche BJJ Gyms...</p></div>`;
