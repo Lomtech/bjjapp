@@ -3772,11 +3772,9 @@ async function searchNearbyBJJGyms(location, radius = 50000) {
   try {
     // Verwende die neue searchNearby Methode (OHNE fields!)
     const request = {
-      locationRestriction: {
-        center: location,
-        radius: radius,
-      },
-      includedTypes: ["gym", "fitness_center"],
+      includedTypes: ["gym"],
+      keyword: 'BJJ OR "Brazilian Jiu Jitsu" OR Gracie OR grappling',
+      locationRestriction: { center: location, radius },
       maxResultCount: 20,
       rankPreference: "DISTANCE",
     };
@@ -3970,22 +3968,30 @@ function displayModernPlacesResults(places) {
       const website = place.websiteURI || null;
 
       // Foto URL (neue API)
+      // Innerhalb der map-Funktion:
       let photoUrl = null;
       if (place.photos && place.photos.length > 0) {
         try {
-          photoUrl = place.photos[0].getURI({ maxWidth: 400, maxHeight: 300 });
+          photoUrl = place.photos[0].getURI
+            ? place.photos[0].getURI({ maxWidth: 400, maxHeight: 300 })
+            : null;
         } catch (e) {
-          console.warn("Foto konnte nicht geladen werden:", e);
+          /* ignore */
         }
       }
+
+      const lat =
+        typeof place.location?.lat === "function"
+          ? place.location.lat()
+          : place.location?.lat;
+      const lng =
+        typeof place.location?.lng === "function"
+          ? place.location.lng()
+          : place.location?.lng;
 
       // Öffnungszeiten
       const hours = place.regularOpeningHours?.weekdayDescriptions || [];
       const openNow = place.regularOpeningHours?.openNow || false;
-
-      // Location für Karte
-      const lat = place.location?.lat() || null;
-      const lng = place.location?.lng() || null;
 
       return `
       <div class="place-card" data-place-id="${place.id}">
