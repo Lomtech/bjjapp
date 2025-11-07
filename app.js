@@ -2051,22 +2051,956 @@ async function loadDashboard() {
 async function initMap() {
   return initGoogleMap(); // Neue Funktion aufrufen
 }
+
 // ================================================
-// MODERNE GOOGLE MAPS PLACES API (2025+)
-// Bereinigt & Optimiert - nur neue API
+// ERWEITERTE GOOGLE MAPS FUNKTIONEN
+// Diese Funktionen ersetzen/erweitern initGoogleMap() in app.js
+// ================================================
+
+async function initGoogleMap() {
+  if (!supabase) return;
+
+  // Prüfe ob Google Maps geladen ist
+  if (typeof google === "undefined" || !google.maps) {
+    console.error("Google Maps API nicht geladen");
+    showNotification("Karte konnte nicht geladen werden", "error");
+    return;
+  }
+
+  const mapElement = document.getElementById("map");
+  if (!mapElement) return;
+
+  // Entferne alte Map falls vorhanden
+  if (googleMap) {
+    googleMap = null;
+  }
+
+  // Google Map erstellen mit erweiterten Optionen
+  googleMap = new google.maps.Map(mapElement, {
+    center: { lat: 51.1657, lng: 10.4515 },
+    zoom: 6,
+    styles: [
+      {
+        featureType: "poi.business",
+        stylers: [{ visibility: "off" }],
+      },
+    ],
+    mapTypeControl: true,
+    mapTypeControlOptions: {
+      style: google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+      position: google.maps.ControlPosition.TOP_RIGHT,
+      mapTypeIds: ["roadmap", "satellite", "hybrid", "terrain"],
+    },
+    streetViewControl: true,
+    streetViewControlOptions: {
+      position: google.maps.ControlPosition.RIGHT_BOTTOM,
+    },
+    fullscreenControl: true,
+    fullscreenControlOptions: {
+      position: google.maps.ControlPosition.RIGHT_TOP,
+    },
+    zoomControl: true,
+    zoomControlOptions: {
+      position: google.maps.ControlPosition.RIGHT_CENTER,
+    },
+    // Traffic Layer Option
+    gestureHandling: "cooperative",
+  });
+
+  // Traffic Layer hinzufügen
+  const trafficLayer = new google.maps.TrafficLayer();
+  trafficLayer.setMap(googleMap);
+
+  // Directions Service & Renderer für Routenplanung
+  const directionsService = new google.maps.DirectionsService();
+  const directionsRenderer = new google.maps.DirectionsRenderer({
+    map: googleMap,
+    suppressMarkers: false,
+    polylineOptions: {
+      strokeColor: "#000000",
+      strokeWeight: 5,
+      strokeOpacity: 0.7,
+    },
+  });
+
+  // Custom Control: "Mein Standort" Button
+  addLocationButton(googleMap);
+
+  // Custom Control: Routenplaner
+  addDirectionsPanel(googleMap, directionsService, directionsRenderer);
+
+  const bounds = new google.maps.LatLngBounds();
+  let hasMarkers = false;
+  let allMarkers = [];
+
+  // Gyms laden und Marker setzen
+  const { data: gyms } = await supabase.from("gyms").select("*");
+
+  if (gyms && gyms.length > 0) {
+    gyms.forEach((gym) => {
+      if (gym.latitude && gym.longitude) {
+        const position = {
+          lat: parseFloat(gym.latitude),
+          lng: parseFloat(gym.longitude),
+        };
+
+        const marker = new google.maps.Marker({
+          position: position,
+          map: googleMap,
+          title: gym.name,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 12,
+            fillColor: "#000000",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 3,
+          },
+          animation: google.maps.Animation.DROP,
+          // Zusätzliche Daten für Routenplanung
+          gymData: gym,
+        });
+
+        const infoWindow = new google.maps.InfoWindow({
+          content: `
+            <div style="padding: 12px; font-family: system-ui; min-width: 200px;">
+              <h3 style="margin: 0 0 8px 0; font-size: 1.1em; font-weight: 600;">${
+                gym.name
+              }</h3>
+              <p style="margin: 4px 0; color: #666; font-size: 0.9em;">📍 ${
+                gym.street || ""
+              }</p>
+              <p style="margin: 4px 0; color: #666; font-size: 0.9em;">🏙️ ${
+                gym.postal_code || ""
+              } ${gym.city || ""}</p>
+              ${
+                gym.phone
+                  ? `<p style="margin: 4px 0; font-size: 0.9em;">📞 ${gym.phone}</p>`
+                  : ""
+              }
+              ${
+                gym.website
+                  ? `<p style="margin: 4px 0; font-size: 0.9em;"><a href="${gym.website}" target="_blank" style="color: #000; text-decoration: underline;">🌐 Website</a></p>`
+                  : ""
+              }
+              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee;">
+                <button onclick="calculateRoute('${gym.latitude}', '${
+            gym.longitude
+          }', '${gym.name.replace(/'/g, "\\'")}')" 
+                        style="background: #000; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9em; width: 100%;">
+                  🧭 Route hierher
+                </button>
+              </div>
+            </div>
+          `,
+        });
+
+        marker.addListener("click", () => {
+          // Schließe alle anderen Info Windows
+          allMarkers.forEach((m) => {
+            if (m.infoWindow) m.infoWindow.close();
+          });
+          infoWindow.open(googleMap, marker);
+        });
+
+        marker.infoWindow = infoWindow;
+        allMarkers.push(marker);
+        bounds.extend(position);
+        hasMarkers = true;
+      }
+    });
+  }
+
+  // Open Mats laden und Marker setzen
+  const { data: openMats } = await supabase
+    .from("open_mats")
+    .select("*, gyms(name, city, street, postal_code, latitude, longitude)")
+    .gte("event_date", new Date().toISOString());
+
+  if (openMats && openMats.length > 0) {
+    openMats.forEach((om) => {
+      if (om.gyms?.latitude && om.gyms?.longitude) {
+        const position = {
+          lat: parseFloat(om.gyms.latitude),
+          lng: parseFloat(om.gyms.longitude),
+        };
+
+        const date = new Date(om.event_date).toLocaleDateString("de-DE", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        // Custom Event Marker mit SVG
+        const marker = new google.maps.Marker({
+          position: position,
+          map: googleMap,
+          title: om.title,
+          icon: {
+            url:
+              "data:image/svg+xml;charset=UTF-8," +
+              encodeURIComponent(`
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+                <circle cx="20" cy="20" r="18" fill="#dc3545" stroke="white" stroke-width="3"/>
+                <text x="20" y="28" font-size="20" text-anchor="middle" fill="white">📅</text>
+              </svg>
+            `),
+            scaledSize: new google.maps.Size(40, 40),
+            anchor: new google.maps.Point(20, 20),
+          },
+          animation: google.maps.Animation.DROP,
+          zIndex: 1000, // Höher als Gym-Marker
+        });
+
+        const infoWindow = new google.maps.InfoWindow({
+          content: `
+            <div style="padding: 12px; font-family: system-ui; min-width: 250px;">
+              <h3 style="margin: 0 0 8px 0; font-size: 1.2em; color: #dc3545; font-weight: 600;">📅 ${
+                om.title
+              }</h3>
+              <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin: 8px 0;">
+                <p style="margin: 4px 0; font-weight: 600; font-size: 1em;">${
+                  om.gyms.name
+                }</p>
+                <p style="margin: 4px 0; color: #666; font-size: 0.9em;">📍 ${
+                  om.gyms.street || ""
+                }</p>
+                <p style="margin: 4px 0; color: #666; font-size: 0.9em;">🏙️ ${
+                  om.gyms.postal_code || ""
+                } ${om.gyms.city || ""}</p>
+              </div>
+              <p style="margin: 8px 0; padding: 8px; background: #fff3cd; border-radius: 4px; font-size: 0.9em;"><strong>📅 ${date}</strong></p>
+              <p style="margin: 4px 0; font-size: 0.9em;">⏱️ Dauer: ${
+                om.duration_minutes
+              } Minuten</p>
+              ${
+                om.description
+                  ? `<p style="margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 0.85em; color: #666;">${om.description}</p>`
+                  : ""
+              }
+              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee;">
+                <button onclick="calculateRoute('${om.gyms.latitude}', '${
+            om.gyms.longitude
+          }', '${om.gyms.name.replace(/'/g, "\\'")}')" 
+                        style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9em; width: 100%;">
+                  🧭 Route zum Event
+                </button>
+              </div>
+            </div>
+          `,
+        });
+
+        marker.addListener("click", () => {
+          allMarkers.forEach((m) => {
+            if (m.infoWindow) m.infoWindow.close();
+          });
+          infoWindow.open(googleMap, marker);
+        });
+
+        marker.infoWindow = infoWindow;
+        allMarkers.push(marker);
+        bounds.extend(position);
+        hasMarkers = true;
+      }
+    });
+  }
+
+  // Map an Marker anpassen
+  if (hasMarkers) {
+    googleMap.fitBounds(bounds);
+
+    // Verhindere zu starkes Zoom bei einzelnem Marker
+    const listener = google.maps.event.addListener(googleMap, "idle", () => {
+      if (googleMap.getZoom() > 15) {
+        googleMap.setZoom(15);
+      }
+      google.maps.event.removeListener(listener);
+    });
+  }
+
+  // Speichere für globalen Zugriff
+  window.googleMapInstance = googleMap;
+  window.directionsServiceInstance = directionsService;
+  window.directionsRendererInstance = directionsRenderer;
+  window.allMapMarkers = allMarkers;
+}
+
+// ================================================
+// CUSTOM CONTROLS
+// ================================================
+
+function addLocationButton(map) {
+  const locationButton = document.createElement("button");
+  locationButton.textContent = "📍 Mein Standort";
+  locationButton.classList.add("custom-map-control-button");
+  locationButton.style.cssText = `
+    background: white;
+    border: 2px solid #000;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    color: #000;
+    cursor: pointer;
+    font-family: system-ui;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 10px;
+    padding: 10px 16px;
+    transition: all 0.2s;
+  `;
+
+  locationButton.addEventListener("mouseover", () => {
+    locationButton.style.background = "#000";
+    locationButton.style.color = "white";
+  });
+
+  locationButton.addEventListener("mouseout", () => {
+    locationButton.style.background = "white";
+    locationButton.style.color = "#000";
+  });
+
+  locationButton.addEventListener("click", () => {
+    if (navigator.geolocation) {
+      locationButton.textContent = "🔄 Lokalisiere...";
+      locationButton.disabled = true;
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const pos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+
+          map.setCenter(pos);
+          map.setZoom(14);
+
+          // Marker für eigenen Standort
+          new google.maps.Marker({
+            position: pos,
+            map: map,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: "#4285F4",
+              fillOpacity: 1,
+              strokeColor: "white",
+              strokeWeight: 2,
+            },
+            title: "Dein Standort",
+          });
+
+          locationButton.textContent = "📍 Mein Standort";
+          locationButton.disabled = false;
+          showNotification("Standort gefunden!");
+        },
+        () => {
+          showNotification("Standort konnte nicht ermittelt werden", "warning");
+          locationButton.textContent = "📍 Mein Standort";
+          locationButton.disabled = false;
+        }
+      );
+    } else {
+      showNotification("Geolocation wird nicht unterstützt", "error");
+    }
+  });
+
+  map.controls[google.maps.ControlPosition.TOP_CENTER].push(locationButton);
+}
+
+function addDirectionsPanel(map, directionsService, directionsRenderer) {
+  const panel = document.createElement("div");
+  panel.id = "directions-panel";
+  panel.style.cssText = `
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    margin: 10px;
+    padding: 12px;
+    font-family: system-ui;
+    display: none;
+    max-width: 300px;
+  `;
+
+  panel.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h4 style="margin: 0; font-size: 14px; font-weight: 600;">🧭 Routenplaner</h4>
+      <button onclick="closeDirectionsPanel()" style="background: none; border: none; font-size: 18px; cursor: pointer; padding: 0; line-height: 1;">×</button>
+    </div>
+    <div id="directions-info" style="font-size: 12px; color: #666;"></div>
+  `;
+
+  map.controls[google.maps.ControlPosition.LEFT_TOP].push(panel);
+  window.directionsPanel = panel;
+}
+
+// ================================================
+// ROUTING FUNKTIONEN
+// ================================================
+
+function calculateRoute(destLat, destLng, destName) {
+  if (!navigator.geolocation) {
+    showNotification("Geolocation wird nicht unterstützt", "error");
+    return;
+  }
+
+  showNotification("Berechne Route...", "info");
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const origin = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      };
+      const destination = {
+        lat: parseFloat(destLat),
+        lng: parseFloat(destLng),
+      };
+
+      const request = {
+        origin: origin,
+        destination: destination,
+        travelMode: google.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: true,
+      };
+
+      window.directionsServiceInstance.route(request, (result, status) => {
+        if (status === google.maps.DirectionsStatus.OK) {
+          window.directionsRendererInstance.setDirections(result);
+
+          const route = result.routes[0].legs[0];
+          const panel = window.directionsPanel;
+
+          panel.style.display = "block";
+          document.getElementById("directions-info").innerHTML = `
+            <div style="margin: 8px 0;">
+              <strong style="color: #000;">Nach: ${destName}</strong>
+            </div>
+            <div style="background: #f8f9fa; padding: 8px; border-radius: 4px; margin: 8px 0;">
+              <div style="margin: 4px 0;">📏 <strong>${route.distance.text}</strong></div>
+              <div style="margin: 4px 0;">⏱️ <strong>${route.duration.text}</strong></div>
+            </div>
+            <div style="font-size: 11px; color: #999; margin-top: 8px;">
+              Start: ${route.start_address}
+            </div>
+          `;
+
+          showNotification(`Route gefunden: ${route.distance.text}`, "success");
+        } else {
+          showNotification("Route konnte nicht berechnet werden", "error");
+          console.error("Directions request failed:", status);
+        }
+      });
+    },
+    () => {
+      showNotification("Standort konnte nicht ermittelt werden", "error");
+    }
+  );
+}
+
+function closeDirectionsPanel() {
+  window.directionsPanel.style.display = "none";
+  window.directionsRendererInstance.setDirections({ routes: [] });
+  showNotification("Routenanzeige geschlossen");
+}
+
+// ================================================
+// ZUSÄTZLICHE FEATURES
+// ================================================
+
+// Marker Clustering für bessere Performance bei vielen Markern
+// Wird geladen wenn @googlemaps/markerclusterer verfügbar ist
+function enableMarkerClustering() {
+  if (typeof MarkerClusterer !== "undefined" && window.allMapMarkers) {
+    new MarkerClusterer({
+      map: window.googleMapInstance,
+      markers: window.allMapMarkers,
+    });
+  }
+}
+
+// Measure Distance Tool
+function addMeasureTool(map) {
+  // Optional: Distanz-Messwerkzeug hinzufügen
+  // Kann später implementiert werden
+}
+
+// ================================================
+// TAB-NAVIGATION
+// ================================================
+
+function switchTab(tabName, eventTarget = null) {
+  // Tab speichern für Persistenz
+  saveActiveTab(tabName);
+  if (!currentUser) return;
+
+  document
+    .querySelectorAll(".tab-content")
+    .forEach((t) => t.classList.remove("active"));
+  document
+    .querySelectorAll(".tab-btn")
+    .forEach((b) => b.classList.remove("active"));
+
+  const targetTab = document.getElementById(tabName + "-tab");
+  if (targetTab) {
+    targetTab.classList.add("active");
+  }
+
+  if (eventTarget) {
+    eventTarget.classList.add("active");
+  } else {
+    const tabMapping = {
+      dashboard: "Dashboard",
+      profile: "Mein Profil",
+      athletes: "Athleten",
+      gyms: "Gyms",
+      openmats: "Open Mats",
+      friends: "Freunde",
+      messages: "Nachrichten",
+      map: "Karte",
+    };
+
+    const buttons = document.querySelectorAll(".tab-btn");
+    buttons.forEach((btn) => {
+      const btnText = btn.textContent.trim().split("\n")[0].trim();
+      if (btnText === tabMapping[tabName]) {
+        btn.classList.add("active");
+      }
+    });
+  }
+
+  if (tabName === "map" && !map) {
+    initMap();
+  }
+  if (tabName === "dashboard") {
+    loadDashboard();
+  }
+  if (tabName === "friends" && myProfile?.type === "athlete") {
+    loadFriendRequests();
+    loadFriends();
+  }
+  if (tabName === "openmats") {
+    loadOpenMats();
+  }
+  if (tabName === "messages" && myProfile?.type === "athlete") {
+    loadChats();
+  }
+}
+
+// ================================================
+// UTILITY FUNCTIONS
+// ================================================
+
+function showNotification(message, type = "success") {
+  const notif = document.getElementById("notification");
+  notif.textContent = message;
+  notif.className = "notification show";
+  if (type) notif.classList.add(type);
+  setTimeout(() => notif.classList.remove("show"), 3000);
+}
+
+const menuIcon = document.getElementById("menu-icon");
+const mainMenu = document.getElementById("main-menu");
+
+menuIcon.addEventListener("click", () => {
+  mainMenu.classList.toggle("open");
+});
+
+mainMenu.querySelectorAll("button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    mainMenu.classList.remove("open");
+  });
+});
+
+// ================================================
+// COOKIE MANAGEMENT
+// ================================================
+
+function initCookieBanner() {
+  const cookieConsent = localStorage.getItem("cookieConsent");
+  if (!cookieConsent) {
+    document.getElementById("cookie-banner").classList.add("show");
+  }
+}
+
+function acceptCookies() {
+  localStorage.setItem("cookieConsent", "accepted");
+  document.getElementById("cookie-banner").classList.remove("show");
+}
+
+window.addEventListener("load", initCookieBanner);
+
+// ================================================
+// PWA - SERVICE WORKER REGISTRATION
+// ================================================
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/service-worker.js")
+      .then((registration) => {
+        console.log("✅ Service Worker registriert:", registration.scope);
+
+        registration.addEventListener("updatefound", () => {
+          const newWorker = registration.installing;
+          newWorker.addEventListener("statechange", () => {
+            if (
+              newWorker.state === "installed" &&
+              navigator.serviceWorker.controller
+            ) {
+              if (confirm("Neue Version verfügbar! Jetzt aktualisieren?")) {
+                newWorker.postMessage({ type: "SKIP_WAITING" });
+                window.location.reload();
+              }
+            }
+          });
+        });
+      })
+      .catch((error) => {
+        console.error("❌ Service Worker Registrierung fehlgeschlagen:", error);
+      });
+  });
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
+}
+
+if (
+  window.matchMedia("(display-mode: standalone)").matches ||
+  window.navigator.standalone === true
+) {
+  console.log("✅ App läuft im Standalone-Modus");
+}
+
+// ================================================
+// iOS PWA INSTALLATION GUIDE (ERWEITERT)
+// ================================================
+
+function detectIOSBrowser() {
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+
+  if (!isIOS) return null;
+
+  // Check welcher Browser
+  if (/CriOS/.test(ua)) return "chrome";
+  if (/FxiOS/.test(ua)) return "firefox";
+  if (/EdgiOS/.test(ua)) return "edge";
+  if (/Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua)) return "safari";
+
+  return "other";
+}
+
+function showIOSPWAGuide() {
+  const browser = detectIOSBrowser();
+  const isInStandaloneMode = window.navigator.standalone === true;
+  const hasSeenGuide = localStorage.getItem("ios-pwa-guide-seen");
+
+  // Nur auf iOS zeigen, wenn nicht installiert und noch nicht gesehen
+  if (browser && !isInStandaloneMode && !hasSeenGuide) {
+    // Wenn nicht Safari, zeige Hinweis zum Browser-Wechsel
+    if (browser !== "safari") {
+      showBrowserSwitchHint(browser);
+    } else {
+      // Wenn Safari, zeige Installations-Anleitung
+      showSafariInstallGuide();
+    }
+  }
+}
+
+function showBrowserSwitchHint(currentBrowser) {
+  const browserNames = {
+    chrome: "Chrome",
+    firefox: "Firefox",
+    edge: "Edge",
+  };
+
+  const hintDiv = document.createElement("div");
+  hintDiv.className = "ios-browser-hint";
+  hintDiv.innerHTML = `
+    <div class="ios-hint-content">
+      <div class="ios-hint-header">
+        <div class="ios-hint-icon">🥋</div>
+        <button class="ios-hint-close" onclick="closeIOSHint()">✕</button>
+      </div>
+      <div class="ios-hint-body">
+        <h3>App auf dem iPhone installieren</h3>
+        <p style="margin: 12px 0; color: #666;">
+          ${browserNames[currentBrowser]} unterstützt leider keine App-Installation auf iOS.
+        </p>
+        <div class="ios-hint-steps">
+          <div class="step-item">
+            <span class="step-number">1</span>
+            <span>Öffne diese Seite in <strong>Safari</strong></span>
+          </div>
+          <div class="step-item">
+            <span class="step-number">2</span>
+            <span>Tippe auf das Teilen-Symbol <strong>⬆️</strong></span>
+          </div>
+          <div class="step-item">
+            <span class="step-number">3</span>
+            <span>Wähle <strong>"Zum Home-Bildschirm"</strong></span>
+          </div>
+        </div>
+        <button class="btn copy-url-btn" onclick="copyCurrentURL()">
+          🔗 Link kopieren für Safari
+        </button>
+        <button class="btn btn-secondary" onclick="closeIOSHint()" style="margin-top: 10px;">
+          Später
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(hintDiv);
+
+  // Auto-hide nach 15 Sekunden
+  setTimeout(() => {
+    closeIOSHint();
+  }, 15000);
+}
+
+// function showSafariInstallGuide() {
+//   const hintDiv = document.createElement("div");
+//   hintDiv.className = "ios-browser-hint";
+//   hintDiv.innerHTML = `
+//     <div class="ios-hint-content">
+//       <div class="ios-hint-header">
+//         <div class="ios-hint-icon">📱</div>
+//         <button class="ios-hint-close" onclick="closeIOSHint()">✕</button>
+//       </div>
+//       <div class="ios-hint-body">
+//         <h3>Als App installieren</h3>
+//         <p style="margin: 12px 0; color: #666;">
+//           Installiere BJJ Community auf deinem Home-Bildschirm für schnellen Zugriff!
+//         </p>
+//         <div class="ios-hint-steps">
+//           <div class="step-item">
+//             <span class="step-number">1</span>
+//             <span>Tippe auf das Teilen-Symbol <strong style="font-size: 1.3em;">⬆️</strong></span>
+//           </div>
+//           <div class="step-item">
+//             <span class="step-number">2</span>
+//             <span>Scrolle und tippe auf <strong>"Zum Home-Bildschirm"</strong></span>
+//           </div>
+//           <div class="step-item">
+//             <span class="step-number">3</span>
+//             <span>Tippe auf <strong>"Hinzufügen"</strong></span>
+//           </div>
+//         </div>
+//         <div style="display: flex; gap: 10px; margin-top: 16px;">
+//           <button class="btn" onclick="markGuideAsSeen()">
+//             ✓ Verstanden
+//           </button>
+//           <button class="btn btn-secondary" onclick="remindMeLater()">
+//             Später erinnern
+//           </button>
+//         </div>
+//       </div>
+//     </div>
+//   `;
+
+//   document.body.appendChild(hintDiv);
+
+//   // Auto-hide nach 20 Sekunden
+//   setTimeout(() => {
+//     closeIOSHint();
+//   }, 20000);
+// }
+
+function copyCurrentURL() {
+  const url = window.location.href;
+
+  // Moderne Clipboard API
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        showNotification("✓ Link kopiert! Jetzt in Safari öffnen", "success");
+        setTimeout(() => {
+          closeIOSHint();
+        }, 2000);
+      })
+      .catch(() => {
+        fallbackCopyURL(url);
+      });
+  } else {
+    fallbackCopyURL(url);
+  }
+}
+
+function fallbackCopyURL(url) {
+  // Fallback für ältere Browser
+  const textarea = document.createElement("textarea");
+  textarea.value = url;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+
+  try {
+    document.execCommand("copy");
+    showNotification("✓ Link kopiert!", "success");
+    setTimeout(() => {
+      closeIOSHint();
+    }, 2000);
+  } catch (err) {
+    showNotification("Bitte Link manuell kopieren", "info");
+  }
+
+  document.body.removeChild(textarea);
+}
+
+function markGuideAsSeen() {
+  localStorage.setItem("ios-pwa-guide-seen", "true");
+  closeIOSHint();
+}
+
+function remindMeLater() {
+  // Erinnere in 24 Stunden
+  const tomorrow = new Date();
+  tomorrow.setHours(tomorrow.getHours() + 24);
+  localStorage.setItem("ios-pwa-remind-after", tomorrow.toISOString());
+  closeIOSHint();
+}
+
+// Initialisiere PWA Guide (ersetzt die einfache Version)
+setTimeout(() => {
+  const remindAfter = localStorage.getItem("ios-pwa-remind-after");
+
+  if (remindAfter) {
+    const remindDate = new Date(remindAfter);
+    if (new Date() < remindDate) {
+      return; // Noch nicht Zeit für Erinnerung
+    }
+  }
+
+  showIOSPWAGuide();
+}, 3000); // Nach 3 Sekunden zeigen
+
+// ================================================
+// PWA INSTALL BANNER
+// ================================================
+
+function initPWABanner() {
+  const banner = document.getElementById("pwa-install-banner");
+  const icon = document.getElementById("pwa-install-icon");
+  const bannerDismissed = localStorage.getItem("pwa-banner-dismissed");
+
+  // Zeige Banner nur wenn nicht dismissed und nicht standalone
+  if (
+    !bannerDismissed &&
+    !window.matchMedia("(display-mode: standalone)").matches
+  ) {
+    setTimeout(() => {
+      banner.classList.add("show");
+
+      // Aktualisiere Anweisungen basierend auf Browser/OS
+      updatePWAInstructions();
+    }, 2000);
+  } else if (
+    bannerDismissed &&
+    !window.matchMedia("(display-mode: standalone)").matches
+  ) {
+    // Zeige nur das Icon wenn Banner dismissed wurde
+    icon.classList.add("show");
+  }
+}
+
+function updatePWAInstructions() {
+  const instructions = document.getElementById("pwa-instructions");
+  const shareIcon = document.getElementById("share-icon");
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+  if (isIOS && isSafari) {
+    shareIcon.textContent = "⬆️";
+    instructions.innerHTML = `Tippe auf <strong>⬆️</strong> und dann auf <strong>"Zum Home-Bildschirm"</strong>`;
+  } else if (isIOS) {
+    shareIcon.textContent = "⬆️";
+    instructions.innerHTML = `Öffne in Safari und tippe auf <strong>⬆️</strong> → <strong>"Zum Home-Bildschirm"</strong>`;
+  } else {
+    // Android Chrome oder andere
+    shareIcon.textContent = "⋮";
+    instructions.innerHTML = `Tippe auf <strong>⋮</strong> (Menü) und dann auf <strong>"Zum Startbildschirm hinzufügen"</strong>`;
+  }
+}
+
+function closePWABanner() {
+  const banner = document.getElementById("pwa-install-banner");
+  const icon = document.getElementById("pwa-install-icon");
+
+  banner.classList.remove("show");
+  localStorage.setItem("pwa-banner-dismissed", "true");
+
+  // Zeige das floating Icon nach Animation
+  setTimeout(() => {
+    icon.classList.add("show");
+  }, 300);
+}
+
+function openPWABanner() {
+  const banner = document.getElementById("pwa-install-banner");
+  const icon = document.getElementById("pwa-install-icon");
+
+  icon.classList.remove("show");
+
+  setTimeout(() => {
+    banner.classList.add("show");
+    updatePWAInstructions();
+  }, 300);
+}
+
+// Initialisiere PWA Banner beim Laden
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initPWABanner);
+} else {
+  initPWABanner();
+}
+
+// ================================================
+// VERBESSERTE TAB-PERSISTENZ
+// ================================================
+
+// Überschreibe saveActiveTab Funktion für bessere Persistenz
+const originalSaveActiveTab = saveActiveTab;
+function saveActiveTab(tabName) {
+  localStorage.setItem("activeTab", tabName);
+  localStorage.setItem("lastActiveTab", tabName);
+  currentActiveTab = tabName;
+}
+
+// Stelle beim Laden den letzten Tab wieder her
+window.addEventListener("load", () => {
+  const savedTab =
+    localStorage.getItem("activeTab") || localStorage.getItem("lastActiveTab");
+  if (savedTab && currentUser) {
+    // Warte kurz damit alles geladen ist
+    setTimeout(() => {
+      switchTab(savedTab);
+    }, 100);
+  }
+});
+
+// Beim Verlassen der Seite Tab speichern
+window.addEventListener("beforeunload", () => {
+  if (currentActiveTab) {
+    localStorage.setItem("lastActiveTab", currentActiveTab);
+  }
+});
+// ================================================
+// GOOGLE PLACES API 2025+ – KORRIGIERT & OPTIMIERT
 // ================================================
 
 let googleMapsLoaded = false;
 let googleMapsLoadPromise = null;
-let searchMarkers = [];
 
-// ================================================
-// GOOGLE MAPS LADEN
-// ================================================
-
-/**
- * Lädt Google Maps JavaScript API mit Places Library (weekly channel)
- */
+// --- API laden ---
 function loadGoogleMapsScript() {
   if (googleMapsLoadPromise) return googleMapsLoadPromise;
 
@@ -2078,16 +3012,16 @@ function loadGoogleMapsScript() {
     }
 
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&v=weekly&callback=initGoogleMaps`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&v=weekly&callback=onGoogleMapsLoaded`;
     script.async = true;
     script.defer = true;
     script.onerror = () =>
-      reject(new Error("Google Maps konnte nicht geladen werden"));
+      reject(new Error("Google Maps API konnte nicht geladen werden"));
 
-    window.initGoogleMaps = () => {
+    window.onGoogleMapsLoaded = () => {
       if (window.google?.maps?.places?.Place) {
         googleMapsLoaded = true;
-        console.log("✅ Google Places API (2025+) geladen");
+        console.log("✅ Google Places API geladen");
         resolve();
       } else {
         reject(new Error("Places API nicht verfügbar"));
@@ -2100,334 +3034,98 @@ function loadGoogleMapsScript() {
   return googleMapsLoadPromise;
 }
 
-/**
- * Wartet, bis die API vollständig geladen ist
- */
 async function waitForGoogleMaps() {
   if (googleMapsLoaded) return true;
   try {
     await loadGoogleMapsScript();
     return true;
-  } catch (error) {
-    console.error("Ladefehler:", error);
+  } catch (err) {
+    console.error("Ladefehler:", err);
     showNotification("Google Maps nicht verfügbar", "error");
     return false;
   }
 }
 
-// ================================================
-// SUCHE - BJJ GYMS FINDEN
-// ================================================
-
-/**
- * Startet die BJJ-Gym-Suche basierend auf der aktuellen Position
- */
-async function searchBJJGyms() {
-  const mapsReady = await waitForGoogleMaps();
-  if (!mapsReady) {
-    showNotification("Google Maps nicht verfügbar", "error");
-    return;
-  }
-
-  if (!navigator.geolocation) {
-    showNotification("Geolocation wird nicht unterstützt", "warning");
-    return;
-  }
-
-  showNotification("Suche BJJ Gyms in deiner Nähe...", "info");
-
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      const userLocation = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-      };
-      await searchNearbyBJJGyms(userLocation, 50000);
-    },
-    (error) => {
-      console.error("Geolocation Error:", error);
-      showNotification("Standort konnte nicht ermittelt werden", "error");
-      // Fallback auf Deutschland-Zentrum
-      searchNearbyBJJGyms({ lat: 51.1657, lng: 10.4515 }, 50000);
-    }
-  );
-}
-
-/**
- * Primäre Suche: searchNearby (effizient & präzise)
- */
+// --- Suche mit searchNearby (empfohlen) ---
 async function searchNearbyBJJGyms(location, radius = 50000) {
-  const resultsDiv = document.getElementById("places-results");
+  if (!(await waitForGoogleMaps())) return;
 
-  // Loading State
+  const resultsDiv = document.getElementById("places-results");
   if (resultsDiv) {
-    resultsDiv.innerHTML = `
-      <div style="text-align: center; padding: 40px;">
-        <div style="font-size: 3em; animation: spin 1s linear infinite;">🔄</div>
-        <p style="margin-top: 20px;">Suche BJJ Gyms...</p>
-      </div>
-    `;
+    resultsDiv.innerHTML = `<div class="loading">🔄 Suche läuft...</div>`;
   }
 
   try {
-    // ✅ WICHTIG: fields MUSS im Request selbst sein!
     const request = {
-      fields: [
-        "displayName",
-        "location",
-        "formattedAddress",
-        "rating",
-        "userRatingCount",
-        "nationalPhoneNumber",
-        "websiteURI",
-        "photos",
-        "regularOpeningHours",
-      ],
       includedTypes: ["gym", "martial_arts_school"],
       locationRestriction: { center: location, radius },
       maxResultCount: 20,
       rankPreference: "DISTANCE",
+      fields: [
+        "id",
+        "displayName",
+        "formattedAddress",
+        "location",
+        "rating",
+        "userRatingCount",
+        "regularOpeningHours",
+        "nationalPhoneNumber",
+        "websiteURI",
+        "photos",
+      ],
     };
 
-    const { places } = await google.maps.places.Place.searchNearby(request);
+    const { places, status } = await google.maps.places.Place.searchNearby(
+      request
+    );
 
-    if (!places || places.length === 0) {
-      showNotification("Keine Gyms in der Nähe gefunden", "info");
-      if (resultsDiv) {
-        resultsDiv.innerHTML = `
-          <div style="text-align: center; padding: 40px; color: #666;">
-            <p style="font-size: 2em;">😕</p>
-            <p>Keine Gyms in diesem Bereich gefunden.</p>
-            <p style="font-size: 0.9em; margin-top: 10px;">Versuche einen anderen Standort oder größeren Radius.</p>
-          </div>
-        `;
-      }
-      return;
+    if (
+      status !== google.maps.places.PlacesServiceStatus.OK ||
+      !places?.length
+    ) {
+      throw new Error("Keine Ergebnisse oder API-Fehler: " + status);
     }
-
-    console.log(`${places.length} Places gefunden mit vollständigen Daten`);
 
     // BJJ-Filter
     const bjjPlaces = places.filter((p) => {
       const name = (p.displayName || "").toLowerCase();
-      return /bjj|jiu.?jitsu|gracie|grappling/.test(name);
+      return /bjj|jiu.?jitsu|gracie|grappling/i.test(name);
     });
 
-    if (bjjPlaces.length === 0) {
-      showNotification("Keine BJJ-Gyms gefunden", "info");
-      if (resultsDiv) {
-        resultsDiv.innerHTML = `
-          <div style="text-align: center; padding: 40px; color: #666;">
-            <p style="font-size: 2em;">🥋</p>
-            <p>Keine BJJ-Gyms in der Nähe gefunden.</p>
-            <p style="font-size: 0.9em; margin-top: 10px;">Versuche Textsuche oder einen anderen Standort.</p>
-          </div>
-        `;
-      }
-      return;
-    }
-
-    displayModernPlacesResults(bjjPlaces);
-    showNotification(`${bjjPlaces.length} BJJ Gyms gefunden!`, "success");
+    displayPlaces(bjjPlaces);
+    showNotification(`${bjjPlaces.length} BJJ-Gyms gefunden`, "success");
   } catch (error) {
     console.error("searchNearby Fehler:", error);
     showNotification("Suche fehlgeschlagen: " + error.message, "error");
-
     if (resultsDiv) {
-      resultsDiv.innerHTML = `
-        <div style="text-align: center; padding: 40px; color: #666;">
-          <p style="font-size: 2em;">⚠️</p>
-          <p>Fehler bei der Suche</p>
-          <p style="font-size: 0.9em; margin-top: 10px;">${error.message}</p>
-        </div>
-      `;
+      resultsDiv.innerHTML = `<div class="error">⚠️ Fehler: ${error.message}</div>`;
     }
   }
 }
 
-/**
- * Textsuche als Alternative/Fallback
- */
-async function searchBJJGymsViaText(location, radius = 50000) {
+// --- Ergebnisse anzeigen (robust) ---
+function displayPlaces(places) {
   const resultsDiv = document.getElementById("places-results");
+  if (!resultsDiv) return;
 
-  if (resultsDiv) {
-    resultsDiv.innerHTML = `
-      <div style="text-align: center; padding: 40px;">
-        <div style="font-size: 3em; animation: spin 1s linear infinite;">🔄</div>
-        <p style="margin-top: 20px;">Textsuche läuft...</p>
-      </div>
-    `;
-  }
-
-  try {
-    // ✅ fields auch hier im Request!
-    const request = {
-      fields: [
-        "displayName",
-        "location",
-        "formattedAddress",
-        "rating",
-        "userRatingCount",
-        "nationalPhoneNumber",
-        "websiteURI",
-        "photos",
-        "regularOpeningHours",
-      ],
-      textQuery: 'BJJ OR "Brazilian Jiu Jitsu" OR Gracie OR grappling gym',
-      locationBias: { center: location, radius },
-      maxResultCount: 20,
-    };
-
-    const { places } = await google.maps.places.Place.searchByText(request);
-
-    if (!places || places.length === 0) {
-      showNotification("Keine Ergebnisse (Textsuche)", "info");
-      if (resultsDiv) {
-        resultsDiv.innerHTML = `
-          <div style="text-align: center; padding: 40px; color: #666;">
-            <p style="font-size: 2em;">😕</p>
-            <p>Keine Ergebnisse gefunden.</p>
-          </div>
-        `;
-      }
-      return;
-    }
-
-    console.log(`${places.length} Places aus Textsuche gefunden`);
-
-    displayModernPlacesResults(places);
-    showNotification(
-      `${places.length} BJJ Gyms (Textsuche) gefunden!`,
-      "success"
-    );
-  } catch (error) {
-    console.error("Textsuche Fehler:", error);
-    showNotification("Textsuche fehlgeschlagen: " + error.message, "error");
-  }
-}
-
-/**
- * Suche nach Stadt
- */
-async function searchByCity() {
-  const input = document.getElementById("city-search-input");
-  if (!input) {
-    showNotification("Suchfeld nicht gefunden", "error");
-    return;
-  }
-
-  const city = input.value.trim();
-  if (!city) {
-    showNotification("Bitte Stadt eingeben", "warning");
-    return;
-  }
-
-  const mapsReady = await waitForGoogleMaps();
-  if (!mapsReady) return;
-
-  showNotification(`Suche in ${city}...`, "info");
-
-  // Geocode Stadt zu Koordinaten
-  const geocoder = new google.maps.Geocoder();
-  geocoder.geocode({ address: city + ", Deutschland" }, (results, status) => {
-    if (status === "OK" && results[0]) {
-      const location = {
-        lat: results[0].geometry.location.lat(),
-        lng: results[0].geometry.location.lng(),
-      };
-      searchNearbyBJJGyms(location, 50000);
-    } else {
-      showNotification("Stadt nicht gefunden", "error");
-      // Fallback auf Textsuche
-      searchBJJGymsViaText({ lat: 51.1657, lng: 10.4515 }, 100000);
-    }
-  });
-}
-
-/**
- * Suche in aktuellem Kartenbereich
- */
-async function searchInCurrentMapView() {
-  if (!window.googleMap) {
-    showNotification("Karte nicht verfügbar", "error");
-    return;
-  }
-
-  const mapsReady = await waitForGoogleMaps();
-  if (!mapsReady) return;
-
-  const bounds = window.googleMap.getBounds();
-  const center = bounds.getCenter();
-
-  await searchNearbyBJJGyms(
-    { lat: center.lat(), lng: center.lng() },
-    5000 // 5km Radius
-  );
-
-  // Wechsle zum Discover Tab
-  if (typeof switchTab === "function") {
-    switchTab("discover");
-  }
-}
-
-/**
- * Suche an beliebigem Ort (z.B. nach Click auf Karte)
- */
-async function searchAtLocation(lat, lng, radius = 50000) {
-  const mapsReady = await waitForGoogleMaps();
-  if (!mapsReady) return;
-  await searchNearbyBJJGyms({ lat, lng }, radius);
-}
-
-// ================================================
-// ERGEBNISSE ANZEIGEN
-// ================================================
-
-/**
- * Anzeige der Ergebnisse – robust gegen unterschiedliche Place-Formate
- */
-function displayModernPlacesResults(places) {
-  const resultsDiv = document.getElementById("places-results");
-  if (!resultsDiv) {
-    console.error("places-results div nicht gefunden");
-    return;
-  }
-
-  // Speichere Daten global für Import
   window.currentPlacesData = places;
 
-  // Update Stats wenn Funktion existiert
-  if (typeof updatePlacesStats === "function") {
-    updatePlacesStats();
-  }
-
-  const placesHTML = places
+  const html = places
     .map((place) => {
-      // Extrahiere Daten sicher
       const name = place.displayName || "Unbekannt";
       const address = place.formattedAddress || "Keine Adresse";
-      const rating = place.rating ?? null;
-      const ratingCount = place.userRatingCount ?? 0;
-      const phone = place.nationalPhoneNumber ?? null;
-      const website = place.websiteURI ?? null;
-      const hours = place.regularOpeningHours?.weekdayDescriptions ?? [];
-      const openNow = place.regularOpeningHours?.openNow ?? false;
+      const rating = place.rating ? `${place.rating.toFixed(1)} ⭐` : "";
+      const openNow = place.regularOpeningHours?.openNow ? "🟢 Geöffnet" : "";
 
-      // Foto URL
-      let photoUrl = null;
-      if (
-        place.photos?.length > 0 &&
-        typeof place.photos[0].getURI === "function"
-      ) {
+      let photoUrl = "";
+      if (place.photos?.[0]?.getURI) {
         try {
-          photoUrl = place.photos[0].getURI({ maxWidth: 400, maxHeight: 300 });
+          photoUrl = place.photos[0].getURI({ maxWidth: 400 });
         } catch (e) {
-          console.warn("Foto-URL Fehler:", e);
+          /* ignore */
         }
       }
 
-      // Koordinaten
       const lat =
         typeof place.location?.lat === "function"
           ? place.location.lat()
@@ -2438,598 +3136,35 @@ function displayModernPlacesResults(places) {
           : place.location?.lng;
 
       return `
-        <div class="place-card" data-place-id="${place.id}">
-          ${
-            photoUrl
-              ? `<img src="${photoUrl}" class="place-image" alt="${name}">`
-              : '<div class="place-image-placeholder">🥋</div>'
-          }
-          <div class="place-card-content">
-            <h3>${name}</h3>
-            ${
-              rating
-                ? `<div class="place-rating">
-                    ${"⭐".repeat(Math.round(rating))}
-                    <span class="rating-text">${rating.toFixed(1)}</span>
-                    <span class="rating-count">(${ratingCount} Bewertungen)</span>
-                  </div>`
-                : ""
-            }
-            ${
-              openNow
-                ? '<span class="place-status open">🟢 Jetzt geöffnet</span>'
-                : ""
-            }
-            <p class="place-address">📍 ${address}</p>
-            ${phone ? `<p class="place-phone">📞 ${phone}</p>` : ""}
-            ${
-              website
-                ? `<p class="place-website"><a href="${website}" target="_blank" rel="noopener">🌐 Website</a></p>`
-                : ""
-            }
-            ${
-              hours.length > 0
-                ? `
-                <details class="place-hours">
-                  <summary>Öffnungszeiten</summary>
-                  <div class="hours-content">${hours.join("<br>")}</div>
-                </details>
-              `
-                : ""
-            }
-            <div class="place-actions">
-              ${
-                lat && lng
-                  ? `<button class="btn btn-small btn-secondary" onclick="showPlaceOnMap('${place.id}', ${lat}, ${lng})">
-                      🗺️ Auf Karte
-                    </button>`
-                  : ""
-              }
-              ${
-                window.currentUser
-                  ? `<button class="btn btn-small" onclick="importModernPlace('${place.id}')">
-                      ➕ Importieren
-                    </button>`
-                  : ""
-              }
-              <button class="btn btn-small btn-secondary favorite-btn" 
-                      data-place-id="${place.id}" 
-                      onclick="toggleFavorite('${place.id}', '${name.replace(
-        /'/g,
-        "\\'"
-      )}')">
-                ${
-                  typeof isFavorite === "function" && isFavorite(place.id)
-                    ? "⭐ Favorit"
-                    : "☆ Favorit"
-                }
-              </button>
-            </div>
-          </div>
+      <div class="place-card" data-id="${place.id}">
+        ${
+          photoUrl
+            ? `<img src="${photoUrl}" alt="${name}">`
+            : '<div class="placeholder">🥋</div>'
+        }
+        <div class="content">
+          <h3>${name}</h3>
+          <p>${rating} ${openNow}</p>
+          <p>📍 ${address}</p>
+          <button onclick="importPlace('${place.id}')">➕ Import</button>
         </div>
-      `;
+      </div>`;
     })
     .join("");
 
-  resultsDiv.innerHTML =
-    placesHTML ||
-    `
-    <div style="text-align: center; padding: 40px; color: #666;">
-      <p style="font-size: 2em;">😕</p>
-      <p>Keine Ergebnisse</p>
-    </div>
-  `;
-
-  // Bulk Import Button hinzufügen wenn Funktion existiert
-  if (typeof addBulkImportButton === "function") {
-    addBulkImportButton();
-  }
+  resultsDiv.innerHTML = html || "<p>Keine Ergebnisse</p>";
 }
 
-// ================================================
-// PLACE AUF KARTE ANZEIGEN
-// ================================================
+// --- Import (Beispiel) ---
+async function importPlace(placeId) {
+  const place = window.currentPlacesData.find((p) => p.id === placeId);
+  if (!place) return;
 
-function showPlaceOnMap(placeId, lat, lng) {
-  if (!window.googleMap) {
-    showNotification("Karte nicht verfügbar", "error");
-    return;
-  }
-
-  // Wechsle zum Karten-Tab
-  if (typeof switchTab === "function") {
-    switchTab("map");
-  }
-
-  // Zentriere Karte auf Place
-  const position = { lat, lng };
-  window.googleMap.setCenter(position);
-  window.googleMap.setZoom(16);
-
-  // Entferne alte Search Markers
-  searchMarkers.forEach((marker) => marker.setMap(null));
-  searchMarkers = [];
-
-  // Erstelle Marker
-  const marker = new google.maps.Marker({
-    position: position,
-    map: window.googleMap,
-    animation: google.maps.Animation.BOUNCE,
-    icon: {
-      path: google.maps.SymbolPath.CIRCLE,
-      scale: 15,
-      fillColor: "#667eea",
-      fillOpacity: 1,
-      strokeColor: "#ffffff",
-      strokeWeight: 3,
-    },
-  });
-
-  searchMarkers.push(marker);
-
-  // Stoppe Animation nach 3 Sekunden
-  setTimeout(() => {
-    marker.setAnimation(null);
-  }, 3000);
-
-  showNotification("📍 Place auf Karte angezeigt!");
+  // ... Supabase-Insert wie in deinem Code ...
 }
 
-// ================================================
-// IMPORT IN DATENBANK
-// ================================================
-
-/**
- * Import eines einzelnen Gyms
- */
-async function importModernPlace(placeId) {
-  if (!window.currentUser || !window.supabase) {
-    showNotification("Bitte melde dich an!", "warning");
-    return;
-  }
-
-  const place = window.currentPlacesData?.find((p) => p.id === placeId);
-  if (!place) {
-    showNotification("Place nicht gefunden", "error");
-    return;
-  }
-
-  showNotification("Importiere Gym...", "info");
-
-  try {
-    // Parse Adresse
-    const addressParts = (place.formattedAddress || "").split(", ");
-    const street = addressParts[0] || "";
-    const postalCity = (addressParts[1] || "").split(" ");
-    const postalCode = postalCity[0] || "";
-    const city = postalCity.slice(1).join(" ") || "";
-
-    // Prüfe ob Gym bereits existiert
-    const { data: existing } = await window.supabase
-      .from("gyms")
-      .select("id")
-      .eq("name", place.displayName)
-      .eq("street", street);
-
-    if (existing?.length > 0) {
-      showNotification("Gym bereits in der Datenbank!", "info");
-      return;
-    }
-
-    // Foto URL
-    let imageUrl = null;
-    if (
-      place.photos?.length > 0 &&
-      typeof place.photos[0].getURI === "function"
-    ) {
-      try {
-        imageUrl = place.photos[0].getURI({ maxWidth: 800 });
-      } catch (e) {
-        console.warn("Foto-URL Fehler:", e);
-      }
-    }
-
-    // Erstelle Gym in Datenbank
-    const gymData = {
-      name: place.displayName || "Unbekannt",
-      street,
-      postal_code: postalCode,
-      city,
-      address: place.formattedAddress || "",
-      latitude:
-        typeof place.location?.lat === "function"
-          ? place.location.lat()
-          : place.location?.lat,
-      longitude:
-        typeof place.location?.lng === "function"
-          ? place.location.lng()
-          : place.location?.lng,
-      phone: place.nationalPhoneNumber ?? null,
-      website: place.websiteURI ?? null,
-      image_url: imageUrl,
-      user_id: window.currentUser.id,
-      description: `Importiert aus Google Places (${new Date().toLocaleDateString(
-        "de-DE"
-      )})`,
-    };
-
-    const { error } = await window.supabase.from("gyms").insert([gymData]);
-    if (error) throw error;
-
-    showNotification("✅ Gym erfolgreich importiert!", "success");
-
-    // Aktualisiere Gym-Listen
-    const updates = [];
-    [
-      "loadGyms",
-      "loadGymsForAthleteSelect",
-      "loadGymsForFilter",
-      "loadGymsForOpenMatSelect",
-    ].forEach((fn) => {
-      if (typeof window[fn] === "function") {
-        updates.push(window[fn]());
-      }
-    });
-
-    if (updates.length > 0) {
-      await Promise.all(updates);
-    }
-
-    // Aktualisiere Karte
-    if (window.googleMap && typeof window.initMap === "function") {
-      window.initMap();
-    }
-  } catch (error) {
-    console.error("Import Fehler:", error);
-    showNotification("Import fehlgeschlagen: " + error.message, "error");
-  }
+// --- Notification Helper ---
+function showNotification(msg, type = "info") {
+  // Implementiere Toast oder Alert
+  alert(`[${type.toUpperCase()}] ${msg}`);
 }
-
-/**
- * Bulk-Import aller sichtbaren Gyms
- */
-async function bulkImportModernGyms() {
-  if (!window.currentUser || !window.supabase) {
-    showNotification("Bitte melde dich an!", "warning");
-    return;
-  }
-
-  if (!window.currentPlacesData?.length) {
-    showNotification("Keine Gyms zum Importieren", "warning");
-    return;
-  }
-
-  const confirmed = confirm(
-    `Möchtest du ${window.currentPlacesData.length} Gyms importieren?\n\nDieser Vorgang kann einige Minuten dauern.`
-  );
-  if (!confirmed) return;
-
-  showNotification(
-    `Importiere ${window.currentPlacesData.length} Gyms...`,
-    "info"
-  );
-
-  let success = 0;
-  let duplicate = 0;
-  let error = 0;
-
-  for (const place of window.currentPlacesData) {
-    try {
-      // Parse Adresse
-      const addressParts = (place.formattedAddress || "").split(", ");
-      const street = addressParts[0] || "";
-      const postalCity = (addressParts[1] || "").split(" ");
-      const postalCode = postalCity[0] || "";
-      const city = postalCity.slice(1).join(" ") || "";
-
-      // Prüfe ob existiert
-      const { data: existing } = await window.supabase
-        .from("gyms")
-        .select("id")
-        .eq("name", place.displayName)
-        .eq("street", street);
-
-      if (existing?.length > 0) {
-        duplicate++;
-        continue;
-      }
-
-      // Foto URL
-      let imageUrl = null;
-      if (
-        place.photos?.length > 0 &&
-        typeof place.photos[0].getURI === "function"
-      ) {
-        try {
-          imageUrl = place.photos[0].getURI({ maxWidth: 800 });
-        } catch (e) {
-          // Ignore
-        }
-      }
-
-      // Insert Gym
-      const gymData = {
-        name: place.displayName || "Unbekannt",
-        street,
-        postal_code: postalCode,
-        city,
-        address: place.formattedAddress || "",
-        latitude:
-          typeof place.location?.lat === "function"
-            ? place.location.lat()
-            : place.location?.lat,
-        longitude:
-          typeof place.location?.lng === "function"
-            ? place.location.lng()
-            : place.location?.lng,
-        phone: place.nationalPhoneNumber ?? null,
-        website: place.websiteURI ?? null,
-        image_url: imageUrl,
-        user_id: window.currentUser.id,
-        description: "Bulk Import aus Google Places",
-      };
-
-      const { error: insertError } = await window.supabase
-        .from("gyms")
-        .insert([gymData]);
-
-      if (insertError) {
-        console.error("Insert Error:", insertError);
-        error++;
-      } else {
-        success++;
-      }
-
-      // Rate limiting - 500ms Pause zwischen Inserts
-      await new Promise((r) => setTimeout(r, 500));
-    } catch (e) {
-      console.error("Bulk Import Error:", e);
-      error++;
-    }
-  }
-
-  showNotification(
-    `Import abgeschlossen!\n✅ ${success} erfolgreich\n📋 ${duplicate} bereits vorhanden\n❌ ${error} Fehler`,
-    "success"
-  );
-
-  // Aktualisiere Gym-Listen
-  const updates = [];
-  [
-    "loadGyms",
-    "loadGymsForAthleteSelect",
-    "loadGymsForFilter",
-    "loadGymsForOpenMatSelect",
-  ].forEach((fn) => {
-    if (typeof window[fn] === "function") {
-      updates.push(window[fn]());
-    }
-  });
-
-  if (updates.length > 0) {
-    await Promise.all(updates);
-  }
-
-  // Aktualisiere Karte
-  if (window.googleMap && typeof window.initMap === "function") {
-    window.initMap();
-  }
-}
-
-// Kompatibilität für alten Funktionsnamen
-window.bulkImportGyms = bulkImportModernGyms;
-
-// ================================================
-// AUTO-COMPLETE für Stadtsuche
-// ================================================
-
-function initCityAutocomplete() {
-  const input = document.getElementById("city-search-input");
-  if (!input || !window.google?.maps?.places) return;
-
-  try {
-    const autocomplete = new google.maps.places.Autocomplete(input, {
-      types: ["(cities)"],
-      componentRestrictions: { country: "de" },
-    });
-
-    autocomplete.addListener("place_changed", () => {
-      const place = autocomplete.getPlace();
-      if (place.geometry) {
-        searchNearbyBJJGyms(
-          {
-            lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng(),
-          },
-          50000
-        );
-      }
-    });
-
-    console.log("✅ City Autocomplete initialisiert");
-  } catch (error) {
-    console.warn("Autocomplete Fehler:", error);
-  }
-}
-
-// ================================================
-// STYLING
-// ================================================
-
-const style = document.createElement("style");
-style.textContent = `
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-  
-  .place-card {
-    background: white;
-    border-radius: 14px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
-    border: 1px solid #e5e5e5;
-  }
-  
-  .place-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
-  }
-  
-  .place-image {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-  }
-  
-  .place-image-placeholder {
-    width: 100%;
-    height: 200px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 4em;
-  }
-  
-  .place-card-content {
-    padding: 20px;
-  }
-  
-  .place-card-content h3 {
-    margin: 0 0 10px 0;
-    font-size: 1.3em;
-    color: #333;
-  }
-  
-  .place-rating {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 10px 0;
-  }
-  
-  .rating-text {
-    font-weight: 600;
-    font-size: 1.1em;
-    color: #333;
-  }
-  
-  .rating-count {
-    color: #666;
-    font-size: 0.9em;
-  }
-  
-  .place-status {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.85em;
-    font-weight: 600;
-    margin: 10px 0;
-  }
-  
-  .place-status.open {
-    background: #d4edda;
-    color: #155724;
-  }
-  
-  .place-status.closed {
-    background: #f8d7da;
-    color: #721c24;
-  }
-  
-  .place-address,
-  .place-phone,
-  .place-website {
-    color: #666;
-    margin: 8px 0;
-    font-size: 0.95em;
-  }
-  
-  .place-website a {
-    color: #667eea;
-    text-decoration: none;
-  }
-  
-  .place-website a:hover {
-    text-decoration: underline;
-  }
-  
-  .place-hours {
-    margin: 12px 0;
-  }
-  
-  .place-hours summary {
-    cursor: pointer;
-    color: #667eea;
-    font-weight: 600;
-    font-size: 0.9em;
-  }
-  
-  .place-hours summary:hover {
-    text-decoration: underline;
-  }
-  
-  .hours-content {
-    margin-top: 8px;
-    padding: 8px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    font-size: 0.85em;
-    color: #666;
-  }
-  
-  .place-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 15px;
-  }
-  
-  .places-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 20px;
-    margin-top: 20px;
-  }
-  
-  /* Responsive */
-  @media (max-width: 768px) {
-    .places-grid {
-      grid-template-columns: 1fr;
-    }
-    
-    .place-actions {
-      flex-direction: column;
-    }
-    
-    .place-actions button {
-      width: 100%;
-    }
-  }
-`;
-document.head.appendChild(style);
-
-// ================================================
-// INITIALISIERUNG
-// ================================================
-
-// Auto-Initialisierung wenn DOM bereit
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => {
-    console.log("📍 Google Places API (2025+) bereit");
-    // Initialisiere Autocomplete wenn Karte bereits geladen
-    if (window.google?.maps?.places) {
-      initCityAutocomplete();
-    }
-  });
-} else {
-  console.log("📍 Google Places API (2025+) bereit");
-  if (window.google?.maps?.places) {
-    initCityAutocomplete();
-  }
-}
-
-console.log("✅ Moderne Google Places API (2025+) vollständig geladen!");
