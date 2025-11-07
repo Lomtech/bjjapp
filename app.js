@@ -2043,6 +2043,7 @@ async function loadDashboard() {
           .join("")
       : "<p>Noch keine Aktivitäten</p>";
 }
+
 // ================================================
 // MODERNE GOOGLE MAPS PLACES API (2025+) + KARTE
 // Vollständig neu, robust, fehlerfrei
