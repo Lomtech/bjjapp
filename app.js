@@ -3665,3 +3665,265 @@ window.initMap = async function () {
   initPlacesService();
   initCityAutocomplete();
 };
+
+// ================================================
+// GOOGLE MAPS LOADER & PLACES SERVICE FIX
+// ================================================
+
+// Füge dies ganz am Anfang deiner app.js ein, direkt nach den Umgebungsvariablen
+
+let googleMapsLoaded = false;
+let googleMapsLoadPromise = null;
+
+/**
+ * Lädt Google Maps Script dynamisch
+ */
+function loadGoogleMapsScript() {
+  if (googleMapsLoadPromise) {
+    return googleMapsLoadPromise;
+  }
+
+  googleMapsLoadPromise = new Promise((resolve, reject) => {
+    // Prüfe ob bereits geladen
+    if (typeof google !== "undefined" && google.maps && google.maps.places) {
+      googleMapsLoaded = true;
+      resolve();
+      return;
+    }
+
+    // Erstelle Script Tag
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps`;
+    script.async = true;
+    script.defer = true;
+    script.onerror = () =>
+      reject(new Error("Google Maps konnte nicht geladen werden"));
+
+    // Callback wenn geladen
+    window.initGoogleMaps = () => {
+      googleMapsLoaded = true;
+      console.log("✅ Google Maps & Places API geladen");
+      resolve();
+    };
+
+    document.head.appendChild(script);
+  });
+
+  return googleMapsLoadPromise;
+}
+
+/**
+ * Wartet bis Google Maps geladen ist
+ */
+async function waitForGoogleMaps() {
+  if (googleMapsLoaded) {
+    return true;
+  }
+
+  try {
+    await loadGoogleMapsScript();
+    return true;
+  } catch (error) {
+    console.error("Google Maps Ladefehler:", error);
+    showNotification("Google Maps konnte nicht geladen werden", "error");
+    return false;
+  }
+}
+
+/**
+ * Initialisiert Places Service - VERBESSERTE VERSION
+ */
+function initPlacesService() {
+  // Prüfe ob Google Maps verfügbar
+  if (typeof google === "undefined" || !google.maps || !google.maps.places) {
+    console.error("Google Maps oder Places Library nicht verfügbar");
+    return false;
+  }
+
+  // Prüfe ob Service bereits existiert
+  if (placesService) {
+    return true;
+  }
+
+  try {
+    // Erstelle verstecktes Map Element falls nicht vorhanden
+    let mapDiv = document.getElementById("hidden-places-map");
+    if (!mapDiv) {
+      mapDiv = document.createElement("div");
+      mapDiv.id = "hidden-places-map";
+      mapDiv.style.display = "none";
+      document.body.appendChild(mapDiv);
+    }
+
+    // Erstelle Map (benötigt für Places Service)
+    const map = new google.maps.Map(mapDiv, {
+      center: { lat: 48.1351, lng: 11.582 }, // München als Standard
+      zoom: 13,
+    });
+
+    // Initialisiere Places Service
+    placesService = new google.maps.places.PlacesService(map);
+    console.log("✅ Places Service initialisiert");
+    return true;
+  } catch (error) {
+    console.error("Fehler bei Places Service Init:", error);
+    return false;
+  }
+}
+
+/**
+ * Sucht BJJ Gyms - VERBESSERTE VERSION mit Async/Await
+ */
+async function searchBJJGyms() {
+  // Warte auf Google Maps
+  const mapsReady = await waitForGoogleMaps();
+  if (!mapsReady) {
+    showNotification("Google Maps konnte nicht geladen werden", "error");
+    return;
+  }
+
+  // Initialisiere Places Service
+  if (!initPlacesService()) {
+    showNotification(
+      "Places Service konnte nicht initialisiert werden",
+      "error"
+    );
+    return;
+  }
+
+  // Hole User Location
+  if (!navigator.geolocation) {
+    showNotification("Geolocation wird nicht unterstützt", "warning");
+    return;
+  }
+
+  showNotification("Suche BJJ Gyms in deiner Nähe...", "info");
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const userLocation = new google.maps.LatLng(
+        position.coords.latitude,
+        position.coords.longitude
+      );
+
+      const request = {
+        location: userLocation,
+        radius: 50000, // 50km
+        keyword: "brazilian jiu jitsu",
+      };
+
+      placesService.nearbySearch(request, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+          console.log(`✅ ${results.length} Gyms gefunden`);
+          storePlacesData(results);
+          displayPlacesResults(results);
+          showNotification(`${results.length} BJJ Gyms gefunden!`, "success");
+        } else if (
+          status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS
+        ) {
+          showNotification("Keine BJJ Gyms in der Nähe gefunden", "info");
+        } else {
+          console.error("Places API Error:", status);
+          showNotification("Fehler bei der Suche: " + status, "error");
+        }
+      });
+    },
+    (error) => {
+      console.error("Geolocation Error:", error);
+      showNotification("Standort konnte nicht ermittelt werden", "error");
+    }
+  );
+}
+
+/**
+ * Sucht an spezifischem Ort
+ */
+async function searchAtLocation(lat, lng, radius = 50000) {
+  const mapsReady = await waitForGoogleMaps();
+  if (!mapsReady) return;
+
+  if (!initPlacesService()) {
+    showNotification("Places Service nicht verfügbar", "error");
+    return;
+  }
+
+  const location = new google.maps.LatLng(lat, lng);
+  const request = {
+    location: location,
+    radius: radius,
+    keyword: "brazilian jiu jitsu",
+  };
+
+  showNotification("Suche BJJ Gyms...", "info");
+
+  placesService.nearbySearch(request, (results, status) => {
+    if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+      storePlacesData(results);
+      displayPlacesResults(results);
+      showNotification(`${results.length} Gyms gefunden!`, "success");
+    } else {
+      showNotification("Keine Ergebnisse gefunden", "info");
+    }
+  });
+}
+
+/**
+ * Zeigt Place Details an
+ */
+async function showPlaceDetails(placeId) {
+  const mapsReady = await waitForGoogleMaps();
+  if (!mapsReady) return;
+
+  if (!initPlacesService()) return;
+
+  const request = {
+    placeId: placeId,
+    fields: [
+      "name",
+      "formatted_address",
+      "formatted_phone_number",
+      "website",
+      "rating",
+      "reviews",
+      "photos",
+      "opening_hours",
+      "geometry",
+    ],
+  };
+
+  placesService.getDetails(request, (place, status) => {
+    if (status === google.maps.places.PlacesServiceStatus.OK) {
+      displayDetailedPlace(place);
+    } else {
+      showNotification("Details konnten nicht geladen werden", "error");
+    }
+  });
+}
+
+// ================================================
+// INITIALISIERUNG BEIM APP-START
+// ================================================
+
+/**
+ * Initialisiert die App
+ */
+async function initializeApp() {
+  console.log("🚀 App wird initialisiert...");
+
+  // Lade Google Maps im Hintergrund
+  loadGoogleMapsScript().catch((err) => {
+    console.error("Google Maps konnte nicht geladen werden:", err);
+  });
+
+  // Restliche App-Initialisierung...
+  // (Supabase, Auth, etc.)
+}
+
+// Starte App wenn DOM bereit
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initializeApp);
+} else {
+  initializeApp();
+}
+
+console.log("✅ Google Maps Loader bereit");

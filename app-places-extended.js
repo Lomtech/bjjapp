@@ -1,6 +1,7 @@
 // ================================================
 // ERWEITERTE FEATURES FÜR BJJ COMMUNITY
 // Open Mats Suche, Favoriten, Advanced Filter
+// AKTUALISIERT MIT ASYNC/AWAIT FÜR PLACES API
 // ================================================
 
 // ================================================
@@ -12,11 +13,17 @@
  * Nutzt Beschreibungen und Names um Open Mats zu identifizieren
  */
 async function searchOpenMatsViaPlaces(location, radius = 50000) {
-  if (!placesService) {
-    if (!initPlacesService()) {
-      showNotification("Places Service nicht verfügbar", "error");
-      return;
-    }
+  // Warte auf Google Maps
+  const mapsReady = await waitForGoogleMaps();
+  if (!mapsReady) {
+    showNotification("Google Maps nicht verfügbar", "error");
+    return;
+  }
+
+  // Initialisiere Places Service
+  if (!initPlacesService()) {
+    showNotification("Places Service nicht verfügbar", "error");
+    return;
   }
 
   showNotification("Suche nach Open Mat Events...", "info");
@@ -72,7 +79,7 @@ async function searchOpenMatsViaPlaces(location, radius = 50000) {
           );
         });
 
-        // Pause zwischen Requests
+        // Pause zwischen Requests (Google Rate Limiting)
         await new Promise((resolve) => setTimeout(resolve, 300));
       }
 
@@ -90,6 +97,8 @@ async function searchOpenMatsViaPlaces(location, radius = 50000) {
         // Zeige trotzdem alle BJJ Gyms
         displayPlacesResults(results);
       }
+    } else {
+      showNotification("Suche fehlgeschlagen: " + status, "error");
     }
   });
 }
@@ -187,7 +196,11 @@ async function createOpenMatFromPlace(placeId) {
     return;
   }
 
-  if (!placesService) return;
+  // Warte auf Google Maps
+  const mapsReady = await waitForGoogleMaps();
+  if (!mapsReady) return;
+
+  if (!initPlacesService()) return;
 
   const request = {
     placeId: placeId,
@@ -356,6 +369,18 @@ function updateFavoriteButtons() {
 async function showFavorites() {
   if (userFavorites.length === 0) {
     showNotification("Keine Favoriten gespeichert", "info");
+    return;
+  }
+
+  // Warte auf Google Maps
+  const mapsReady = await waitForGoogleMaps();
+  if (!mapsReady) {
+    showNotification("Google Maps nicht verfügbar", "error");
+    return;
+  }
+
+  if (!initPlacesService()) {
+    showNotification("Places Service nicht verfügbar", "error");
     return;
   }
 
@@ -636,4 +661,4 @@ advancedStyles.textContent = `
 `;
 document.head.appendChild(advancedStyles);
 
-console.log("✅ Advanced Features geladen!");
+console.log("✅ Advanced Features mit async/await geladen!");
