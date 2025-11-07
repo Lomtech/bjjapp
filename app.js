@@ -3139,19 +3139,7 @@ async function searchNearbyBJJGyms(location, radius = 50000) {
     // Lade zusätzliche Details nach (OHNE fields Parameter!)
     for (const place of places) {
       try {
-        await place.fetchFields({
-          fields: [
-            "displayName",
-            "formattedAddress",
-            "location",
-            "rating",
-            "userRatingCount",
-            "nationalPhoneNumber",
-            "websiteURI",
-            "photos",
-            "regularOpeningHours",
-          ],
-        });
+        const { places } = await google.maps.places.Place.searchNearby(request);
       } catch (e) {
         console.warn("fetchFields fehlgeschlagen:", place.displayName, e);
       }
@@ -3235,19 +3223,7 @@ async function searchBJJGymsViaText(location, radius = 50000) {
     // Lade Details für Textsuche-Ergebnisse
     for (const place of places) {
       try {
-        await place.fetchFields({
-          fields: [
-            "displayName",
-            "formattedAddress",
-            "location",
-            "rating",
-            "userRatingCount",
-            "nationalPhoneNumber",
-            "websiteURI",
-            "photos",
-            "regularOpeningHours",
-          ],
-        });
+        const { places } = await google.maps.places.Place.searchNearby(request);
       } catch (e) {
         console.warn("fetchFields fehlgeschlagen:", e);
       }
