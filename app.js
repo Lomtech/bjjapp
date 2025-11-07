@@ -3003,17 +3003,6 @@ let placesService = null;
 let searchMarkers = [];
 let currentInfoWindow = null;
 
-// Initialisiere Places Service
-function initPlacesService() {
-  if (!googleMap || !google.maps.places) {
-    console.error("Google Maps oder Places Library nicht verfügbar");
-    return false;
-  }
-
-  placesService = new google.maps.places.PlacesService(googleMap);
-  console.log("✅ Places Service initialisiert");
-  return true;
-}
 
 // ================================================
 // DISCOVER TAB - BJJ GYMS FINDEN
