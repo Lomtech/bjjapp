@@ -3578,6 +3578,276 @@ function displayModernPlacesResults(places) {
   }
 }
 
+async function importModernPlace(placeId) {
+  if (!window.currentUser || !window.supabase) {
+    showNotification("Bitte melde dich an!", "warning");
+    return;
+  }
+
+  const place = window.currentPlacesData?.find((p) => p.id === placeId);
+  if (!place) {
+    showNotification("Place nicht gefunden", "error");
+    return;
+  }
+
+  showNotification("Importiere Gym...", "info");
+
+  try {
+    // Parse Adresse
+    const addressParts = (place.formattedAddress || "").split(", ");
+    const street = addressParts[0] || "";
+    const postalCity = (addressParts[1] || "").split(" ");
+    const postalCode = postalCity[0] || "";
+    const city = postalCity.slice(1).join(" ") || "";
+
+    // Prüfe ob Gym bereits existiert
+    const { data: existing } = await window.supabase
+      .from("gyms")
+      .select("id")
+      .eq("name", place.displayName)
+      .eq("street", street);
+
+    if (existing?.length > 0) {
+      showNotification("Gym bereits in der Datenbank!", "info");
+      return;
+    }
+
+    // Foto URL
+    let imageUrl = null;
+    if (
+      place.photos?.length > 0 &&
+      typeof place.photos[0].getURI === "function"
+    ) {
+      try {
+        imageUrl = place.photos[0].getURI({ maxWidth: 800 });
+      } catch (e) {
+        console.warn("Foto-URL Fehler:", e);
+      }
+    }
+
+    // Erstelle Gym in Datenbank
+    const gymData = {
+      name: place.displayName || "Unbekannt",
+      street,
+      postal_code: postalCode,
+      city,
+      address: place.formattedAddress || "",
+      latitude:
+        typeof place.location?.lat === "function"
+          ? place.location.lat()
+          : place.location?.lat,
+      longitude:
+        typeof place.location?.lng === "function"
+          ? place.location.lng()
+          : place.location?.lng,
+      phone: place.nationalPhoneNumber ?? null,
+      website: place.websiteURI ?? null,
+      image_url: imageUrl,
+      user_id: window.currentUser.id,
+      description: `Importiert aus Google Places (${new Date().toLocaleDateString(
+        "de-DE"
+      )})`,
+    };
+
+    const { error } = await window.supabase.from("gyms").insert([gymData]);
+    if (error) throw error;
+
+    showNotification("✅ Gym erfolgreich importiert!", "success");
+
+    // Aktualisiere Gym-Listen
+    const updates = [];
+    [
+      "loadGyms",
+      "loadGymsForAthleteSelect",
+      "loadGymsForFilter",
+      "loadGymsForOpenMatSelect",
+    ].forEach((fn) => {
+      if (typeof window[fn] === "function") {
+        updates.push(window[fn]());
+      }
+    });
+
+    if (updates.length > 0) {
+      await Promise.all(updates);
+    }
+
+    // Aktualisiere Karte
+    if (window.googleMap && typeof window.initMap === "function") {
+      window.initMap();
+    }
+  } catch (error) {
+    console.error("Import Fehler:", error);
+    showNotification("Import fehlgeschlagen: " + error.message, "error");
+  }
+}
+
+/**
+ * Bulk-Import aller sichtbaren Gyms
+ */
+async function bulkImportModernGyms() {
+  if (!window.currentUser || !window.supabase) {
+    showNotification("Bitte melde dich an!", "warning");
+    return;
+  }
+
+  if (!window.currentPlacesData?.length) {
+    showNotification("Keine Gyms zum Importieren", "warning");
+    return;
+  }
+
+  const confirmed = confirm(
+    `Möchtest du ${window.currentPlacesData.length} Gyms importieren?\n\nDieser Vorgang kann einige Minuten dauern.`
+  );
+  if (!confirmed) return;
+
+  showNotification(
+    `Importiere ${window.currentPlacesData.length} Gyms...`,
+    "info"
+  );
+
+  let success = 0;
+  let duplicate = 0;
+  let error = 0;
+
+  for (const place of window.currentPlacesData) {
+    try {
+      // Parse Adresse
+      const addressParts = (place.formattedAddress || "").split(", ");
+      const street = addressParts[0] || "";
+      const postalCity = (addressParts[1] || "").split(" ");
+      const postalCode = postalCity[0] || "";
+      const city = postalCity.slice(1).join(" ") || "";
+
+      // Prüfe ob existiert
+      const { data: existing } = await window.supabase
+        .from("gyms")
+        .select("id")
+        .eq("name", place.displayName)
+        .eq("street", street);
+
+      if (existing?.length > 0) {
+        duplicate++;
+        continue;
+      }
+
+      // Foto URL
+      let imageUrl = null;
+      if (
+        place.photos?.length > 0 &&
+        typeof place.photos[0].getURI === "function"
+      ) {
+        try {
+          imageUrl = place.photos[0].getURI({ maxWidth: 800 });
+        } catch (e) {
+          // Ignore
+        }
+      }
+
+      // Insert Gym
+      const gymData = {
+        name: place.displayName || "Unbekannt",
+        street,
+        postal_code: postalCode,
+        city,
+        address: place.formattedAddress || "",
+        latitude:
+          typeof place.location?.lat === "function"
+            ? place.location.lat()
+            : place.location?.lat,
+        longitude:
+          typeof place.location?.lng === "function"
+            ? place.location.lng()
+            : place.location?.lng,
+        phone: place.nationalPhoneNumber ?? null,
+        website: place.websiteURI ?? null,
+        image_url: imageUrl,
+        user_id: window.currentUser.id,
+        description: "Bulk Import aus Google Places",
+      };
+
+      const { error: insertError } = await window.supabase
+        .from("gyms")
+        .insert([gymData]);
+
+      if (insertError) {
+        console.error("Insert Error:", insertError);
+        error++;
+      } else {
+        success++;
+      }
+
+      // Rate limiting - 500ms Pause zwischen Inserts
+      await new Promise((r) => setTimeout(r, 500));
+    } catch (e) {
+      console.error("Bulk Import Error:", e);
+      error++;
+    }
+  }
+
+  showNotification(
+    `Import abgeschlossen!\n✅ ${success} erfolgreich\n📋 ${duplicate} bereits vorhanden\n❌ ${error} Fehler`,
+    "success"
+  );
+
+  // Aktualisiere Gym-Listen
+  const updates = [];
+  [
+    "loadGyms",
+    "loadGymsForAthleteSelect",
+    "loadGymsForFilter",
+    "loadGymsForOpenMatSelect",
+  ].forEach((fn) => {
+    if (typeof window[fn] === "function") {
+      updates.push(window[fn]());
+    }
+  });
+
+  if (updates.length > 0) {
+    await Promise.all(updates);
+  }
+
+  // Aktualisiere Karte
+  if (window.googleMap && typeof window.initMap === "function") {
+    window.initMap();
+  }
+}
+
+// Kompatibilität für alten Funktionsnamen
+window.bulkImportGyms = bulkImportModernGyms;
+
+// ================================================
+// AUTO-COMPLETE für Stadtsuche
+// ================================================
+
+function initCityAutocomplete() {
+  const input = document.getElementById("city-search-input");
+  if (!input || !window.google?.maps?.places) return;
+
+  try {
+    const autocomplete = new google.maps.places.Autocomplete(input, {
+      types: ["(cities)"],
+      componentRestrictions: { country: "de" },
+    });
+
+    autocomplete.addListener("place_changed", () => {
+      const place = autocomplete.getPlace();
+      if (place.geometry) {
+        searchNearbyBJJGyms(
+          {
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng(),
+          },
+          50000
+        );
+      }
+    });
+
+    console.log("✅ City Autocomplete initialisiert");
+  } catch (error) {
+    console.warn("Autocomplete Fehler:", error);
+  }
+}
+
 // displayModernPlacesResults(), importModernPlace(), etc. – unverändert
 // (Dein bestehender Code bleibt hier erhalten – nur showPlaceOnMap wurde ersetzt)
 
