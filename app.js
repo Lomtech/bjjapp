@@ -3768,11 +3768,11 @@ async function searchNearbyBJJGyms(location, radius = 50000) {
     const { places } = await google.maps.places.Place.searchNearby(request);
 
     if (!places || places.length === 0) {
-      await searchBJJGymsViaText(location, radius);
-      return;
+      showNotification("Keine Gyms in der Nähe", "info");
+      return; // ← Fallback entfernt!
     }
 
-    // Nur fehlende, billable Felder nachladen
+    // Nur fehlende Felder nachladen
     const fieldsToFetch = [
       "photos",
       "regularOpeningHours",
@@ -3782,43 +3782,44 @@ async function searchNearbyBJJGyms(location, radius = 50000) {
       "userRatingCount",
     ];
     for (const place of places) {
-      try {
-        const missing = fieldsToFetch.filter((f) => place[f] === undefined);
-        if (missing.length > 0) {
+      const missing = fieldsToFetch.filter((f) => place[f] === undefined);
+      if (missing.length > 0) {
+        try {
           await place.fetchFields({ fields: missing });
+        } catch (e) {
+          console.warn("fetchFields fehlgeschlagen:", e);
         }
-      } catch (e) {
-        console.warn("fetchFields fehlgeschlagen für Place:", e);
       }
     }
 
-    // BJJ-Filter
-    const bjjPlaces = places.filter((place) => {
-      const name = (place.displayName || "").toLowerCase();
-      return /jiu|jitsu|bjj|gracie|grappling/.test(name);
+    const bjjPlaces = places.filter((p) => {
+      const name = (p.displayName || "").toLowerCase();
+      return /bjj|jiu.?jitsu|gracie|grappling/.test(name);
     });
 
     if (bjjPlaces.length === 0) {
-      await searchBJJGymsViaText(location, radius);
+      showNotification("Keine BJJ-Gyms in der Nähe", "info");
       return;
     }
 
-    console.log(`${bjjPlaces.length} BJJ Gyms gefunden (searchNearby)`);
     displayModernPlacesResults(bjjPlaces);
     showNotification(`${bjjPlaces.length} BJJ Gyms gefunden!`, "success");
   } catch (error) {
     console.error("searchNearby Fehler:", error);
-    await searchBJJGymsViaText(location, radius);
+    showNotification("Suche fehlgeschlagen", "error");
   }
 }
 
 /**
  * Fallback: Textsuche – KEIN fetchFields!
  */
+/**
+ * Textsuche als Fallback – 100% KOMPATIBEL, KEIN fetchFields!
+ */
 async function searchBJJGymsViaText(location, radius = 50000) {
   try {
     const request = {
-      textQuery: "Brazilian Jiu Jitsu BJJ Gracie grappling gym",
+      textQuery: 'BJJ OR "Brazilian Jiu Jitsu" OR Gracie OR grappling gym',
       locationBias: { center: location, radius },
       maxResultCount: 20,
     };
@@ -3826,12 +3827,18 @@ async function searchBJJGymsViaText(location, radius = 50000) {
     const { places } = await google.maps.places.Place.searchByText(request);
 
     if (!places || places.length === 0) {
-      showNotification("Keine BJJ Gyms gefunden (Textsuche)", "info");
+      showNotification("Keine Ergebnisse in der Textsuche", "info");
       return;
     }
 
+    // Filtere BJJ-relevante Orte – NUR mit verfügbaren Feldern!
     const bjjPlaces = places
+      .filter((place) => {
+        const name = (place.displayName || "").toLowerCase();
+        return /bjj|jiu.?jitsu|gracie|grappling/.test(name);
+      })
       .map((place) => ({
+        // Nur Default-Felder kopieren – KEIN fetchFields!
         id: place.id,
         displayName: place.displayName || "Unbekannt",
         formattedAddress: place.formattedAddress || "Keine Adresse",
@@ -3842,27 +3849,23 @@ async function searchBJJGymsViaText(location, radius = 50000) {
         nationalPhoneNumber: place.nationalPhoneNumber ?? null,
         photos: place.photos ?? [],
         regularOpeningHours: place.regularOpeningHours ?? null,
-        // Mock-Methoden für Kompatibilität
+        // Kompatibilitäts-Mocks
         fetchFields: () => Promise.resolve(),
         lat: () => place.location?.lat() ?? null,
         lng: () => place.location?.lng() ?? null,
-      }))
-      .filter((place) => {
-        const name = place.displayName.toLowerCase();
-        return /jiu|jitsu|bjj|gracie|grappling/.test(name);
-      });
+      }));
 
     if (bjjPlaces.length === 0) {
-      showNotification("Keine relevanten BJJ Gyms in der Textsuche", "info");
+      showNotification("Keine BJJ-Gyms in der Textsuche gefunden", "info");
       return;
     }
 
-    console.log(`${bjjPlaces.length} BJJ Gyms gefunden (Textsuche)`);
+    console.log(`${bjjPlaces.length} BJJ Gyms (Textsuche)`);
     displayModernPlacesResults(bjjPlaces);
     showNotification(`${bjjPlaces.length} BJJ Gyms gefunden!`, "success");
   } catch (error) {
     console.error("Textsuche Fehler:", error);
-    showNotification("Fehler bei der Textsuche: " + error.message, "error");
+    showNotification("Textsuche fehlgeschlagen", "error");
   }
 }
 
