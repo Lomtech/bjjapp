@@ -3666,7 +3666,7 @@ window.initMap = async function () {
   initCityAutocomplete();
 };
 // ================================================
-// MODERNE GOOGLE MAPS PLACES API (2025+)
+// MODERNE GOOGLE MAPS PLACES API (2025+) - KORRIGIERT
 // Verwendet google.maps.places.Place statt PlacesService
 // ================================================
 
@@ -3729,7 +3729,6 @@ async function waitForGoogleMaps() {
 
 /**
  * Sucht BJJ Gyms mit der NEUEN Places API
- * Verwendet Text Search und Place Details
  */
 async function searchBJJGyms() {
   // Warte auf Google Maps
@@ -3765,11 +3764,12 @@ async function searchBJJGyms() {
 
 /**
  * Sucht BJJ Gyms in der Nähe mit der neuen Places API
+ * KORRIGIERT: Kein fields Parameter bei searchNearby!
  */
 async function searchNearbyBJJGyms(location, radius = 50000) {
   try {
-    // Verwende die neue searchNearby Methode
-    const { places } = await google.maps.places.Place.searchNearby({
+    // Verwende die neue searchNearby Methode (OHNE fields!)
+    const request = {
       locationRestriction: {
         center: location,
         radius: radius
@@ -3777,55 +3777,65 @@ async function searchNearbyBJJGyms(location, radius = 50000) {
       includedTypes: ['gym', 'fitness_center'],
       maxResultCount: 20,
       rankPreference: 'DISTANCE'
-    });
+    };
+
+    const { places } = await google.maps.places.Place.searchNearby(request);
 
     if (!places || places.length === 0) {
-      showNotification('Keine Gyms gefunden', 'info');
+      // Fallback: Text Search
+      await searchBJJGymsViaText(location, radius);
       return;
     }
 
-    // Filtere nach BJJ relevanten Gyms
-    const bjjGyms = [];
+    // Jetzt lade Details für JEDEN Place separat
+    const detailedPlaces = [];
     
     for (const place of places) {
-      // Lade vollständige Details
-      await place.fetchFields({
-        fields: [
-          'displayName',
-          'formattedAddress', 
-          'location',
-          'rating',
-          'userRatingCount',
-          'websiteURI',
-          'nationalPhoneNumber',
-          'photos',
-          'types',
-          'regularOpeningHours'
-        ]
-      });
+      try {
+        // Lade vollständige Details mit fetchFields
+        await place.fetchFields({
+          fields: [
+            'displayName',
+            'formattedAddress', 
+            'location',
+            'rating',
+            'userRatingCount',
+            'websiteURI',
+            'nationalPhoneNumber',
+            'photos',
+            'types',
+            'regularOpeningHours',
+            'id'
+          ]
+        });
 
-      // Prüfe ob BJJ relevant (Name enthält BJJ, Jiu Jitsu, etc.)
-      const name = place.displayName?.toLowerCase() || '';
-      const isBJJ = name.includes('jiu') || 
-                    name.includes('jitsu') || 
-                    name.includes('bjj') ||
-                    name.includes('gracie') ||
-                    name.includes('grappling');
+        // Prüfe ob BJJ relevant
+        const name = place.displayName?.toLowerCase() || '';
+        const isBJJ = name.includes('jiu') || 
+                      name.includes('jitsu') || 
+                      name.includes('bjj') ||
+                      name.includes('gracie') ||
+                      name.includes('grappling');
 
-      if (isBJJ) {
-        bjjGyms.push(place);
+        if (isBJJ) {
+          detailedPlaces.push(place);
+        }
+
+      } catch (fetchError) {
+        console.warn('Fehler beim Laden von Place Details:', fetchError);
+        // Place überspringen
       }
     }
 
-    if (bjjGyms.length === 0) {
+    if (detailedPlaces.length === 0) {
       // Falls keine BJJ Gyms gefunden, mache Text-Suche
       await searchBJJGymsViaText(location, radius);
       return;
     }
 
-    console.log(`✅ ${bjjGyms.length} BJJ Gyms gefunden`);
-    displayModernPlacesResults(bjjGyms);
-    showNotification(`${bjjGyms.length} BJJ Gyms gefunden!`, 'success');
+    console.log(`✅ ${detailedPlaces.length} BJJ Gyms gefunden`);
+    displayModernPlacesResults(detailedPlaces);
+    showNotification(`${detailedPlaces.length} BJJ Gyms gefunden!`, 'success');
 
   } catch (error) {
     console.error('Search error:', error);
@@ -3837,18 +3847,20 @@ async function searchNearbyBJJGyms(location, radius = 50000) {
 
 /**
  * Text-basierte Suche als Fallback
+ * KORRIGIERT: Kein fields Parameter bei searchByText!
  */
 async function searchBJJGymsViaText(location, radius = 50000) {
   try {
-    const { places } = await google.maps.places.Place.searchByText({
+    const request = {
       textQuery: 'Brazilian Jiu Jitsu',
       locationBias: {
         center: location,
         radius: radius
       },
-      maxResultCount: 20,
-      rankPreference: 'DISTANCE'
-    });
+      maxResultCount: 20
+    };
+
+    const { places } = await google.maps.places.Place.searchByText(request);
 
     if (!places || places.length === 0) {
       showNotification('Keine BJJ Gyms gefunden', 'info');
@@ -3856,25 +3868,40 @@ async function searchBJJGymsViaText(location, radius = 50000) {
     }
 
     // Lade Details für alle Gyms
+    const detailedPlaces = [];
+    
     for (const place of places) {
-      await place.fetchFields({
-        fields: [
-          'displayName',
-          'formattedAddress',
-          'location',
-          'rating',
-          'userRatingCount',
-          'websiteURI',
-          'nationalPhoneNumber',
-          'photos',
-          'regularOpeningHours'
-        ]
-      });
+      try {
+        await place.fetchFields({
+          fields: [
+            'displayName',
+            'formattedAddress',
+            'location',
+            'rating',
+            'userRatingCount',
+            'websiteURI',
+            'nationalPhoneNumber',
+            'photos',
+            'regularOpeningHours',
+            'id'
+          ]
+        });
+        
+        detailedPlaces.push(place);
+        
+      } catch (fetchError) {
+        console.warn('Fehler beim Laden von Place Details:', fetchError);
+      }
     }
 
-    console.log(`✅ ${places.length} BJJ Gyms gefunden (Text Search)`);
-    displayModernPlacesResults(places);
-    showNotification(`${places.length} BJJ Gyms gefunden!`, 'success');
+    if (detailedPlaces.length === 0) {
+      showNotification('Keine BJJ Gyms gefunden', 'info');
+      return;
+    }
+
+    console.log(`✅ ${detailedPlaces.length} BJJ Gyms gefunden (Text Search)`);
+    displayModernPlacesResults(detailedPlaces);
+    showNotification(`${detailedPlaces.length} BJJ Gyms gefunden!`, 'success');
 
   } catch (error) {
     console.error('Text search error:', error);
@@ -3895,7 +3922,11 @@ function displayModernPlacesResults(places) {
 
   // Speichere für Sortierung/Export
   window.currentPlacesData = places;
-  updatePlacesStats();
+  
+  // Update Stats wenn Funktion existiert
+  if (typeof updatePlacesStats === 'function') {
+    updatePlacesStats();
+  }
 
   const placesHTML = places.map((place) => {
     const name = place.displayName || 'Unbekannt';
@@ -3908,12 +3939,20 @@ function displayModernPlacesResults(places) {
     // Foto URL (neue API)
     let photoUrl = null;
     if (place.photos && place.photos.length > 0) {
-      photoUrl = place.photos[0].getURI({ maxWidth: 400, maxHeight: 300 });
+      try {
+        photoUrl = place.photos[0].getURI({ maxWidth: 400, maxHeight: 300 });
+      } catch (e) {
+        console.warn('Foto konnte nicht geladen werden:', e);
+      }
     }
 
     // Öffnungszeiten
     const hours = place.regularOpeningHours?.weekdayDescriptions || [];
     const openNow = place.regularOpeningHours?.openNow || false;
+
+    // Location für Karte
+    const lat = place.location?.lat() || null;
+    const lng = place.location?.lng() || null;
 
     return `
       <div class="place-card" data-place-id="${place.id}">
@@ -3927,7 +3966,7 @@ function displayModernPlacesResults(places) {
           
           ${rating 
             ? `<div class="place-rating">
-                ${'⭐'.repeat(Math.round(rating))} ${rating} (${ratingCount} Bewertungen)
+                ${'⭐'.repeat(Math.round(rating))} ${rating.toFixed(1)} (${ratingCount} Bewertungen)
               </div>`
             : ''
           }
@@ -3942,7 +3981,7 @@ function displayModernPlacesResults(places) {
           }
           
           ${openNow 
-            ? '<span class="open-badge" style="background: #4caf50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85em;">🟢 Jetzt geöffnet</span>'
+            ? '<span class="open-badge" style="background: #4caf50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; display: inline-block; margin: 8px 0;">🟢 Jetzt geöffnet</span>'
             : ''
           }
           
@@ -3957,12 +3996,8 @@ function displayModernPlacesResults(places) {
           }
           
           <div class="place-actions" style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
-            <button class="btn btn-small" onclick="showModernPlaceDetails('${place.id}')">
-              📋 Details
-            </button>
-            
-            ${place.location 
-              ? `<button class="btn btn-small btn-secondary" onclick="showPlaceOnMap('${place.id}', ${place.location.lat()}, ${place.location.lng()})">
+            ${lat && lng 
+              ? `<button class="btn btn-small btn-secondary" onclick="showPlaceOnMap('${place.id}', ${lat}, ${lng})">
                   📍 Auf Karte
                 </button>`
               : ''
@@ -3977,8 +4012,8 @@ function displayModernPlacesResults(places) {
             
             <button class="btn btn-small btn-secondary favorite-btn" 
                     data-place-id="${place.id}"
-                    onclick="toggleFavorite('${place.id}', '${name}')">
-              ${isFavorite(place.id) ? '⭐ Favorit' : '☆ Favorit'}
+                    onclick="toggleFavorite('${place.id}', '${name.replace(/'/g, "\\'")}')">
+              ${typeof isFavorite === 'function' && isFavorite(place.id) ? '⭐ Favorit' : '☆ Favorit'}
             </button>
           </div>
         </div>
@@ -3988,62 +4023,9 @@ function displayModernPlacesResults(places) {
 
   resultsDiv.innerHTML = placesHTML || '<p style="text-align: center; padding: 40px; color: #666;">Keine Ergebnisse</p>';
   
-  // Füge Bulk Import Button hinzu
-  addBulkImportButton();
-}
-
-/**
- * Zeigt Details eines Places an
- */
-async function showModernPlaceDetails(placeId) {
-  try {
-    const place = window.currentPlacesData?.find(p => p.id === placeId);
-    
-    if (!place) {
-      showNotification('Place nicht gefunden', 'error');
-      return;
-    }
-
-    // Lade zusätzliche Details wenn nötig
-    if (!place.editorialSummary) {
-      await place.fetchFields({
-        fields: ['editorialSummary', 'reviews']
-      });
-    }
-
-    // Zeige Details Modal oder neue Seite
-    const detailsHTML = `
-      <div style="padding: 20px; max-width: 600px; margin: 0 auto;">
-        <h2>${place.displayName}</h2>
-        <p>${place.formattedAddress}</p>
-        
-        ${place.editorialSummary 
-          ? `<p style="margin: 16px 0; font-style: italic;">${place.editorialSummary}</p>`
-          : ''
-        }
-        
-        ${place.reviews && place.reviews.length > 0
-          ? `<div style="margin-top: 20px;">
-              <h3>Bewertungen:</h3>
-              ${place.reviews.slice(0, 3).map(review => `
-                <div style="margin: 12px 0; padding: 12px; background: #f5f5f5; border-radius: 8px;">
-                  <div>${'⭐'.repeat(review.rating)}</div>
-                  <p style="margin: 8px 0;">${review.text}</p>
-                  <small>- ${review.authorName}</small>
-                </div>
-              `).join('')}
-            </div>`
-          : ''
-        }
-      </div>
-    `;
-
-    // Zeige in neuem Modal oder alert
-    alert(`Details für ${place.displayName}\n\n${place.formattedAddress}`);
-    
-  } catch (error) {
-    console.error('Details Fehler:', error);
-    showNotification('Details konnten nicht geladen werden', 'error');
+  // Füge Bulk Import Button hinzu wenn Funktion existiert
+  if (typeof addBulkImportButton === 'function') {
+    addBulkImportButton();
   }
 }
 
@@ -4086,7 +4068,11 @@ async function importModernPlace(placeId) {
     // Foto URL
     let imageUrl = null;
     if (place.photos && place.photos.length > 0) {
-      imageUrl = place.photos[0].getURI({ maxWidth: 800 });
+      try {
+        imageUrl = place.photos[0].getURI({ maxWidth: 800 });
+      } catch (e) {
+        console.warn('Foto konnte nicht geladen werden:', e);
+      }
     }
 
     // Erstelle Gym
@@ -4116,12 +4102,14 @@ async function importModernPlace(placeId) {
     showNotification('✅ Gym erfolgreich importiert!', 'success');
     
     // Aktualisiere Listen
-    await Promise.all([
-      loadGyms(),
-      loadGymsForAthleteSelect && loadGymsForAthleteSelect(),
-      loadGymsForFilter && loadGymsForFilter(),
-      loadGymsForOpenMatSelect && loadGymsForOpenMatSelect()
-    ]);
+    const updatePromises = [];
+    
+    if (typeof loadGyms === 'function') updatePromises.push(loadGyms());
+    if (typeof loadGymsForAthleteSelect === 'function') updatePromises.push(loadGymsForAthleteSelect());
+    if (typeof loadGymsForFilter === 'function') updatePromises.push(loadGymsForFilter());
+    if (typeof loadGymsForOpenMatSelect === 'function') updatePromises.push(loadGymsForOpenMatSelect());
+    
+    await Promise.all(updatePromises);
 
   } catch (error) {
     console.error('Import error:', error);
@@ -4192,7 +4180,11 @@ async function bulkImportModernGyms() {
       // Foto URL
       let imageUrl = null;
       if (place.photos && place.photos.length > 0) {
-        imageUrl = place.photos[0].getURI({ maxWidth: 800 });
+        try {
+          imageUrl = place.photos[0].getURI({ maxWidth: 800 });
+        } catch (e) {
+          console.warn('Foto konnte nicht geladen werden:', e);
+        }
       }
 
       // Erstelle Gym
@@ -4235,24 +4227,25 @@ async function bulkImportModernGyms() {
   );
 
   // Aktualisiere Listen
-  await Promise.all([
-    loadGyms(),
-    loadGymsForAthleteSelect && loadGymsForAthleteSelect(),
-    loadGymsForFilter && loadGymsForFilter(),
-    loadGymsForOpenMatSelect && loadGymsForOpenMatSelect()
-  ]);
+  const updatePromises = [];
+  
+  if (typeof loadGyms === 'function') updatePromises.push(loadGyms());
+  if (typeof loadGymsForAthleteSelect === 'function') updatePromises.push(loadGymsForAthleteSelect());
+  if (typeof loadGymsForFilter === 'function') updatePromises.push(loadGymsForFilter());
+  if (typeof loadGymsForOpenMatSelect === 'function') updatePromises.push(loadGymsForOpenMatSelect());
+  
+  await Promise.all(updatePromises);
 
-  if (window.googleMap && window.initMap) {
+  if (window.googleMap && typeof initMap === 'function') {
     initMap();
   }
 }
 
 // ================================================
 // COMPATIBILITY LAYER
-// Für bestehenden Code der die alte API erwartet
 // ================================================
 
 // Ersetze alte Funktionen Namen mit neuen
 window.bulkImportGyms = bulkImportModernGyms;
 
-console.log('✅ Moderne Google Places API (2025) geladen!');
+console.log('✅ Moderne Google Places API (2025) - KORRIGIERT geladen!');
