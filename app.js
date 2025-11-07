@@ -2563,16 +2563,3 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// ================================================
-// INITIALISIERUNG
-// ================================================
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => {
-    if (window.google?.maps?.places) initCityAutocomplete();
-  });
-} else {
-  if (window.google?.maps?.places) initCityAutocomplete();
-}
-
-console.log("Google Places + Karte vollständig geladen!");
