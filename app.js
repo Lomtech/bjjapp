@@ -3427,8 +3427,6 @@ async function searchBJJGyms(location, radius = 50000) {
       if (resultsDiv)
         resultsDiv.innerHTML = `<div style="text-align:center;padding:40px;color:#666;"><p style="font-size:2em;">Keine Ergebnisse</p></div>`;
       return;
-
-      return;
     }
 
     displayModernPlacesResults(bjjPlaces);
