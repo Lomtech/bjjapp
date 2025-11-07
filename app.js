@@ -3154,23 +3154,7 @@ async function searchNearbyBJJGyms(location, radius = 50000) {
       /bjj|jiu.?\s*jitsu|gracie|grappling|kampfsport|budoclub|mma|jiu-jitsu|brazilian\s*jiu/i;
     const text = `${p.displayName} ${p.formattedAddress}`.toLowerCase();
     return bjjRegex.test(text);
-
-    if (bjjPlaces.length === 0) {
-      showNotification("Keine BJJ-Gyms gefunden", "info");
-      if (resultsDiv) {
-        resultsDiv.innerHTML = `
-          <div style="text-align: center; padding: 40px; color: #666;">
-            <p style="font-size: 2em;">🥋</p>
-            <p>Keine BJJ-Gyms in der Nähe gefunden.</p>
-            <p style="font-size: 0.9em; margin-top: 10px;">Versuche Textsuche oder einen anderen Standort.</p>
-          </div>
-        `;
-      }
-      return;
-    }
-
-    displayModernPlacesResults(bjjPlaces);
-    showNotification(`${bjjPlaces.length} BJJ Gyms gefunden!`, "success");
+    
   } catch (error) {
     console.error("searchNearby Fehler:", error);
     showNotification("Suche fehlgeschlagen: " + error.message, "error");
@@ -3221,7 +3205,41 @@ async function searchBJJGymsViaText(location, radius = 50000) {
       maxResultCount: 20,
     };
 
-    const { places } = await google.maps.places.Place.searchByText(request);
+    // 1. Versuche Textsuche (präziser für BJJ)
+    let places = [];
+    try {
+      const textResult = await google.maps.places.Place.searchByText({
+        fields: request.fields,
+        textQuery:
+          'BJJ OR "Brazilian Jiu Jitsu" OR Gracie OR grappling OR "Jiu-Jitsu" gym',
+        locationBias: { center: location, radius },
+        maxResultCount: 20,
+      });
+      places = textResult.places || [];
+    } catch (e) {
+      console.warn("Textsuche fehlgeschlagen, fallback auf Nearby:", e);
+    }
+
+    // 2. Fallback: Nearby Search mit "gym"
+    if (places.length === 0) {
+      const nearbyResult = await google.maps.places.Place.searchNearby({
+        fields: request.fields,
+        includedTypes: ["gym"],
+        locationRestriction: { center: location, radius },
+        maxResultCount: 20,
+        rankPreference: "DISTANCE",
+      });
+      places = nearbyResult.places || [];
+    }
+
+    // 3. Clientseitiger BJJ-Filter (nur als Feinfilter)
+    const bjjPlaces = places.filter((p) => {
+      const name = (p.displayName || "").toLowerCase();
+      const address = (p.formattedAddress || "").toLowerCase();
+      return /bjj|jiu.?jitsu|gracie|grappling|kampfsport|budoclub/i.test(
+        name + " " + address
+      );
+    });
 
     if (!places || places.length === 0) {
       showNotification("Keine Ergebnisse (Textsuche)", "info");
