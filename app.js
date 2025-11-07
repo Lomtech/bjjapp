@@ -2061,6 +2061,7 @@ function loadGoogleMapsScript() {
   if (googleMapsLoadPromise) return googleMapsLoadPromise;
 
   googleMapsLoadPromise = new Promise((resolve, reject) => {
+    // Falls bereits geladen
     if (window.google?.maps?.places?.Place) {
       googleMapsLoaded = true;
       resolve();
@@ -2068,20 +2069,24 @@ function loadGoogleMapsScript() {
     }
 
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&v=weekly&callback=initGoogleMaps`;
+    // KEIN callback! → Kein Blockieren
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&v=weekly`;
     script.async = true;
     script.defer = true;
-    script.onerror = () =>
-      reject(new Error("Google Maps konnte nicht geladen werden"));
 
-    window.initGoogleMaps = () => {
+    // Wird aufgerufen, wenn Script geladen ist
+    script.onload = () => {
       if (window.google?.maps?.places?.Place) {
         googleMapsLoaded = true;
-        console.log("Google Places API (2025+) geladen");
+        console.log("Google Maps API geladen (asynchron)");
         resolve();
       } else {
         reject(new Error("Places API nicht verfügbar"));
       }
+    };
+
+    script.onerror = () => {
+      reject(new Error("Google Maps Script fehlgeschlagen"));
     };
 
     document.head.appendChild(script);
@@ -2096,7 +2101,7 @@ async function waitForGoogleMaps() {
     await loadGoogleMapsScript();
     return true;
   } catch (error) {
-    console.error("Ladefehler:", error);
+    console.error("Maps-Ladefehler:", error);
     showNotification("Google Maps nicht verfügbar", "error");
     return false;
   }
@@ -2107,7 +2112,12 @@ async function waitForGoogleMaps() {
 // ================================================
 
 async function initMap() {
-  return initGoogleMap(); // Deine bestehende Funktion
+  const loaded = await waitForGoogleMaps();
+  if (!loaded) return;
+
+  if (window.googleMap) return; // Bereits initialisiert
+
+  await initGoogleMap(); // Deine bestehende Funktion
 }
 
 // ================================================
