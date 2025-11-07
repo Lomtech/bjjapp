@@ -3837,7 +3837,7 @@ function initCityAutocomplete() {
             lat: place.geometry.location.lat(),
             lng: place.geometry.location.lng(),
           },
-          500000
+          100000
         );
       }
     });
