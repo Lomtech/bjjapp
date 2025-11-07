@@ -2993,7 +2993,6 @@ window.addEventListener("beforeunload", () => {
     localStorage.setItem("lastActiveTab", currentActiveTab);
   }
 });
-
 // ================================================
 // MODERNE GOOGLE MAPS PLACES API (2025+)
 // Bereinigt & Optimiert - nur neue API
@@ -3113,7 +3112,19 @@ async function searchNearbyBJJGyms(location, radius = 50000) {
   }
 
   try {
+    // ✅ WICHTIG: fields MUSS im Request selbst sein!
     const request = {
+      fields: [
+        "displayName",
+        "location",
+        "formattedAddress",
+        "rating",
+        "userRatingCount",
+        "nationalPhoneNumber",
+        "websiteURI",
+        "photos",
+        "regularOpeningHours",
+      ],
       includedTypes: ["gym", "martial_arts_school"],
       locationRestriction: { center: location, radius },
       maxResultCount: 20,
@@ -3136,14 +3147,7 @@ async function searchNearbyBJJGyms(location, radius = 50000) {
       return;
     }
 
-    // Lade zusätzliche Details nach (OHNE fields Parameter!)
-    for (const place of places) {
-      try {
-        const { places } = await google.maps.places.Place.searchNearby(request);
-      } catch (e) {
-        console.warn("fetchFields fehlgeschlagen:", place.displayName, e);
-      }
-    }
+    console.log(`${places.length} Places gefunden mit vollständigen Daten`);
 
     // BJJ-Filter
     const bjjPlaces = places.filter((p) => {
@@ -3199,7 +3203,19 @@ async function searchBJJGymsViaText(location, radius = 50000) {
   }
 
   try {
+    // ✅ fields auch hier im Request!
     const request = {
+      fields: [
+        "displayName",
+        "location",
+        "formattedAddress",
+        "rating",
+        "userRatingCount",
+        "nationalPhoneNumber",
+        "websiteURI",
+        "photos",
+        "regularOpeningHours",
+      ],
       textQuery: 'BJJ OR "Brazilian Jiu Jitsu" OR Gracie OR grappling gym',
       locationBias: { center: location, radius },
       maxResultCount: 20,
@@ -3220,14 +3236,7 @@ async function searchBJJGymsViaText(location, radius = 50000) {
       return;
     }
 
-    // Lade Details für Textsuche-Ergebnisse
-    for (const place of places) {
-      try {
-        const { places } = await google.maps.places.Place.searchNearby(request);
-      } catch (e) {
-        console.warn("fetchFields fehlgeschlagen:", e);
-      }
-    }
+    console.log(`${places.length} Places aus Textsuche gefunden`);
 
     displayModernPlacesResults(places);
     showNotification(
