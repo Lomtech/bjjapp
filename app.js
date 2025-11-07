@@ -3125,7 +3125,7 @@ async function searchNearbyBJJGyms(location, radius = 50000) {
         "photos",
         "regularOpeningHours",
       ],
-      includedTypes: ["gym", "martial_arts_school"],
+      includedTypes: ["gym"], // Remove 'martial_arts_school'; use only supported types
       locationRestriction: { center: location, radius },
       maxResultCount: 20,
       rankPreference: "DISTANCE",
