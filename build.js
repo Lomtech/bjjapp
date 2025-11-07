@@ -112,7 +112,12 @@ const processJs = (filename) => {
   log.ok(`${filename} verarbeitet`);
 };
 
-["app.js", "chat.js"].forEach(processJs);
+[
+  "app.js",
+  "chat.js",
+  "app-places-helpers.js",
+  "app-places-extended.js",
+].forEach(processJs);
 
 // === 7. Zusammenfassung ===
 console.log("\n📦 Build abgeschlossen!");
@@ -124,7 +129,7 @@ console.log(
 );
 console.log(
   "JS:  ",
-  ["app.js", "chat.js"].filter((f) => fs.existsSync(f)).length
+  ["app.js", "chat.js", "app-places-helpers.js", "app-places-extended.js"].filter((f) => fs.existsSync(f)).length
 );
 console.log("-----------------------------");
 console.log("Service Worker:", fs.existsSync("service-worker.js") ? "✓" : "✗");
