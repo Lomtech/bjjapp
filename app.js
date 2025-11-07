@@ -75,11 +75,16 @@ function saveActiveTab(tabName) {
 }
 
 function loadActiveTab() {
-  const savedTab = localStorage.getItem("activeTab"); // getItem statt setItem
+  const savedTab = localStorage.getItem("activeTab");
   return savedTab || "dashboard";
 }
 
-(function init() {
+// ================================================
+// 3. SEITE STARTEN – NACH DOM
+// ================================================
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Prüfe Platzhalter
   if (
     SUPABASE_URL.includes("PLACEHOLDER") ||
     SUPABASE_ANON_KEY.includes("PLACEHOLDER")
@@ -93,7 +98,7 @@ function loadActiveTab() {
   }
 
   initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
-})();
+});
 
 async function initSupabase(url, key) {
   try {
