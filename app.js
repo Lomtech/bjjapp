@@ -3439,6 +3439,145 @@ async function searchBJJGyms(location, radius = 50000) {
   }
 }
 
+function displayModernPlacesResults(places) {
+  const resultsDiv = document.getElementById("places-results");
+  if (!resultsDiv) {
+    console.error("places-results div nicht gefunden");
+    return;
+  }
+
+  // Speichere Daten global für Import
+  window.currentPlacesData = places;
+
+  // Update Stats wenn Funktion existiert
+  if (typeof updatePlacesStats === "function") {
+    updatePlacesStats();
+  }
+
+  const placesHTML = places
+    .map((place) => {
+      // Extrahiere Daten sicher
+      const name = place.displayName || "Unbekannt";
+      const address = place.formattedAddress || "Keine Adresse";
+      const rating = place.rating ?? null;
+      const ratingCount = place.userRatingCount ?? 0;
+      const phone = place.nationalPhoneNumber ?? null;
+      const website = place.websiteURI ?? null;
+      const hours = place.regularOpeningHours?.weekdayDescriptions ?? [];
+      const openNow = place.regularOpeningHours?.openNow ?? false;
+
+      // Foto URL
+      let photoUrl = null;
+      if (
+        place.photos?.length > 0 &&
+        typeof place.photos[0].getURI === "function"
+      ) {
+        try {
+          photoUrl = place.photos[0].getURI({ maxWidth: 400, maxHeight: 300 });
+        } catch (e) {
+          console.warn("Foto-URL Fehler:", e);
+        }
+      }
+
+      // Koordinaten
+      const lat =
+        typeof place.location?.lat === "function"
+          ? place.location.lat()
+          : place.location?.lat;
+      const lng =
+        typeof place.location?.lng === "function"
+          ? place.location.lng()
+          : place.location?.lng;
+
+      return `
+        <div class="place-card" data-place-id="${place.id}">
+          ${
+            photoUrl
+              ? `<img src="${photoUrl}" class="place-image" alt="${name}">`
+              : '<div class="place-image-placeholder">🥋</div>'
+          }
+          <div class="place-card-content">
+            <h3>${name}</h3>
+            ${
+              rating
+                ? `<div class="place-rating">
+                    ${"⭐".repeat(Math.round(rating))}
+                    <span class="rating-text">${rating.toFixed(1)}</span>
+                    <span class="rating-count">(${ratingCount} Bewertungen)</span>
+                  </div>`
+                : ""
+            }
+            ${
+              openNow
+                ? '<span class="place-status open">🟢 Jetzt geöffnet</span>'
+                : ""
+            }
+            <p class="place-address">📍 ${address}</p>
+            ${phone ? `<p class="place-phone">📞 ${phone}</p>` : ""}
+            ${
+              website
+                ? `<p class="place-website"><a href="${website}" target="_blank" rel="noopener">🌐 Website</a></p>`
+                : ""
+            }
+            ${
+              hours.length > 0
+                ? `
+                <details class="place-hours">
+                  <summary>Öffnungszeiten</summary>
+                  <div class="hours-content">${hours.join("<br>")}</div>
+                </details>
+              `
+                : ""
+            }
+            <div class="place-actions">
+              ${
+                lat && lng
+                  ? `<button class="btn btn-small btn-secondary" onclick="showPlaceOnMap('${place.id}', ${lat}, ${lng})">
+                      🗺️ Auf Karte
+                    </button>`
+                  : ""
+              }
+              ${
+                window.currentUser
+                  ? `<button class="btn btn-small" onclick="importModernPlace('${place.id}')">
+                      ➕ Importieren
+                    </button>`
+                  : ""
+              }
+              <button class="btn btn-small btn-secondary favorite-btn" 
+                      data-place-id="${place.id}" 
+                      onclick="toggleFavorite('${place.id}', '${name.replace(
+        /'/g,
+        "\\'"
+      )}')">
+                ${
+                  typeof isFavorite === "function" && isFavorite(place.id)
+                    ? "⭐ Favorit"
+                    : "☆ Favorit"
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+  resultsDiv.innerHTML =
+    placesHTML ||
+    `
+    <div style="text-align: center; padding: 40px; color: #666;">
+      <p style="font-size: 2em;">😕</p>
+      <p>Keine Ergebnisse</p>
+    </div>
+  `;
+
+  // Bulk Import Button hinzufügen wenn Funktion existiert
+  if (typeof addBulkImportButton === "function") {
+    addBulkImportButton();
+  }
+}
+
 // displayModernPlacesResults(), importModernPlace(), etc. – unverändert
 // (Dein bestehender Code bleibt hier erhalten – nur showPlaceOnMap wurde ersetzt)
 
