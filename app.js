@@ -3680,7 +3680,7 @@ function loadGoogleMapsScript() {
   if (googleMapsLoadPromise) return googleMapsLoadPromise;
 
   googleMapsLoadPromise = new Promise((resolve, reject) => {
-    if (typeof google !== "undefined" && google.maps?.places?.Place) {
+    if (window.google?.maps?.places?.Place) {
       googleMapsLoaded = true;
       resolve();
       return;
@@ -3694,9 +3694,13 @@ function loadGoogleMapsScript() {
       reject(new Error("Google Maps konnte nicht geladen werden"));
 
     window.initGoogleMaps = () => {
-      googleMapsLoaded = true;
-      console.log("Google Maps & Places API (2025+) geladen");
-      resolve();
+      if (window.google?.maps?.places?.Place) {
+        googleMapsLoaded = true;
+        console.log("Google Places API geladen");
+        resolve();
+      } else {
+        reject(new Error("Places API nicht verfügbar"));
+      }
     };
 
     document.head.appendChild(script);
@@ -3714,8 +3718,8 @@ async function waitForGoogleMaps() {
     await loadGoogleMapsScript();
     return true;
   } catch (error) {
-    console.error("Google Maps Ladefehler:", error);
-    showNotification("Google Maps konnte nicht geladen werden", "error");
+    console.error('Ladefehler:', error);
+    showNotification('Google Maps nicht verfügbar', 'error');
     return false;
   }
 }
@@ -3759,7 +3763,6 @@ async function searchNearbyBJJGyms(location, radius = 50000) {
   try {
     const request = {
       includedTypes: ["gym", "martial_arts_school"],
-      // keyword: ... ← ENTFERNT! Nicht erlaubt!
       locationRestriction: { center: location, radius },
       maxResultCount: 20,
       rankPreference: "DISTANCE",
@@ -3768,12 +3771,12 @@ async function searchNearbyBJJGyms(location, radius = 50000) {
     const { places } = await google.maps.places.Place.searchNearby(request);
 
     if (!places || places.length === 0) {
-      showNotification("Keine Gyms in der Nähe gefunden", "info");
+      showNotification("Keine Gyms in der Nähe", "info");
       return;
     }
 
-    // Nur fehlende Felder nachladen
-    const fieldsToFetch = [
+    // Nur erlaubte, fehlende Felder nachladen
+    const allowedFields = [
       "photos",
       "regularOpeningHours",
       "nationalPhoneNumber",
@@ -3781,35 +3784,31 @@ async function searchNearbyBJJGyms(location, radius = 50000) {
       "rating",
       "userRatingCount",
     ];
+
     for (const place of places) {
-      const missing = fieldsToFetch.filter((f) => place[f] === undefined);
+      const missing = allowedFields.filter(
+        (field) => place[field] === undefined
+      );
       if (missing.length > 0) {
         try {
           await place.fetchFields({ fields: missing });
         } catch (e) {
-          console.warn("fetchFields fehlgeschlagen:", e);
+          console.warn("fetchFields fehlgeschlagen für:", place.displayName, e);
         }
       }
     }
 
-    // In searchNearbyBJJGyms – bei 0 BJJ-Ergebnissen:
-    if (bjjPlaces.length === 0) {
-      await searchBJJGymsViaText(location, radius); // ← Jetzt mit keyword!
-      return;
-    }
-
-    // BJJ-Filter im Namen
+    // BJJ-Filter
     const bjjPlaces = places.filter((p) => {
       const name = (p.displayName || "").toLowerCase();
       return /bjj|jiu.?jitsu|gracie|grappling/.test(name);
     });
 
     if (bjjPlaces.length === 0) {
-      showNotification("Keine BJJ-Gyms in der Nähe", "info");
+      showNotification("Keine BJJ-Gyms gefunden", "info");
       return;
     }
 
-    console.log(`${bjjPlaces.length} BJJ Gyms gefunden (searchNearby)`);
     displayModernPlacesResults(bjjPlaces);
     showNotification(`${bjjPlaces.length} BJJ Gyms gefunden!`, "success");
   } catch (error) {
@@ -3835,11 +3834,10 @@ async function searchBJJGymsViaText(location, radius = 50000) {
     const { places } = await google.maps.places.Place.searchByText(request);
 
     if (!places || places.length === 0) {
-      showNotification("Keine Ergebnisse in der Textsuche", "info");
+      showNotification("Keine Ergebnisse (Textsuche)", "info");
       return;
     }
 
-    // Nur Default-Felder – KEIN fetchFields!
     const bjjPlaces = places.map((place) => ({
       id: place.id,
       displayName: place.displayName || "Unbekannt",
@@ -3856,9 +3854,8 @@ async function searchBJJGymsViaText(location, radius = 50000) {
       lng: () => place.location?.lng() ?? null,
     }));
 
-    console.log(`${bjjPlaces.length} BJJ Gyms (Textsuche)`);
     displayModernPlacesResults(bjjPlaces);
-    showNotification(`${bjjPlaces.length} BJJ Gyms gefunden!`, "success");
+    showNotification(`${bjjPlaces.length} BJJ Gyms (Textsuche)!`, "success");
   } catch (error) {
     console.error("Textsuche Fehler:", error);
     showNotification("Textsuche fehlgeschlagen", "error");
