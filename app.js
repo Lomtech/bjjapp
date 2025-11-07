@@ -3150,10 +3150,10 @@ async function searchNearbyBJJGyms(location, radius = 50000) {
     console.log(`${places.length} Places gefunden mit vollständigen Daten`);
 
     // BJJ-Filter
-    const bjjPlaces = places.filter((p) => {
-      const name = (p.displayName || "").toLowerCase();
-      return /bjj|jiu.?jitsu|gracie|grappling/.test(name);
-    });
+    const bjjRegex =
+      /bjj|jiu.?\s*jitsu|gracie|grappling|kampfsport|budoclub|mma|jiu-jitsu|brazilian\s*jiu/i;
+    const text = `${p.displayName} ${p.formattedAddress}`.toLowerCase();
+    return bjjRegex.test(text);
 
     if (bjjPlaces.length === 0) {
       showNotification("Keine BJJ-Gyms gefunden", "info");
