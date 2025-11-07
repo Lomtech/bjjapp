@@ -17,6 +17,54 @@ let sessionKeepAliveInterval = null;
 let currentActiveTab = null;
 let googleMap = null;
 
+function showNotification(message, type = "info") {
+  const notification = document.createElement("div");
+  notification.className = `notification ${type}`;
+  notification.innerHTML = `
+    <span>${message}</span>
+    <button class="close-btn" onclick="this.parentElement.remove()">×</button>
+  `;
+  document.getElementById("notifications").appendChild(notification);
+  setTimeout(() => notification.remove(), 5000);
+}
+
+function switchTab(tabName) {
+  // Verstecke alle Tabs
+  document.querySelectorAll(".tab-content").forEach((tab) => {
+    tab.classList.remove("active");
+  });
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.classList.remove("active");
+  });
+
+  // Zeige gewünschten Tab
+  const targetTab = document.getElementById(`${tabName}-tab`);
+  const targetBtn = document.querySelector(`[data-tab="${tabName}"]`);
+
+  if (targetTab) targetTab.classList.add("active");
+  if (targetBtn) targetBtn.classList.add("active");
+
+  // Speichere aktiven Tab
+  saveActiveTab(tabName);
+
+  // Karte neu laden, wenn Map-Tab
+  if (tabName === "map" && window.googleMap) {
+    google.maps.event.trigger(window.googleMap, "resize");
+    if (allGyms.length > 0) {
+      const bounds = new google.maps.LatLngBounds();
+      allGyms.forEach((gym) => {
+        if (gym.latitude && gym.longitude) {
+          bounds.extend({
+            lat: parseFloat(gym.latitude),
+            lng: parseFloat(gym.longitude),
+          });
+        }
+      });
+      window.googleMap.fitBounds(bounds);
+    }
+  }
+}
+
 // ================================================
 // INITIALISIERUNG
 // ================================================
