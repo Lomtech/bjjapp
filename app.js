@@ -3572,7 +3572,7 @@ async function searchBJJGymsInGermany() {
               includedTypes: [type],
               locationRestriction: { center, radius: RADIUS_PER_CENTER },
               maxResultCount: MAX_RESULT_COUNT_NEARBY,
-              rankPreference: "RELEVANCE",
+              rankPreference: "DISTANCE",
               fields: PLACE_FIELDS,
             });
           nearby?.forEach((p) => p.id && localPlaces.set(p.id, p));
