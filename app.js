@@ -3359,6 +3359,19 @@ async function showPlaceOnMap(placeId, lat, lng) {
 // RESTLICHER CODE (Places-Suche, Import, etc.) – unverändert, aber robust
 // ================================================
 
+const GERMANY_CENTERS = [
+  { lat: 53.5511, lng: 9.9937 }, // Hamburg
+  { lat: 52.52, lng: 13.405 }, // Berlin
+  { lat: 50.1109, lng: 8.6821 }, // Frankfurt
+  { lat: 48.7758, lng: 9.1829 }, // Stuttgart
+  { lat: 48.1351, lng: 11.582 }, // München
+  { lat: 50.9375, lng: 6.9603 }, // Köln
+  { lat: 51.2277, lng: 6.7735 }, // Düsseldorf
+  { lat: 52.3759, lng: 9.732 }, // Hannover
+];
+
+const RADIUS_PER_CENTER = 150000; // 150 km
+
 async function searchBJJGymsInGermany() {
   const resultsDiv = document.getElementById("places-results");
   if (resultsDiv) {
