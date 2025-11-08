@@ -3361,37 +3361,32 @@ async function showPlaceOnMap(placeId, lat, lng) {
 // ================================================
 
 const GERMANY_CENTERS = [
-  { lat: 53.5511, lng: 9.9937 }, // Hamburg
-  { lat: 52.52, lng: 13.405 }, // Berlin
-  { lat: 50.1109, lng: 8.6821 }, // Frankfurt
-  { lat: 48.7758, lng: 9.1829 }, // Stuttgart
-  { lat: 48.1351, lng: 11.582 }, // München
-  { lat: 50.9375, lng: 6.9603 }, // Köln
-  { lat: 51.2277, lng: 6.7735 }, // Düsseldorf
-  { lat: 52.3759, lng: 9.732 }, // Hannover
-  { lat: 53.0793, lng: 8.8017 }, // Bremen
-  { lat: 52.2689, lng: 10.5268 }, // Braunschweig
-  { lat: 52.1333, lng: 11.6167 }, // Magdeburg
-  { lat: 51.3397, lng: 12.3714 }, // Leipzig
-  { lat: 51.05, lng: 13.7373 }, // Dresden
-  { lat: 49.4774, lng: 10.9886 }, // Nürnberg
-  { lat: 49.8728, lng: 8.6512 }, // Darmstadt (covers southern Hesse)
-  { lat: 50.0, lng: 8.2667 }, // Mainz/Wiesbaden area
-  { lat: 49.0069, lng: 8.4037 }, // Karlsruhe
-  { lat: 49.477, lng: 8.467 }, // Mannheim/Ludwigshafen
-  { lat: 48.3705, lng: 10.8978 }, // Augsburg
-  { lat: 47.999, lng: 7.8421 }, // Freiburg im Breisgau
-  { lat: 53.8659, lng: 10.6866 }, // Lübeck
-  { lat: 54.3233, lng: 10.1228 }, // Kiel
-  { lat: 51.5142, lng: 7.465 }, // Dortmund (covers central Ruhr area)
-  { lat: 51.4556, lng: 7.0114 }, // Essen
-  { lat: 53.1406, lng: 8.2111 }, // Oldenburg
-  { lat: 52.2799, lng: 8.0472 }, // Osnabrück
-  { lat: 51.9607, lng: 7.6264 }, // Münster
-  { lat: 49.7913, lng: 9.9534 }, // Würzburg
-  { lat: 49.2402, lng: 6.9964 }, // Saarbrücken
-  { lat: 52.7085, lng: 13.2424 }, // Oranienburg (northern Berlin fringe)
-  { lat: 53.5507, lng: 7.9161 }, // Ostfriesland area (covers Leer/Emden)
+  { lat: 53.5511, lng: 9.9937 }, // Hamburg (Norddeutschland, Metropolregion)
+  { lat: 52.52, lng: 13.405 }, // Berlin (Ostdeutschland, Hauptstadtregion)
+  { lat: 53.8659, lng: 10.6866 }, // Lübeck (Schleswig-Holstein Ostküste)
+  { lat: 54.3233, lng: 10.1228 }, // Kiel (Schleswig-Holstein Nordwesten)
+  { lat: 53.1406, lng: 8.2111 }, // Oldenburg (Nordwestniedersachsen, Ostfriesland-Anbindung)
+  { lat: 52.2799, lng: 8.0472 }, // Osnabrück (Westniedersachsen)
+  { lat: 51.9607, lng: 7.6264 }, // Münster (Westfalen)
+  { lat: 51.5142, lng: 7.465 }, // Dortmund (Ruhrgebiet Zentrum)
+  { lat: 50.9375, lng: 6.9603 }, // Köln (Rheinland Süd)
+  { lat: 50.1109, lng: 8.6821 }, // Frankfurt am Main (Rhein-Main, Hessen)
+  { lat: 49.477, lng: 8.467 }, // Mannheim (Rhein-Neckar)
+  { lat: 49.0069, lng: 8.4037 }, // Karlsruhe (Oberrhein)
+  { lat: 48.7758, lng: 9.1829 }, // Stuttgart (Baden-Württemberg Mitte)
+  { lat: 48.1351, lng: 11.582 }, // München (Bayern Südost)
+  { lat: 49.4774, lng: 10.9886 }, // Nürnberg (Franken)
+  { lat: 47.999, lng: 7.8421 }, // Freiburg im Breisgau (Südlicher Oberrhein, Schwarzwald)
+  { lat: 49.7913, lng: 9.9534 }, // Würzburg (Unterfranken, Mainfranken)
+  { lat: 49.2402, lng: 6.9964 }, // Saarbrücken (Saarland, Südwestgrenze)
+  { lat: 51.3397, lng: 12.3714 }, // Leipzig (Sachsen Mitte)
+  { lat: 51.05, lng: 13.7373 }, // Dresden (Sachsen Ost, Elbtal)
+  { lat: 52.3759, lng: 9.732 }, // Hannover (Mitteldeutschland, Niedersachsen Mitte)
+  { lat: 52.2689, lng: 10.5268 }, // Braunschweig (Südostniedersachsen)
+  { lat: 53.0793, lng: 8.8017 }, // Bremen (Hansestadt, Nordwestmetropole)
+  { lat: 52.7085, lng: 13.2424 }, // Oranienburg (Nordbrandenburg, Mecklenburg-Anbindung)
+  { lat: 53.5507, lng: 7.9161 }, // Leer (Ostfriesland, Nordwestzipfel)
+  { lat: 50.0, lng: 8.2667 }, // Mainz (Rheinland-Pfalz, Westhessen-Anbindung)
 ];
 
 const RADIUS_PER_CENTER = 50000; // 150 km
