@@ -583,6 +583,7 @@ function editMyProfile() {
     document.getElementById("athlete-age").value = a.age || "";
     document.getElementById("athlete-weight").value = a.weight || "";
     document.getElementById("athlete-belt").value = a.belt_rank || "";
+    document.getElementById("athlete-gym-city").value = a.gym_id || "";
     document.getElementById("athlete-gym-select").value = a.gym_id || "";
 
     if (a.image_url) {
@@ -674,6 +675,7 @@ document
         : null,
       belt_rank: formData.get("belt_rank"),
       bio: formData.get("bio") || null,
+      city: formData.get("city") || null,
       gym_id: formData.get("gym_id") || null,
       image_url: imageUrl,
       user_id: currentUser.id,
@@ -985,6 +987,15 @@ function displayAthletes(athletes) {
                       }">${a.belt_rank.toUpperCase()}</span>`
                     : ""
                 }
+                              ${
+                                a.city
+                                  ? `<p style="margin-top: 10px;">🏙️<strong>${
+                                      a.city
+                                    }</strong>${
+                                      a.city ? ` (${a.city})` : ""
+                                    }</p>`
+                                  : ""
+                              }
                 ${
                   a.gyms
                     ? `<p style="margin-top: 10px;">🏋️ <strong>${
@@ -1022,6 +1033,7 @@ function filterAthletes() {
         a.name?.toLowerCase().includes(searchTerm) ||
         a.bio?.toLowerCase().includes(searchTerm) ||
         a.gyms?.name?.toLowerCase().includes(searchTerm) ||
+        a.city?.toLowerCase().includes(searchTerm) ||
         a.gyms?.city?.toLowerCase().includes(searchTerm) ||
         a.belt_rank?.toLowerCase().includes(searchTerm)
     );
