@@ -3369,6 +3369,29 @@ const GERMANY_CENTERS = [
   { lat: 50.9375, lng: 6.9603 }, // Köln
   { lat: 51.2277, lng: 6.7735 }, // Düsseldorf
   { lat: 52.3759, lng: 9.732 }, // Hannover
+  { lat: 53.0793, lng: 8.8017 }, // Bremen
+  { lat: 52.2689, lng: 10.5268 }, // Braunschweig
+  { lat: 52.1333, lng: 11.6167 }, // Magdeburg
+  { lat: 51.3397, lng: 12.3714 }, // Leipzig
+  { lat: 51.05, lng: 13.7373 }, // Dresden
+  { lat: 49.4774, lng: 10.9886 }, // Nürnberg
+  { lat: 49.8728, lng: 8.6512 }, // Darmstadt (covers southern Hesse)
+  { lat: 50.0, lng: 8.2667 }, // Mainz/Wiesbaden area
+  { lat: 49.0069, lng: 8.4037 }, // Karlsruhe
+  { lat: 49.477, lng: 8.467 }, // Mannheim/Ludwigshafen
+  { lat: 48.3705, lng: 10.8978 }, // Augsburg
+  { lat: 47.999, lng: 7.8421 }, // Freiburg im Breisgau
+  { lat: 53.8659, lng: 10.6866 }, // Lübeck
+  { lat: 54.3233, lng: 10.1228 }, // Kiel
+  { lat: 51.5142, lng: 7.465 }, // Dortmund (covers central Ruhr area)
+  { lat: 51.4556, lng: 7.0114 }, // Essen
+  { lat: 53.1406, lng: 8.2111 }, // Oldenburg
+  { lat: 52.2799, lng: 8.0472 }, // Osnabrück
+  { lat: 51.9607, lng: 7.6264 }, // Münster
+  { lat: 49.7913, lng: 9.9534 }, // Würzburg
+  { lat: 49.2402, lng: 6.9964 }, // Saarbrücken
+  { lat: 52.7085, lng: 13.2424 }, // Oranienburg (northern Berlin fringe)
+  { lat: 53.5507, lng: 7.9161 }, // Ostfriesland area (covers Leer/Emden)
 ];
 
 const RADIUS_PER_CENTER = 50000; // 150 km
