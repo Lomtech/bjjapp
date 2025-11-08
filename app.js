@@ -3360,55 +3360,173 @@ async function showPlaceOnMap(placeId, lat, lng) {
 // RESTLICHER CODE (Places-Suche, Import, etc.) – unverändert, aber robust
 // ================================================
 
-const GERMANY_CENTERS = [
-  { lat: 53.5511, lng: 9.9937 },   // Hamburg
-  { lat: 53.0793, lng: 8.8017 },   // Bremen
-  { lat: 54.3233, lng: 10.1228 },  // Kiel
-  { lat: 53.8659, lng: 10.6866 },  // Lübeck
-  { lat: 54.0900, lng: 12.1300 },  // Rostock
-  { lat: 53.6000, lng: 11.4000 },  // Schwerin
-  { lat: 53.8667, lng: 8.7000 },   // Cuxhaven
-  { lat: 53.5507, lng: 7.9161 },   // Leer
-  { lat: 53.1406, lng: 8.2111 },   // Oldenburg
-  { lat: 52.3759, lng: 9.7320 },   // Hannover
-  { lat: 52.2689, lng: 10.5268 },  // Braunschweig
-  { lat: 52.5200, lng: 10.2300 },  // Gifhorn
-  { lat: 52.5200, lng: 13.4050 },  // Berlin
-  { lat: 52.4000, lng: 13.0667 },  // Potsdam
-  { lat: 52.7085, lng: 13.2424 },  // Oranienburg
-  { lat: 51.3397, lng: 12.3714 },  // Leipzig
-  { lat: 51.0500, lng: 13.7373 },  // Dresden
-  { lat: 50.8167, lng: 12.9333 },  // Chemnitz
-  { lat: 52.1300, lng: 11.6200 },  // Magdeburg
-  { lat: 51.8333, lng: 12.2500 },  // Wittenberg
-  { lat: 52.6500, lng: 11.3833 },  // Stendal
-  { lat: 50.9850, lng: 11.3300 },  // Weimar
-  { lat: 51.0500, lng: 10.6500 },  // Eisenach
-  { lat: 51.2277, lng: 6.7735 },   // Düsseldorf
-  { lat: 50.9375, lng: 6.9603 },   // Köln
-  { lat: 50.9833, lng: 6.5833 },   // Bergheim
-  { lat: 51.4556, lng: 7.0117 },   // Essen
-  { lat: 51.5142, lng: 7.4650 },   // Dortmund
-  { lat: 51.9607, lng: 7.6264 },   // Münster
-  { lat: 52.2799, lng: 8.0472 },   // Osnabrück
-  { lat: 50.0000, lng: 8.2667 },   // Mainz
-  { lat: 49.2402, lng: 6.9964 },   // Saarbrücken
-  { lat: 50.1109, lng: 8.6821 },   // Frankfurt am Main
-  { lat: 49.8700, lng: 8.6500 },   // Darmstadt
-  { lat: 50.5833, lng: 8.6833 },   // Gießen
-  { lat: 51.3167, lng: 9.5000 },   // Kassel
-  { lat: 48.7758, lng: 9.1829 },   // Stuttgart
-  { lat: 48.4000, lng: 9.9833 },   // Ulm
-  { lat: 49.0069, lng: 8.4037 },   // Karlsruhe
-  { lat: 49.4770, lng: 8.4670 },   // Mannheim
-  { lat: 47.9990, lng: 7.8421 },   // Freiburg im Breisgau
-  { lat: 48.1351, lng: 11.5820 },  // München
-  { lat: 48.4000, lng: 10.8833 },  // Augsburg
-  { lat: 49.3500, lng: 11.0167 },  // Ingolstadt
-  { lat: 49.4774, lng: 10.9886 },  // Nürnberg
-  { lat: 50.1100, lng: 11.4500 },  // Bayreuth
-  { lat: 49.7913, lng: 9.9534 }    // Würzburg
+// const GERMANY_CENTERS = [
+//   { lat: 53.5511, lng: 9.9937 },   // Hamburg
+//   { lat: 53.0793, lng: 8.8017 },   // Bremen
+//   { lat: 54.3233, lng: 10.1228 },  // Kiel
+//   { lat: 53.8659, lng: 10.6866 },  // Lübeck
+//   { lat: 54.0900, lng: 12.1300 },  // Rostock
+//   { lat: 53.6000, lng: 11.4000 },  // Schwerin
+//   { lat: 53.8667, lng: 8.7000 },   // Cuxhaven
+//   { lat: 53.5507, lng: 7.9161 },   // Leer
+//   { lat: 53.1406, lng: 8.2111 },   // Oldenburg
+//   { lat: 52.3759, lng: 9.7320 },   // Hannover
+//   { lat: 52.2689, lng: 10.5268 },  // Braunschweig
+//   { lat: 52.5200, lng: 10.2300 },  // Gifhorn
+//   { lat: 52.5200, lng: 13.4050 },  // Berlin
+//   { lat: 52.4000, lng: 13.0667 },  // Potsdam
+//   { lat: 52.7085, lng: 13.2424 },  // Oranienburg
+//   { lat: 51.3397, lng: 12.3714 },  // Leipzig
+//   { lat: 51.0500, lng: 13.7373 },  // Dresden
+//   { lat: 50.8167, lng: 12.9333 },  // Chemnitz
+//   { lat: 52.1300, lng: 11.6200 },  // Magdeburg
+//   { lat: 51.8333, lng: 12.2500 },  // Wittenberg
+//   { lat: 52.6500, lng: 11.3833 },  // Stendal
+//   { lat: 50.9850, lng: 11.3300 },  // Weimar
+//   { lat: 51.0500, lng: 10.6500 },  // Eisenach
+//   { lat: 51.2277, lng: 6.7735 },   // Düsseldorf
+//   { lat: 50.9375, lng: 6.9603 },   // Köln
+//   { lat: 50.9833, lng: 6.5833 },   // Bergheim
+//   { lat: 51.4556, lng: 7.0117 },   // Essen
+//   { lat: 51.5142, lng: 7.4650 },   // Dortmund
+//   { lat: 51.9607, lng: 7.6264 },   // Münster
+//   { lat: 52.2799, lng: 8.0472 },   // Osnabrück
+//   { lat: 50.0000, lng: 8.2667 },   // Mainz
+//   { lat: 49.2402, lng: 6.9964 },   // Saarbrücken
+//   { lat: 50.1109, lng: 8.6821 },   // Frankfurt am Main
+//   { lat: 49.8700, lng: 8.6500 },   // Darmstadt
+//   { lat: 50.5833, lng: 8.6833 },   // Gießen
+//   { lat: 51.3167, lng: 9.5000 },   // Kassel
+//   { lat: 48.7758, lng: 9.1829 },   // Stuttgart
+//   { lat: 48.4000, lng: 9.9833 },   // Ulm
+//   { lat: 49.0069, lng: 8.4037 },   // Karlsruhe
+//   { lat: 49.4770, lng: 8.4670 },   // Mannheim
+//   { lat: 47.9990, lng: 7.8421 },   // Freiburg im Breisgau
+//   { lat: 48.1351, lng: 11.5820 },  // München
+//   { lat: 48.4000, lng: 10.8833 },  // Augsburg
+//   { lat: 49.3500, lng: 11.0167 },  // Ingolstadt
+//   { lat: 49.4774, lng: 10.9886 },  // Nürnberg
+//   { lat: 50.1100, lng: 11.4500 },  // Bayreuth
+//   { lat: 49.7913, lng: 9.9534 }    // Würzburg
+// ];
+
+// Bounding Box Deutschland (inkl. Puffer für Randgebiete)
+const GERMANY_BBOX = {
+  north: 55.1, // Bis Rügen
+  south: 47.2, // Bis Bodensee
+  west: 5.8, // Bis Saarland
+  east: 15.1, // Bis Görlitz
+};
+
+const GRID_SPACING_KM = 30; // Optimale Überlappung: ~25–35 km
+
+function generateGermanyGrid(spacingKm = 30) {
+  const centers = [];
+  const R = 6371; // Erdradius in km
+  const degPerKmLat = 1 / ((R * Math.PI) / 180);
+  const degPerKmLon =
+    1 /
+    (((R * Math.PI) / 180) *
+      Math.cos(
+        (((GERMANY_BBOX.north + GERMANY_BBOX.south) / 2) * Math.PI) / 180
+      ));
+
+  for (
+    let lat = GERMANY_BBOX.south;
+    lat <= GERMANY_BBOX.north;
+    lat += spacingKm * degPerKmLat
+  ) {
+    for (
+      let lng = GERMANY_BBOX.west;
+      lng <= GERMANY_BBOX.east;
+      lng += spacingKm * degPerKmLon
+    ) {
+      centers.push({ lat, lng });
+    }
+  }
+  return centers;
+}
+
+// Verwendung
+const GERMANY_CENTERS = generateGermanyGrid(30); // ~250–300 Punkte
+
+const BJJ_KEYWORDS = [
+  "BJJ",
+  "Brazilian Jiu-Jitsu",
+  "Jiu Jitsu",
+  "Gracie Jiu-Jitsu",
+  "Gracie Barra",
+  "Jiu-Jitsu",
+  "Grappling",
+  "Kampfsport BJJ",
+  "Combat Sports",
+  "MMA Gym BJJ",
+  "Kampfsportzentrum",
 ];
+
+const INCLUDED_TYPES = ["gym", "health", "school"]; // Erweitert
+
+const searchPromises = GERMANY_CENTERS.map(async (center) => {
+  const places = new Set();
+
+  // 1. Textsuche (primär)
+  try {
+    const { places: textPlaces } = await google.maps.places.Place.searchByText({
+      textQuery: BJJ_KEYWORDS.map((k) => `"${k}"`).join(" OR "),
+      locationBias: { center, radius: RADIUS_PER_CENTER },
+      maxResultCount: 20,
+      fields: [
+        "displayName",
+        "location",
+        "formattedAddress",
+        "nationalPhoneNumber",
+        "websiteURI",
+        "photos",
+      ], // wie bisher
+    });
+    textPlaces?.forEach((p) => p.id && places.add(p.id));
+  } catch (e) {
+    console.warn("Textsuche fehlgeschlagen:", e);
+  }
+
+  // 2. Nearby-Suche mit erweiterten Typen
+  try {
+    for (const type of INCLUDED_TYPES) {
+      const { places: nearby } = await google.maps.places.Place.searchNearby({
+        includedTypes: [type],
+        locationRestriction: { center, radius: RADIUS_PER_CENTER },
+        maxResultCount: 15,
+        rankPreference: "RELEVANCE",
+      });
+      nearby?.forEach((p) => p.id && places.add(p.id));
+    }
+  } catch (e) {
+    console.warn("Nearby-Suche fehlgeschlagen:", e);
+  }
+
+  return Array.from(places)
+    .map((id) => allPlaces.get(id))
+    .filter(Boolean);
+});
+
+function isLikelyBJJGym(place) {
+  const text = `${place.displayName} ${place.formattedAddress} ${place.websiteURI || ''}`.toLowerCase();
+
+  // Stufe 1: Starke Indikatoren
+  const strongMatch = /bjj|jiu.?\s*jitsu|gracie|grappling|brazilian\s*jiu/i.test(text);
+  if (strongMatch) return { match: true, confidence: 'high' };
+
+  // Stufe 2: Schwache Indikatoren + Kontext
+  const weakKeywords = /combat|mma|kampfsport|budoclub|fight\s*club|martial\s*arts/i.test(text);
+  const hasGymContext = /gym|zentrum|studio|akademie|dojo|club/i.test(text);
+  const notGeneric = !/(fitness|crossfit|yoga|tanzen|reha)/i.test(text);
+
+  if (weakKeywords && hasGymContext && notGeneric) {
+    return { match: true, confidence: 'medium' };
+  }
+
+  return { match: false, confidence: 'low' };
+}
 
 const RADIUS_PER_CENTER = 50000; // 150 km
 
