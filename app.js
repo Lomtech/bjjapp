@@ -583,7 +583,7 @@ function editMyProfile() {
     document.getElementById("athlete-age").value = a.age || "";
     document.getElementById("athlete-weight").value = a.weight || "";
     document.getElementById("athlete-belt").value = a.belt_rank || "";
-    document.getElementById("athlete-gym-city").value = a.gym_id || "";
+    document.getElementById("athlete-city").value = a.city || "";
     document.getElementById("athlete-gym-select").value = a.gym_id || "";
 
     if (a.image_url) {
