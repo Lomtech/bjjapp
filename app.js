@@ -3410,26 +3410,59 @@ async function showPlaceOnMap(placeId, lat, lng) {
 //   { lat: 49.7913, lng: 9.9534 }    // Würzburg
 // ];
 
-// Bounding Box Deutschland (inkl. Puffer für Randgebiete)
+// === KONFIGURATION ===
 const GERMANY_BBOX = {
-  north: 55.1, // Bis Rügen
-  south: 47.2, // Bis Bodensee
-  west: 5.8, // Bis Saarland
-  east: 15.1, // Bis Görlitz
+  north: 55.1, // Rügen
+  south: 47.2, // Bodensee
+  west: 5.8, // Saarland
+  east: 15.1, // Görlitz
 };
 
-const GRID_SPACING_KM = 30; // Optimale Überlappung: ~25–35 km
+const RADIUS_PER_CENTER = 35000; // 35 km (Überlappung garantiert)
+const GRID_SPACING_KM = 30; // Optimale Gitterdichte
+const MAX_RESULT_COUNT_TEXT = 20;
+const MAX_RESULT_COUNT_NEARBY = 15;
 
-function generateGermanyGrid(spacingKm = 30) {
+// Suchbegriffe (deutsch & englisch)
+const BJJ_KEYWORDS = [
+  "BJJ",
+  "Jiu-Jitsu",
+  "Brazilian Jiu-Jitsu",
+  "Gracie Jiu-Jitsu",
+  "Gracie Barra",
+  "Grappling",
+  "Kampfsportschule",
+  "Kampfkunst",
+  "Combat Sports",
+  "MMA BJJ",
+  "Jiu Jitsu Akademie",
+  "Kampfsportzentrum",
+];
+
+// Relevante Google Places Typen
+const INCLUDED_TYPES = ["martial_arts_school", "gym", "school"];
+
+// Felder für API-Anfragen
+const PLACE_FIELDS = [
+  "id",
+  "displayName",
+  "location",
+  "formattedAddress",
+  "nationalPhoneNumber",
+  "websiteURI",
+  "photos",
+];
+
+// === HILFSFUNKTIONEN ===
+
+/** Generiert ein gleichmäßiges Gitter über Deutschland */
+function generateGermanyGrid(spacingKm = GRID_SPACING_KM) {
   const centers = [];
   const R = 6371; // Erdradius in km
+  const avgLat = (GERMANY_BBOX.north + GERMANY_BBOX.south) / 2;
   const degPerKmLat = 1 / ((R * Math.PI) / 180);
   const degPerKmLon =
-    1 /
-    (((R * Math.PI) / 180) *
-      Math.cos(
-        (((GERMANY_BBOX.north + GERMANY_BBOX.south) / 2) * Math.PI) / 180
-      ));
+    1 / (((R * Math.PI) / 180) * Math.cos((avgLat * Math.PI) / 180));
 
   for (
     let lat = GERMANY_BBOX.south;
@@ -3447,96 +3480,57 @@ function generateGermanyGrid(spacingKm = 30) {
   return centers;
 }
 
-// Verwendung
-const GERMANY_CENTERS = generateGermanyGrid(30); // ~250–300 Punkte
-
-const BJJ_KEYWORDS = [
-  "BJJ",
-  "Brazilian Jiu-Jitsu",
-  "Jiu Jitsu",
-  "Gracie Jiu-Jitsu",
-  "Gracie Barra",
-  "Jiu-Jitsu",
-  "Grappling",
-  "Kampfsport BJJ",
-  "Combat Sports",
-  "MMA Gym BJJ",
-  "Kampfsportzentrum",
-];
-
-const INCLUDED_TYPES = ["gym", "health", "school"]; // Erweitert
-
-const searchPromises = GERMANY_CENTERS.map(async (center) => {
-  const places = new Set();
-
-  // 1. Textsuche (primär)
-  try {
-    const { places: textPlaces } = await google.maps.places.Place.searchByText({
-      textQuery: BJJ_KEYWORDS.map((k) => `"${k}"`).join(" OR "),
-      locationBias: { center, radius: RADIUS_PER_CENTER },
-      maxResultCount: 20,
-      fields: [
-        "displayName",
-        "location",
-        "formattedAddress",
-        "nationalPhoneNumber",
-        "websiteURI",
-        "photos",
-      ], // wie bisher
-    });
-    textPlaces?.forEach((p) => p.id && places.add(p.id));
-  } catch (e) {
-    console.warn("Textsuche fehlgeschlagen:", e);
-  }
-
-  // 2. Nearby-Suche mit erweiterten Typen
-  try {
-    for (const type of INCLUDED_TYPES) {
-      const { places: nearby } = await google.maps.places.Place.searchNearby({
-        includedTypes: [type],
-        locationRestriction: { center, radius: RADIUS_PER_CENTER },
-        maxResultCount: 15,
-        rankPreference: "RELEVANCE",
-      });
-      nearby?.forEach((p) => p.id && places.add(p.id));
-    }
-  } catch (e) {
-    console.warn("Nearby-Suche fehlgeschlagen:", e);
-  }
-
-  return Array.from(places)
-    .map((id) => allPlaces.get(id))
-    .filter(Boolean);
-});
-
-function isLikelyBJJGym(place) {
-  const text = `${place.displayName} ${place.formattedAddress} ${place.websiteURI || ''}`.toLowerCase();
-
-  // Stufe 1: Starke Indikatoren
-  const strongMatch = /bjj|jiu.?\s*jitsu|gracie|grappling|brazilian\s*jiu/i.test(text);
-  if (strongMatch) return { match: true, confidence: 'high' };
-
-  // Stufe 2: Schwache Indikatoren + Kontext
-  const weakKeywords = /combat|mma|kampfsport|budoclub|fight\s*club|martial\s*arts/i.test(text);
-  const hasGymContext = /gym|zentrum|studio|akademie|dojo|club/i.test(text);
-  const notGeneric = !/(fitness|crossfit|yoga|tanzen|reha)/i.test(text);
-
-  if (weakKeywords && hasGymContext && notGeneric) {
-    return { match: true, confidence: 'medium' };
-  }
-
-  return { match: false, confidence: 'low' };
+/** Normalisiert Strings für Deduplizierung */
+function normalize(str) {
+  return (str || "").toString().toLowerCase().trim().replace(/\s+/g, " ");
 }
 
-const RADIUS_PER_CENTER = 50000; // 150 km
+/** Prüft, ob ein Place wahrscheinlich ein BJJ-Gym ist */
+function isLikelyBJJGym(place) {
+  const text = `${place.displayName || ""} ${place.formattedAddress || ""} ${
+    place.websiteURI || ""
+  }`.toLowerCase();
 
+  // Starke Indikatoren
+  if (/bjj|jiu.?\s*jitsu|gracie|brazilian\s*jiu|grappling/i.test(text)) {
+    return { match: true, confidence: "high" };
+  }
+
+  // Schwache Indikatoren + Kontext
+  const weakMatch =
+    /kampfsportschule|kampfkunst|combat|mma|fight\s*club|martial\s*arts/i.test(
+      text
+    );
+  const gymContext = /gym|zentrum|studio|akademie|dojo|club|schule/i.test(text);
+  const notGeneric =
+    !/(fitness|crossfit|yoga|tanzen|reha|wellness|physio)/i.test(text);
+
+  if (weakMatch && gymContext && notGeneric) {
+    return { match: true, confidence: "medium" };
+  }
+
+  return { match: false, confidence: "low" };
+}
+
+/** Formatiert Adresse für Supabase */
+function parseGermanAddress(address) {
+  if (!address) return { street: "", postalCode: "", city: "" };
+  const parts = address.split(", ").map((p) => p.trim());
+  const street = parts[0] || "";
+  const postalCity = (parts[1] || "").split(" ");
+  const postalCode = postalCity[0] || "";
+  const city = postalCity.slice(1).join(" ").trim();
+  return { street, postalCode, city, full: address };
+}
+
+// === HAUPTFUNKTION ===
 async function searchBJJGymsInGermany() {
   const resultsDiv = document.getElementById("places-results");
   if (resultsDiv) {
     resultsDiv.innerHTML = `
       <div style="text-align:center;padding:40px;">
-        <div style="font-size:3em;animation:spin 1s linear infinite;">🔍</div>
-        <p style="margin-top:20px;">Suche BJJ-Gyms in ganz Deutschland...</p>
+        <div style="font-size:3em;animation:spin 1s linear infinite;">Suche</div>
+        <p style="margin-top:20px;">Scanne ganz Deutschland nach BJJ- & Kampfsportschulen...</p>
       </div>`;
   }
 
@@ -3544,53 +3538,52 @@ async function searchBJJGymsInGermany() {
   let importSummary = { success: 0, duplicate: 0, error: 0 };
 
   try {
+    // 1. Gitter generieren
+    const GERMANY_CENTERS = generateGermanyGrid();
+    console.log(
+      `Suche mit ${GERMANY_CENTERS.length} Gitterpunkten (je 35 km Radius)`
+    );
+
+    // 2. Parallele Suche pro Zentrum
     const searchPromises = GERMANY_CENTERS.map(async (center) => {
-      let places = [];
+      const localPlaces = new Map();
+
+      // --- Textsuche (deutsch) ---
       try {
         const { places: textPlaces } =
           await google.maps.places.Place.searchByText({
-            fields: [
-              "id",
-              "displayName",
-              "location",
-              "formattedAddress",
-              "nationalPhoneNumber",
-              "websiteURI",
-              "photos",
-            ],
-            textQuery:
-              'BJJ OR "Brazilian Jiu Jitsu" OR "Jiu Jitsu" OR "Gracie Jiu Jitsu" OR "Gracie Barra" OR "Jiu-Jitsu" OR grappling OR "Kampfsport gym" OR "Martial Arts" BJJ OR combat',
+            textQuery: BJJ_KEYWORDS.map((k) => `"${k}"`).join(" OR "),
             locationBias: { center, radius: RADIUS_PER_CENTER },
-            maxResultCount: 20,
+            maxResultCount: MAX_RESULT_COUNT_TEXT,
+            languageCode: "de",
+            regionCode: "DE",
+            fields: PLACE_FIELDS,
           });
-        places = textPlaces || [];
+        textPlaces?.forEach((p) => p.id && localPlaces.set(p.id, p));
       } catch (e) {
-        console.warn("Textsuche fehlgeschlagen für Zentrum:", center, e);
+        console.warn("Textsuche fehlgeschlagen bei", center, e);
       }
 
-      if (places.length === 0) {
+      // --- Nearby-Suche mit korrekten Typen ---
+      for (const type of INCLUDED_TYPES) {
         try {
-          const { places: nearbyPlaces } =
+          const { places: nearby } =
             await google.maps.places.Place.searchNearby({
-              fields: [
-                "displayName",
-                "location",
-                "formattedAddress",
-                "nationalPhoneNumber",
-                "websiteURI",
-                "photos",
-              ],
-              includedTypes: ["gym"],
+              includedTypes: [type],
               locationRestriction: { center, radius: RADIUS_PER_CENTER },
-              maxResultCount: 20,
-              rankPreference: "DISTANCE",
+              maxResultCount: MAX_RESULT_COUNT_NEARBY,
+              rankPreference: "RELEVANCE",
+              fields: PLACE_FIELDS,
             });
-          places = nearbyPlaces || [];
+          nearby?.forEach((p) => p.id && localPlaces.set(p.id, p));
         } catch (e) {
-          console.warn("Nearby-Suche fehlgeschlagen:", e);
+          console.warn(`Nearby-Suche (${type}) fehlgeschlagen:`, e);
         }
+        // Kurze Pause, um Quota zu schonen
+        await new Promise((r) => setTimeout(r, 50));
       }
-      return places;
+
+      return Array.from(localPlaces.values());
     });
 
     const results = await Promise.all(searchPromises);
@@ -3598,20 +3591,36 @@ async function searchBJJGymsInGermany() {
       if (place.id) allPlaces.set(place.id, place);
     });
 
-    const bjjRegex =
-      /bjj|jiu.?\s*jitsu|gracie|grappling|kampfsport|budoclub|mma|brazilian\s*jiu|jiu-jitsu/i;
-    const bjjPlaces = Array.from(allPlaces.values()).filter((p) =>
-      bjjRegex.test(
-        `${p.displayName || ""} ${p.formattedAddress || ""}`.toLowerCase()
-      )
+    // 3. Intelligente Filterung
+    const candidates = Array.from(allPlaces.values());
+    const bjjPlaces = candidates
+      .map((p) => ({ place: p, ...isLikelyBJJGym(p) }))
+      .filter((item) => item.match);
+
+    console.log(
+      `Gefunden: ${allPlaces.size}, Nach Filter: ${bjjPlaces.length} (high: ${
+        bjjPlaces.filter((p) => p.confidence === "high").length
+      })`
     );
 
+    // 4. Deduplizierung (präzise)
+    const seen = new Map();
     const uniquePlaces = [];
-    const seen = new Set();
-    for (const place of bjjPlaces) {
-      const key = `${place.displayName}-${place.formattedAddress}`;
+    for (const { place } of bjjPlaces) {
+      const lat =
+        typeof place.location?.lat === "function"
+          ? place.location.lat()
+          : place.location?.lat;
+      const lng =
+        typeof place.location?.lng === "function"
+          ? place.location.lng()
+          : place.location?.lng;
+      const key = `${normalize(place.displayName)}|${lat?.toFixed(
+        6
+      )}|${lng?.toFixed(6)}`;
+
       if (!seen.has(key)) {
-        seen.add(key);
+        seen.set(key, true);
         uniquePlaces.push(place);
       }
     }
@@ -3619,32 +3628,31 @@ async function searchBJJGymsInGermany() {
     if (uniquePlaces.length === 0) {
       showNotification("Keine BJJ-Gyms in Deutschland gefunden", "info");
       if (resultsDiv) {
-        resultsDiv.innerHTML = `<div style="text-align:center;padding:40px;color:#666;"><p style="font-size:2em;">😕 Keine Ergebnisse</p></div>`;
+        resultsDiv.innerHTML = `<div style="text-align:center;padding:40px;color:#666;"><p style="font-size:2em;">Keine Ergebnisse</p></div>`;
       }
       return;
     }
 
-    // Anzeige der Ergebnisse
+    // 5. Anzeige
     displayModernPlacesResults(uniquePlaces);
-    showNotification(`${uniquePlaces.length} BJJ-Gyms gefunden!`, "success");
+    showNotification(
+      `${uniquePlaces.length} BJJ- & Kampfsportschulen gefunden!`,
+      "success"
+    );
 
-    // === AUTOMATISCHER IMPORT ALLER GYMNASIEN ===
+    // === 6. AUTOMATISCHER BATCH-IMPORT ===
     if (currentUser && supabase) {
-      showNotification(
-        `Importiere ${uniquePlaces.length} Gyms automatisch...`,
-        "info"
-      );
+      showNotification(`Importiere ${uniquePlaces.length} Gyms...`, "info");
+
+      const toInsert = [];
 
       for (const place of uniquePlaces) {
         try {
-          // Adresse parsen
-          const addressParts = (place.formattedAddress || "").split(", ");
-          const street = addressParts[0]?.trim() || "";
-          const postalCity = (addressParts[1] || "").split(" ");
-          const postalCode = postalCity[0] || "";
-          const city = postalCity.slice(1).join(" ").trim() || "";
+          const { street, postalCode, city, full } = parseGermanAddress(
+            place.formattedAddress
+          );
 
-          // Duplikat prüfen
+          // Duplikat in DB prüfen
           const { data: existing } = await supabase
             .from("gyms")
             .select("id")
@@ -3652,12 +3660,12 @@ async function searchBJJGymsInGermany() {
             .eq("street", street)
             .limit(1);
 
-          if (existing && existing.length > 0) {
+          if (existing?.length > 0) {
             importSummary.duplicate++;
             continue;
           }
 
-          // Foto URL
+          // Foto
           let imageUrl = null;
           if (
             place.photos?.length > 0 &&
@@ -3665,9 +3673,7 @@ async function searchBJJGymsInGermany() {
           ) {
             try {
               imageUrl = place.photos[0].getURI({ maxWidth: 800 });
-            } catch (e) {
-              /* ignore */
-            }
+            } catch (_) {}
           }
 
           // Koordinaten
@@ -3680,51 +3686,50 @@ async function searchBJJGymsInGermany() {
               ? place.location.lng()
               : place.location?.lng;
 
-          // Einfügen
-          const { error } = await supabase.from("gyms").insert([
-            {
-              name: place.displayName || "Unbekanntes BJJ-Gym",
-              street,
-              postal_code: postalCode,
-              city,
-              address: place.formattedAddress || "",
-              latitude: lat,
-              longitude: lng,
-              phone: place.nationalPhoneNumber || null,
-              website: place.websiteURI || null,
-              image_url: imageUrl,
-              user_id: currentUser.id,
-              description: `Automatisch importiert aus Google Places am ${new Date().toLocaleDateString(
-                "de-DE"
-              )}`,
-            },
-          ]);
-
-          if (error) {
-            console.error("Import-Fehler für:", place.displayName, error);
-            importSummary.error++;
-          } else {
-            importSummary.success++;
-          }
-
-          // Rate Limiting: 300ms Pause zwischen Anfragen
-          await new Promise((r) => setTimeout(r, 300));
+          toInsert.push({
+            name: place.displayName || "Unbekanntes Kampfsport-Gym",
+            street,
+            postal_code: postalCode,
+            city,
+            address: full,
+            latitude: lat,
+            longitude: lng,
+            phone: place.nationalPhoneNumber || null,
+            website: place.websiteURI || null,
+            image_url: imageUrl,
+            user_id: currentUser.id,
+            description: `Automatisch importiert aus Google Places am ${new Date().toLocaleDateString(
+              "de-DE"
+            )}`,
+            source: "google_places_api",
+          });
         } catch (err) {
-          console.error("Unerwarteter Fehler beim Import:", err);
+          console.error("Vorbereitung fehlgeschlagen:", place.displayName, err);
           importSummary.error++;
+        }
+      }
+
+      // Batch-Insert
+      if (toInsert.length > 0) {
+        const { error } = await supabase.from("gyms").insert(toInsert);
+        if (error) {
+          console.error("Batch-Import-Fehler:", error);
+          importSummary.error += toInsert.length;
+        } else {
+          importSummary.success += toInsert.length;
         }
       }
 
       // Abschlussmeldung
       showNotification(
         `Import abgeschlossen!\n` +
-          `✅ ${importSummary.success} hinzugefügt\n` +
-          `📋 ${importSummary.duplicate} bereits vorhanden\n` +
-          `❌ ${importSummary.error} Fehler`,
+          `Hinzugefügt\n` +
+          `Bereits vorhanden\n` +
+          `Fehler`,
         importSummary.success > 0 ? "success" : "warning"
       );
 
-      // Aktualisiere alle Gym-Listen und Karte
+      // UI aktualisieren
       await Promise.all([
         loadGyms(),
         loadGymsForAthleteSelect(),
@@ -3741,7 +3746,7 @@ async function searchBJJGymsInGermany() {
     }
   } catch (error) {
     console.error("Suche/Import fehlgeschlagen:", error);
-    showNotification("Fehler: " + error.message, "error");
+    showNotification("Kritischer Fehler: " + error.message, "error");
   }
 }
 
