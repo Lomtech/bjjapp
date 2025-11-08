@@ -3361,32 +3361,53 @@ async function showPlaceOnMap(placeId, lat, lng) {
 // ================================================
 
 const GERMANY_CENTERS = [
-  { lat: 53.5511, lng: 9.9937 }, // Hamburg (Norddeutschland, Metropolregion)
-  { lat: 52.52, lng: 13.405 }, // Berlin (Ostdeutschland, Hauptstadtregion)
-  { lat: 53.8659, lng: 10.6866 }, // Lübeck (Schleswig-Holstein Ostküste)
-  { lat: 54.3233, lng: 10.1228 }, // Kiel (Schleswig-Holstein Nordwesten)
-  { lat: 53.1406, lng: 8.2111 }, // Oldenburg (Nordwestniedersachsen, Ostfriesland-Anbindung)
-  { lat: 52.2799, lng: 8.0472 }, // Osnabrück (Westniedersachsen)
-  { lat: 51.9607, lng: 7.6264 }, // Münster (Westfalen)
-  { lat: 51.5142, lng: 7.465 }, // Dortmund (Ruhrgebiet Zentrum)
-  { lat: 50.9375, lng: 6.9603 }, // Köln (Rheinland Süd)
-  { lat: 50.1109, lng: 8.6821 }, // Frankfurt am Main (Rhein-Main, Hessen)
-  { lat: 49.477, lng: 8.467 }, // Mannheim (Rhein-Neckar)
-  { lat: 49.0069, lng: 8.4037 }, // Karlsruhe (Oberrhein)
-  { lat: 48.7758, lng: 9.1829 }, // Stuttgart (Baden-Württemberg Mitte)
-  { lat: 48.1351, lng: 11.582 }, // München (Bayern Südost)
-  { lat: 49.4774, lng: 10.9886 }, // Nürnberg (Franken)
-  { lat: 47.999, lng: 7.8421 }, // Freiburg im Breisgau (Südlicher Oberrhein, Schwarzwald)
-  { lat: 49.7913, lng: 9.9534 }, // Würzburg (Unterfranken, Mainfranken)
-  { lat: 49.2402, lng: 6.9964 }, // Saarbrücken (Saarland, Südwestgrenze)
-  { lat: 51.3397, lng: 12.3714 }, // Leipzig (Sachsen Mitte)
-  { lat: 51.05, lng: 13.7373 }, // Dresden (Sachsen Ost, Elbtal)
-  { lat: 52.3759, lng: 9.732 }, // Hannover (Mitteldeutschland, Niedersachsen Mitte)
-  { lat: 52.2689, lng: 10.5268 }, // Braunschweig (Südostniedersachsen)
-  { lat: 53.0793, lng: 8.8017 }, // Bremen (Hansestadt, Nordwestmetropole)
-  { lat: 52.7085, lng: 13.2424 }, // Oranienburg (Nordbrandenburg, Mecklenburg-Anbindung)
-  { lat: 53.5507, lng: 7.9161 }, // Leer (Ostfriesland, Nordwestzipfel)
-  { lat: 50.0, lng: 8.2667 }, // Mainz (Rheinland-Pfalz, Westhessen-Anbindung)
+  { lat: 53.5511, lng: 9.9937 },   // Hamburg
+  { lat: 53.0793, lng: 8.8017 },   // Bremen
+  { lat: 54.3233, lng: 10.1228 },  // Kiel
+  { lat: 53.8659, lng: 10.6866 },  // Lübeck
+  { lat: 54.0900, lng: 12.1300 },  // Rostock
+  { lat: 53.6000, lng: 11.4000 },  // Schwerin
+  { lat: 53.8667, lng: 8.7000 },   // Cuxhaven
+  { lat: 53.5507, lng: 7.9161 },   // Leer
+  { lat: 53.1406, lng: 8.2111 },   // Oldenburg
+  { lat: 52.3759, lng: 9.7320 },   // Hannover
+  { lat: 52.2689, lng: 10.5268 },  // Braunschweig
+  { lat: 52.5200, lng: 10.2300 },  // Gifhorn
+  { lat: 52.5200, lng: 13.4050 },  // Berlin
+  { lat: 52.4000, lng: 13.0667 },  // Potsdam
+  { lat: 52.7085, lng: 13.2424 },  // Oranienburg
+  { lat: 51.3397, lng: 12.3714 },  // Leipzig
+  { lat: 51.0500, lng: 13.7373 },  // Dresden
+  { lat: 50.8167, lng: 12.9333 },  // Chemnitz
+  { lat: 52.1300, lng: 11.6200 },  // Magdeburg
+  { lat: 51.8333, lng: 12.2500 },  // Wittenberg
+  { lat: 52.6500, lng: 11.3833 },  // Stendal
+  { lat: 50.9850, lng: 11.3300 },  // Weimar
+  { lat: 51.0500, lng: 10.6500 },  // Eisenach
+  { lat: 51.2277, lng: 6.7735 },   // Düsseldorf
+  { lat: 50.9375, lng: 6.9603 },   // Köln
+  { lat: 50.9833, lng: 6.5833 },   // Bergheim
+  { lat: 51.4556, lng: 7.0117 },   // Essen
+  { lat: 51.5142, lng: 7.4650 },   // Dortmund
+  { lat: 51.9607, lng: 7.6264 },   // Münster
+  { lat: 52.2799, lng: 8.0472 },   // Osnabrück
+  { lat: 50.0000, lng: 8.2667 },   // Mainz
+  { lat: 49.2402, lng: 6.9964 },   // Saarbrücken
+  { lat: 50.1109, lng: 8.6821 },   // Frankfurt am Main
+  { lat: 49.8700, lng: 8.6500 },   // Darmstadt
+  { lat: 50.5833, lng: 8.6833 },   // Gießen
+  { lat: 51.3167, lng: 9.5000 },   // Kassel
+  { lat: 48.7758, lng: 9.1829 },   // Stuttgart
+  { lat: 48.4000, lng: 9.9833 },   // Ulm
+  { lat: 49.0069, lng: 8.4037 },   // Karlsruhe
+  { lat: 49.4770, lng: 8.4670 },   // Mannheim
+  { lat: 47.9990, lng: 7.8421 },   // Freiburg im Breisgau
+  { lat: 48.1351, lng: 11.5820 },  // München
+  { lat: 48.4000, lng: 10.8833 },  // Augsburg
+  { lat: 49.3500, lng: 11.0167 },  // Ingolstadt
+  { lat: 49.4774, lng: 10.9886 },  // Nürnberg
+  { lat: 50.1100, lng: 11.4500 },  // Bayreuth
+  { lat: 49.7913, lng: 9.9534 }    // Würzburg
 ];
 
 const RADIUS_PER_CENTER = 50000; // 150 km
