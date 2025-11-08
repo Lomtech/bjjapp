@@ -3421,7 +3421,6 @@ async function searchBJJGymsInGermany() {
           const { places: nearbyPlaces } =
             await google.maps.places.Place.searchNearby({
               fields: [
-                "id",
                 "displayName",
                 "location",
                 "formattedAddress",
