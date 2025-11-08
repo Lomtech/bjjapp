@@ -3378,15 +3378,25 @@ async function searchBJJGymsInGermany() {
 
       try {
         // 1. Textsuche
-        const { places: textPlaces } = await google.maps.places.Place.searchByText({
-          fields: [
-            "id", "displayName", "location", "formattedAddress", "rating",
-            "userRatingCount", "nationalPhoneNumber", "websiteURI", "photos", "regularOpeningHours"
-          ],
-          textQuery: 'BJJ OR "Brazilian Jiu Jitsu" OR Gracie OR "Jiu-Jitsu" OR grappling OR Kampfsport gym',
-          locationBias: { center, radius: RADIUS_PER_CENTER },
-          maxResultCount: 20,
-        });
+        const { places: textPlaces } =
+          await google.maps.places.Place.searchByText({
+            fields: [
+              "id",
+              "displayName",
+              "location",
+              "formattedAddress",
+              "rating",
+              "userRatingCount",
+              "nationalPhoneNumber",
+              "websiteURI",
+              "photos",
+              "regularOpeningHours",
+            ],
+            textQuery:
+              'BJJ OR "Brazilian Jiu Jitsu" OR Gracie OR "Jiu-Jitsu" OR grappling OR Kampfsport gym',
+            locationBias: { center, radius: RADIUS_PER_CENTER },
+            maxResultCount: 20,
+          });
         places = textPlaces || [];
       } catch (e) {
         console.warn("Textsuche fehlgeschlagen für Zentrum:", center, e);
@@ -3395,16 +3405,25 @@ async function searchBJJGymsInGermany() {
       if (places.length === 0) {
         try {
           // 2. Nearby-Suche (Fallback)
-          const { places: nearbyPlaces } = await google.maps.places.Place.searchNearby({
-            fields: [
-              "id", "displayName", "location", "formattedAddress", "rating",
-              "userRatingCount", "nationalPhoneNumber", "websiteURI", "photos", "regularOpeningHours"
-            ],
-            includedTypes: ["gym"],
-            locationRestriction: { center, radius: RADIUS_PER_CENTER },
-            maxResultCount: 20,
-            rankPreference: "DISTANCE",
-          });
+          const { places: nearbyPlaces } =
+            await google.maps.places.Place.searchNearby({
+              fields: [
+                "id",
+                "displayName",
+                "location",
+                "formattedAddress",
+                "rating",
+                "userRatingCount",
+                "nationalPhoneNumber",
+                "websiteURI",
+                "photos",
+                "regularOpeningHours",
+              ],
+              includedTypes: ["gym"],
+              locationRestriction: { center, radius: RADIUS_PER_CENTER },
+              maxResultCount: 20,
+              rankPreference: "DISTANCE",
+            });
           places = nearbyPlaces || [];
         } catch (e) {
           console.warn("Nearby-Suche fehlgeschlagen:", e);
@@ -3417,16 +3436,19 @@ async function searchBJJGymsInGermany() {
     const results = await Promise.all(searchPromises);
 
     // Sammle alle Ergebnisse und entferne Duplikate anhand von place.id
-    results.flat().forEach(place => {
+    results.flat().forEach((place) => {
       if (place.id) {
         allPlaces.set(place.id, place);
       }
     });
 
     // Filtere nach BJJ-Relevanz
-    const bjjRegex = /bjj|jiu.?\s*jitsu|gracie|grappling|kampfsport|budoclub|mma|brazilian\s*jiu|jiu-jitsu/i;
-    const bjjPlaces = Array.from(allPlaces.values()).filter(p =>
-      bjjRegex.test(`${p.displayName || ""} ${p.formattedAddress || ""}`.toLowerCase())
+    const bjjRegex =
+      /bjj|jiu.?\s*jitsu|gracie|grappling|kampfsport|budoclub|mma|brazilian\s*jiu|jiu-jitsu/i;
+    const bjjPlaces = Array.from(allPlaces.values()).filter((p) =>
+      bjjRegex.test(
+        `${p.displayName || ""} ${p.formattedAddress || ""}`.toLowerCase()
+      )
     );
 
     // Entferne Duplikate nach Name + Adresse (falls ID fehlt)
@@ -3449,8 +3471,10 @@ async function searchBJJGymsInGermany() {
     }
 
     displayModernPlacesResults(uniquePlaces);
-    showNotification(`${uniquePlaces.length} BJJ-Gyms in Deutschland gefunden!`, "success");
-
+    showNotification(
+      `${uniquePlaces.length} BJJ-Gyms in Deutschland gefunden!`,
+      "success"
+    );
   } catch (error) {
     console.error("Suche in Deutschland fehlgeschlagen:", error);
     showNotification("Fehler: " + error.message, "error");
