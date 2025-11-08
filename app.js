@@ -3420,7 +3420,7 @@ async function searchBJJGymsInGermany() {
               "photos",
             ],
             textQuery:
-              'BJJ OR "Brazilian Jiu Jitsu" OR Gracie OR "Jiu-Jitsu" OR grappling OR Kampfsport gym',
+              'BJJ OR "Brazilian Jiu Jitsu" OR "Jiu Jitsu" OR "Gracie Jiu Jitsu" OR "Gracie Barra" OR "Jiu-Jitsu" OR grappling OR "Kampfsport gym" OR "Martial Arts" BJJ OR combat',
             locationBias: { center, radius: RADIUS_PER_CENTER },
             maxResultCount: 20,
           });
@@ -3630,7 +3630,7 @@ async function searchBJJGyms(location, radius = 50000) {
             "regularOpeningHours",
           ],
           textQuery:
-            'BJJ OR "Brazilian Jiu Jitsu" OR Gracie OR "Jiu-Jitsu" OR grappling OR Kampfsport OR Budoclub gym',
+            'BJJ OR "Brazilian Jiu Jitsu" OR "Jiu Jitsu" OR "Gracie Jiu Jitsu" OR "Gracie Barra" OR "Jiu-Jitsu" OR grappling OR "Kampfsport gym" OR "Martial Arts" BJJ OR combat',
           locationBias: { center: location, radius },
           maxResultCount: 20,
         });
