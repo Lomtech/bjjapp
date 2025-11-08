@@ -3491,14 +3491,14 @@ function isLikelyBJJGym(place) {
     place.websiteURI || ""
   }`.toLowerCase();
 
-  // Starke Indikatoren
+  // Starke Indikatoren (wie bisher)
   if (/bjj|jiu.?\s*jitsu|gracie|brazilian\s*jiu|grappling/i.test(text)) {
     return { match: true, confidence: "high" };
   }
 
-  // Schwache Indikatoren + Kontext
+  // Erweiterte schwache Indikatoren (neu: mehr Kampfsport-Begriffe)
   const weakMatch =
-    /kampfsportschule|kampfkunst|combat|mma|fight\s*club|martial\s*arts/i.test(
+    /kampfsportschule|kampfkunst|combat|mma|fight\s*club|martial\s*arts|karate|judo|kickbox/i.test(
       text
     );
   const gymContext = /gym|zentrum|studio|akademie|dojo|club|schule/i.test(text);
@@ -3506,7 +3506,12 @@ function isLikelyBJJGym(place) {
     !/(fitness|crossfit|yoga|tanzen|reha|wellness|physio)/i.test(text);
 
   if (weakMatch && gymContext && notGeneric) {
-    return { match: true, confidence: "medium" };
+    return { match: true, confidence: "medium" }; // Nun inkl. Karate/Judo, da viele BJJ anbieten
+  }
+
+  // Temporärer Fallback: Alle 'martial_arts_school'-Typen akzeptieren (für Test)
+  if (place.types?.includes("martial_arts_school")) {
+    return { match: true, confidence: "low" };
   }
 
   return { match: false, confidence: "low" };
@@ -3590,6 +3595,33 @@ async function searchBJJGymsInGermany() {
     results.flat().forEach((place) => {
       if (place.id) allPlaces.set(place.id, place);
     });
+
+    // Nach Generierung der Centers
+    console.log(`Anzahl Gitterpunkte: ${GERMANY_CENTERS.length}`);
+
+    // Nach Promise.all (vor Filter)
+    console.log(`Roh-Ergebnisse (allPlaces.size): ${allPlaces.size}`);
+    console.log(`Kandidaten nach Typ-Suche: ${candidates.length}`);
+
+    // Nach Filterung
+    const rejected = candidates.filter((item) => !item.match);
+    console.log(
+      `Abgelehnte Kandidaten: ${rejected.length}`,
+      rejected.slice(0, 5).map((r) => r.place.displayName)
+    ); // Erste 5 Beispiele
+
+    // Im Import-Loop, vor Duplikat-Prüfung
+    console.log(`Prüfe Duplikat für: ${place.displayName}`);
+
+    // Nach Supabase-Abfrage
+    console.log(`Existing für ${place.displayName}: ${existing?.length || 0}`);
+
+    // Nach Batch-Insert
+    console.log(
+      `Batch-Insert-Ergebnis: ${toInsert.length} vorbereitet, Error: ${
+        error?.message || "kein Fehler"
+      }`
+    );
 
     // 3. Intelligente Filterung
     const candidates = Array.from(allPlaces.values());
