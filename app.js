@@ -3422,7 +3422,7 @@ async function searchBJJGymsInGermany() {
             textQuery:
               'BJJ OR "Brazilian Jiu Jitsu" OR Gracie OR "Jiu-Jitsu" OR grappling OR Kampfsport gym',
             locationBias: { center, radius: RADIUS_PER_CENTER },
-            maxResultCount: 100,
+            maxResultCount: 20,
           });
         places = textPlaces || [];
       } catch (e) {
@@ -3443,7 +3443,7 @@ async function searchBJJGymsInGermany() {
               ],
               includedTypes: ["gym"],
               locationRestriction: { center, radius: RADIUS_PER_CENTER },
-              maxResultCount: 100,
+              maxResultCount: 20,
               rankPreference: "DISTANCE",
             });
           places = nearbyPlaces || [];
@@ -3632,7 +3632,7 @@ async function searchBJJGyms(location, radius = 50000) {
           textQuery:
             'BJJ OR "Brazilian Jiu Jitsu" OR Gracie OR "Jiu-Jitsu" OR grappling OR Kampfsport OR Budoclub gym',
           locationBias: { center: location, radius },
-          maxResultCount: 50,
+          maxResultCount: 20,
         });
       places = textPlaces || [];
     } catch (e) {
@@ -3655,7 +3655,7 @@ async function searchBJJGyms(location, radius = 50000) {
           ],
           includedTypes: ["gym"],
           locationRestriction: { center: location, radius },
-          maxResultCount: 50,
+          maxResultCount: 20,
           rankPreference: "DISTANCE",
         });
       places = nearbyPlaces || [];
