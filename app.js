@@ -3370,7 +3370,7 @@ const GERMANY_CENTERS = [
   { lat: 52.3759, lng: 9.732 }, // Hannover
 ];
 
-const RADIUS_PER_CENTER = 150000; // 150 km
+const RADIUS_PER_CENTER = 50000; // 150 km
 
 async function searchBJJGymsInGermany() {
   const resultsDiv = document.getElementById("places-results");
