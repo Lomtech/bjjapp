@@ -3402,6 +3402,8 @@ async function searchBJJGymsInGermany() {
   }
 
   let allPlaces = new Map();
+  let importSummary = { success: 0, duplicate: 0, error: 0 };
+
   try {
     const searchPromises = GERMANY_CENTERS.map(async (center) => {
       let places = [];
@@ -3413,12 +3415,9 @@ async function searchBJJGymsInGermany() {
               "displayName",
               "location",
               "formattedAddress",
-              "rating",
-              "userRatingCount",
               "nationalPhoneNumber",
               "websiteURI",
               "photos",
-              "regularOpeningHours",
             ],
             textQuery:
               'BJJ OR "Brazilian Jiu Jitsu" OR Gracie OR "Jiu-Jitsu" OR grappling OR Kampfsport gym',
@@ -3429,6 +3428,7 @@ async function searchBJJGymsInGermany() {
       } catch (e) {
         console.warn("Textsuche fehlgeschlagen für Zentrum:", center, e);
       }
+
       if (places.length === 0) {
         try {
           const { places: nearbyPlaces } =
@@ -3437,12 +3437,9 @@ async function searchBJJGymsInGermany() {
                 "displayName",
                 "location",
                 "formattedAddress",
-                "rating",
-                "userRatingCount",
                 "nationalPhoneNumber",
                 "websiteURI",
                 "photos",
-                "regularOpeningHours",
               ],
               includedTypes: ["gym"],
               locationRestriction: { center, radius: RADIUS_PER_CENTER },
@@ -3488,26 +3485,123 @@ async function searchBJJGymsInGermany() {
       return;
     }
 
-    // Ergebnisse anzeigen
+    // Anzeige der Ergebnisse
     displayModernPlacesResults(uniquePlaces);
     showNotification(`${uniquePlaces.length} BJJ-Gyms gefunden!`, "success");
 
-    // === AUTOMATISCHER IMPORT ===
-    if (currentUser && !hasAutoImported) {
-      hasAutoImported = true; // Nur einmal pro Session
-      showNotification("Importiere gefundene Gyms automatisch...", "info");
-      setTimeout(() => {
-        bulkImportModernGyms()
-          .then(() => {
-            showNotification("Automatischer Import abgeschlossen!", "success");
-          })
-          .catch(() => {
-            showNotification("Automatischer Import fehlgeschlagen", "error");
-          });
-      }, 1000);
+    // === AUTOMATISCHER IMPORT ALLER GYMNASIEN ===
+    if (currentUser && supabase) {
+      showNotification(
+        `Importiere ${uniquePlaces.length} Gyms automatisch...`,
+        "info"
+      );
+
+      for (const place of uniquePlaces) {
+        try {
+          // Adresse parsen
+          const addressParts = (place.formattedAddress || "").split(", ");
+          const street = addressParts[0]?.trim() || "";
+          const postalCity = (addressParts[1] || "").split(" ");
+          const postalCode = postalCity[0] || "";
+          const city = postalCity.slice(1).join(" ").trim() || "";
+
+          // Duplikat prüfen
+          const { data: existing } = await supabase
+            .from("gyms")
+            .select("id")
+            .eq("name", place.displayName)
+            .eq("street", street)
+            .limit(1);
+
+          if (existing && existing.length > 0) {
+            importSummary.duplicate++;
+            continue;
+          }
+
+          // Foto URL
+          let imageUrl = null;
+          if (
+            place.photos?.length > 0 &&
+            typeof place.photos[0].getURI === "function"
+          ) {
+            try {
+              imageUrl = place.photos[0].getURI({ maxWidth: 800 });
+            } catch (e) {
+              /* ignore */
+            }
+          }
+
+          // Koordinaten
+          const lat =
+            typeof place.location?.lat === "function"
+              ? place.location.lat()
+              : place.location?.lat;
+          const lng =
+            typeof place.location?.lng === "function"
+              ? place.location.lng()
+              : place.location?.lng;
+
+          // Einfügen
+          const { error } = await supabase.from("gyms").insert([
+            {
+              name: place.displayName || "Unbekanntes BJJ-Gym",
+              street,
+              postal_code: postalCode,
+              city,
+              address: place.formattedAddress || "",
+              latitude: lat,
+              longitude: lng,
+              phone: place.nationalPhoneNumber || null,
+              website: place.websiteURI || null,
+              image_url: imageUrl,
+              user_id: currentUser.id,
+              description: `Automatisch importiert aus Google Places am ${new Date().toLocaleDateString(
+                "de-DE"
+              )}`,
+            },
+          ]);
+
+          if (error) {
+            console.error("Import-Fehler für:", place.displayName, error);
+            importSummary.error++;
+          } else {
+            importSummary.success++;
+          }
+
+          // Rate Limiting: 300ms Pause zwischen Anfragen
+          await new Promise((r) => setTimeout(r, 300));
+        } catch (err) {
+          console.error("Unerwarteter Fehler beim Import:", err);
+          importSummary.error++;
+        }
+      }
+
+      // Abschlussmeldung
+      showNotification(
+        `Import abgeschlossen!\n` +
+          `✅ ${importSummary.success} hinzugefügt\n` +
+          `📋 ${importSummary.duplicate} bereits vorhanden\n` +
+          `❌ ${importSummary.error} Fehler`,
+        importSummary.success > 0 ? "success" : "warning"
+      );
+
+      // Aktualisiere alle Gym-Listen und Karte
+      await Promise.all([
+        loadGyms(),
+        loadGymsForAthleteSelect(),
+        loadGymsForFilter(),
+        loadGymsForOpenMatSelect(),
+        loadDashboard(),
+      ]);
+      if (map) await initMap();
+    } else if (!currentUser) {
+      showNotification(
+        "Bitte melde dich an, um Gyms zu importieren",
+        "warning"
+      );
     }
   } catch (error) {
-    console.error("Suche in Deutschland fehlgeschlagen:", error);
+    console.error("Suche/Import fehlgeschlagen:", error);
     showNotification("Fehler: " + error.message, "error");
   }
 }
