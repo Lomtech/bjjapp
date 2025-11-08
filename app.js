@@ -3359,6 +3359,104 @@ async function showPlaceOnMap(placeId, lat, lng) {
 // RESTLICHER CODE (Places-Suche, Import, etc.) – unverändert, aber robust
 // ================================================
 
+async function searchBJJGymsInGermany() {
+  const resultsDiv = document.getElementById("places-results");
+  if (resultsDiv) {
+    resultsDiv.innerHTML = `
+      <div style="text-align:center;padding:40px;">
+        <div style="font-size:3em;animation:spin 1s linear infinite;">Suche</div>
+        <p style="margin-top:20px;">Suche BJJ-Gyms in ganz Deutschland...</p>
+      </div>`;
+  }
+
+  let allPlaces = new Map(); // Verwende Map, um Duplikate zu vermeiden (key: placeId)
+
+  try {
+    // Parallele Suche über alle Zentren
+    const searchPromises = GERMANY_CENTERS.map(async (center) => {
+      let places = [];
+
+      try {
+        // 1. Textsuche
+        const { places: textPlaces } = await google.maps.places.Place.searchByText({
+          fields: [
+            "id", "displayName", "location", "formattedAddress", "rating",
+            "userRatingCount", "nationalPhoneNumber", "websiteURI", "photos", "regularOpeningHours"
+          ],
+          textQuery: 'BJJ OR "Brazilian Jiu Jitsu" OR Gracie OR "Jiu-Jitsu" OR grappling OR Kampfsport gym',
+          locationBias: { center, radius: RADIUS_PER_CENTER },
+          maxResultCount: 20,
+        });
+        places = textPlaces || [];
+      } catch (e) {
+        console.warn("Textsuche fehlgeschlagen für Zentrum:", center, e);
+      }
+
+      if (places.length === 0) {
+        try {
+          // 2. Nearby-Suche (Fallback)
+          const { places: nearbyPlaces } = await google.maps.places.Place.searchNearby({
+            fields: [
+              "id", "displayName", "location", "formattedAddress", "rating",
+              "userRatingCount", "nationalPhoneNumber", "websiteURI", "photos", "regularOpeningHours"
+            ],
+            includedTypes: ["gym"],
+            locationRestriction: { center, radius: RADIUS_PER_CENTER },
+            maxResultCount: 20,
+            rankPreference: "DISTANCE",
+          });
+          places = nearbyPlaces || [];
+        } catch (e) {
+          console.warn("Nearby-Suche fehlgeschlagen:", e);
+        }
+      }
+
+      return places;
+    });
+
+    const results = await Promise.all(searchPromises);
+
+    // Sammle alle Ergebnisse und entferne Duplikate anhand von place.id
+    results.flat().forEach(place => {
+      if (place.id) {
+        allPlaces.set(place.id, place);
+      }
+    });
+
+    // Filtere nach BJJ-Relevanz
+    const bjjRegex = /bjj|jiu.?\s*jitsu|gracie|grappling|kampfsport|budoclub|mma|brazilian\s*jiu|jiu-jitsu/i;
+    const bjjPlaces = Array.from(allPlaces.values()).filter(p =>
+      bjjRegex.test(`${p.displayName || ""} ${p.formattedAddress || ""}`.toLowerCase())
+    );
+
+    // Entferne Duplikate nach Name + Adresse (falls ID fehlt)
+    const uniquePlaces = [];
+    const seen = new Set();
+    for (const place of bjjPlaces) {
+      const key = `${place.displayName}-${place.formattedAddress}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniquePlaces.push(place);
+      }
+    }
+
+    if (uniquePlaces.length === 0) {
+      showNotification("Keine BJJ-Gyms in Deutschland gefunden", "info");
+      if (resultsDiv) {
+        resultsDiv.innerHTML = `<div style="text-align:center;padding:40px;color:#666;"><p style="font-size:2em;">Keine Ergebnisse</p></div>`;
+      }
+      return;
+    }
+
+    displayModernPlacesResults(uniquePlaces);
+    showNotification(`${uniquePlaces.length} BJJ-Gyms in Deutschland gefunden!`, "success");
+
+  } catch (error) {
+    console.error("Suche in Deutschland fehlgeschlagen:", error);
+    showNotification("Fehler: " + error.message, "error");
+  }
+}
+
 async function searchBJJGyms(location, radius = 50000) {
   const resultsDiv = document.getElementById("places-results");
   if (resultsDiv) {
