@@ -575,89 +575,55 @@ function displayMyProfile() {
 }
 
 function editMyProfile() {
-  if (!myProfile || !myProfile.data || !myProfile.type) {
-    console.error("Invalid myProfile object:", myProfile);
-    return;
-  }
+  if (myProfile.type === "athlete") {
+    const a = myProfile.data;
+    document.getElementById("athlete-id").value = a.id;
+    document.getElementById("athlete-name").value = a.name || "";
+    document.getElementById("athlete-bio").value = a.bio || "";
+    document.getElementById("athlete-age").value = a.age || "";
+    document.getElementById("athlete-weight").value = a.weight || "";
+    document.getElementById("athlete-belt").value = a.belt_rank || "";
+    document.getElementById("athlete-gym-select").value = a.gym_id || "";
 
-  const type = myProfile.type;
-  const data = myProfile.data;
+    if (a.image_url) {
+      document.getElementById("current-image-preview").innerHTML = `
+                <div style="margin-top: 10px;">
+                    <img src="${a.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
+                    <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
+                </div>
+            `;
+    }
 
-  // First: Show the appropriate form to ensure elements exist in DOM
-  if (type === "athlete") {
+    document.getElementById("athlete-form-title").textContent =
+      "Profil bearbeiten";
+    document.getElementById("athlete-submit-btn").textContent =
+      "Änderungen speichern";
     showProfileForm("athlete");
-
-    // Now safely access elements after form is displayed
-    const setValue = (id, value) => {
-      const el = document.getElementById(id);
-      if (el) el.value = value ?? "";
-    };
-
-    setValue("athlete-id", data.id);
-    setValue("athlete-name", data.name);
-    setValue("athlete-bio", data.bio);
-    setValue("athlete-age", data.age);
-    setValue("athlete-weight", data.weight);
-    setValue("athlete-belt", data.belt_rank);
-    setValue("athlete-city", data.city);
-    setValue("athlete-gym-select", data.gym_id);
-
-    // Update image preview
-    const previewContainer = document.getElementById("current-image-preview");
-    if (previewContainer && data.image_url) {
-      previewContainer.innerHTML = `
-        <div style="margin-top: 10px;">
-          <img src="${data.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
-          <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
-        </div>
-      `;
-    } else if (previewContainer) {
-      previewContainer.innerHTML = "";
-    }
-
-    // Update form title and button
-    const titleEl = document.getElementById("athlete-form-title");
-    const btnEl = document.getElementById("athlete-submit-btn");
-    if (titleEl) titleEl.textContent = "Profil bearbeiten";
-    if (btnEl) btnEl.textContent = "Änderungen speichern";
-  } else if (type === "gym") {
-    showProfileForm("gym");
-
-    const setValue = (id, value) => {
-      const el = document.getElementById(id);
-      if (el) el.value = value ?? "";
-    };
-
-    setValue("gym-id", data.id);
-    setValue("gym-name", data.name);
-    setValue("gym-description", data.description);
-    setValue("gym-email", data.email);
-    setValue("gym-phone", data.phone);
-    setValue("gym-website", data.website);
-    setValue("gym-street", data.street);
-    setValue("gym-postal", data.postal_code);
-    setValue("gym-city", data.city);
-
-    // Update image preview
-    const previewContainer = document.getElementById("gym-image-preview");
-    if (previewContainer && data.image_url) {
-      previewContainer.innerHTML = `
-        <div style="margin-top: 10px;">
-          <img src="${data.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
-          <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
-        </div>
-      `;
-    } else if (previewContainer) {
-      previewContainer.innerHTML = "";
-    }
-
-    // Update form title and button
-    const titleEl = document.getElementById("gym-form-title");
-    const btnEl = document.getElementById("gym-submit-btn");
-    if (titleEl) titleEl.textContent = "Profil bearbeiten";
-    if (btnEl) btnEl.textContent = "Änderungen speichern";
   } else {
-    console.error("Unbekannter Profil-Typ:", type);
+    const g = myProfile.data;
+    document.getElementById("gym-id").value = g.id;
+    document.getElementById("gym-name").value = g.name || "";
+    document.getElementById("gym-description").value = g.description || "";
+    document.getElementById("gym-email").value = g.email || "";
+    document.getElementById("gym-phone").value = g.phone || "";
+    document.getElementById("gym-website").value = g.website || "";
+    document.getElementById("gym-street").value = g.street || "";
+    document.getElementById("gym-postal").value = g.postal_code || "";
+    document.getElementById("gym-city").value = g.city || "";
+
+    if (g.image_url) {
+      document.getElementById("gym-image-preview").innerHTML = `
+                <div style="margin-top: 10px;">
+                    <img src="${g.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
+                    <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
+                </div>
+            `;
+    }
+
+    document.getElementById("gym-form-title").textContent = "Profil bearbeiten";
+    document.getElementById("gym-submit-btn").textContent =
+      "Änderungen speichern";
+    showProfileForm("gym");
   }
 }
 
@@ -708,7 +674,6 @@ document
         : null,
       belt_rank: formData.get("belt_rank"),
       bio: formData.get("bio") || null,
-      city: formData.get("city") || null,
       gym_id: formData.get("gym_id") || null,
       image_url: imageUrl,
       user_id: currentUser.id,
@@ -1020,15 +985,6 @@ function displayAthletes(athletes) {
                       }">${a.belt_rank.toUpperCase()}</span>`
                     : ""
                 }
-                              ${
-                                a.city
-                                  ? `<p style="margin-top: 10px;">🏙️<strong>${
-                                      a.city
-                                    }</strong>${
-                                      a.city ? ` (${a.city})` : ""
-                                    }</p>`
-                                  : ""
-                              }
                 ${
                   a.gyms
                     ? `<p style="margin-top: 10px;">🏋️ <strong>${
@@ -1066,7 +1022,6 @@ function filterAthletes() {
         a.name?.toLowerCase().includes(searchTerm) ||
         a.bio?.toLowerCase().includes(searchTerm) ||
         a.gyms?.name?.toLowerCase().includes(searchTerm) ||
-        a.city?.toLowerCase().includes(searchTerm) ||
         a.gyms?.city?.toLowerCase().includes(searchTerm) ||
         a.belt_rank?.toLowerCase().includes(searchTerm)
     );
@@ -2352,99 +2307,6 @@ async function initGoogleMap() {
     });
   }
 
-  // ================================================
-  // ATHLETEN MIT ZUFÄLLIGER POSITION UM DIE STADT
-  // ================================================
-  try {
-    const { data: athletes } = await supabase
-      .from("athletes")
-      .select("id, name, city, belt_rank, age, weight, bio, gyms(name)")
-      .neq("user_id", currentUser?.id)
-      .not("city", "is", null);
-
-    if (athletes && athletes.length > 0) {
-      const athleteCityCache = {};
-
-      for (const athlete of athletes) {
-        if (!athlete.city) continue;
-
-        let centerCoords = null;
-
-        // Cache: Stadt schon geocoded?
-        if (athleteCityCache[athlete.city]) {
-          centerCoords = athleteCityCache[athlete.city];
-        } else {
-          const geo = await geocodeCity(athlete.city);
-          if (geo) {
-            centerCoords = { lat: geo.lat, lng: geo.lng };
-            athleteCityCache[athlete.city] = centerCoords;
-          } else {
-            continue;
-          }
-        }
-
-        const randomPos = getRandomCoordsAround(
-          centerCoords.lat,
-          centerCoords.lng,
-          5
-        );
-        addAthleteMarker(athlete, randomPos);
-        bounds.extend(randomPos);
-        hasMarkers = true;
-      }
-    }
-  } catch (err) {
-    console.warn("Fehler beim Laden der Athleten für die Karte:", err);
-  }
-  // Geocode Stadt
-  async function geocodeCity(city) {
-    const address = `${city}, Germany`;
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-      address
-    )}&limit=1`;
-
-    try {
-      const response = await fetch(url, {
-        headers: { "User-Agent": "BJJ-Community-Platform/1.0" },
-      });
-      const data = await response.json();
-      if (data && data[0]) {
-        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-      }
-    } catch (err) {
-      console.warn("Geocode fehlgeschlagen für:", city, err);
-    }
-    return null;
-  }
-
-  // Zufällige Koordinaten um Zentrum
-  function getRandomCoordsAround(centerLat, centerLng, radiusKm = 5) {
-    const radiusInMeters = radiusKm * 1000;
-    const earthRadius = 6371000;
-    const distance = Math.random() * radiusInMeters;
-    const bearing = Math.random() * 2 * Math.PI;
-
-    const lat1 = (centerLat * Math.PI) / 180;
-    const lng1 = (centerLng * Math.PI) / 180;
-
-    const lat2 = Math.asin(
-      Math.sin(lat1) * Math.cos(distance / earthRadius) +
-        Math.cos(lat1) * Math.sin(distance / earthRadius) * Math.cos(bearing)
-    );
-
-    const lng2 =
-      lng1 +
-      Math.atan2(
-        Math.sin(bearing) * Math.sin(distance / earthRadius) * Math.cos(lat1),
-        Math.cos(distance / earthRadius) - Math.sin(lat1) * Math.sin(lat2)
-      );
-
-    return {
-      lat: (lat2 * 180) / Math.PI,
-      lng: (lng2 * 180) / Math.PI,
-    };
-  }
-
   // Map an Marker anpassen
   if (hasMarkers) {
     googleMap.fitBounds(bounds);
@@ -2456,51 +2318,6 @@ async function initGoogleMap() {
       }
       google.maps.event.removeListener(listener);
     });
-  }
-
-  // ================================================
-  // ATHLETEN MIT ZUFÄLLIGER POSITION UM DIE STADT
-  // ================================================
-  try {
-    const { data: athletes } = await supabase
-      .from("athletes")
-      .select("id, name, city, belt_rank, age, weight, bio, gyms(name)")
-      .neq("user_id", currentUser?.id)
-      .not("city", "is", null);
-
-    if (athletes && athletes.length > 0) {
-      const athleteCityCache = {};
-
-      for (const athlete of athletes) {
-        if (!athlete.city) continue;
-
-        let centerCoords = null;
-
-        // Cache: Stadt schon geocoded?
-        if (athleteCityCache[athlete.city]) {
-          centerCoords = athleteCityCache[athlete.city];
-        } else {
-          const geo = await geocodeCity(athlete.city);
-          if (geo) {
-            centerCoords = { lat: geo.lat, lng: geo.lng };
-            athleteCityCache[athlete.city] = centerCoords;
-          } else {
-            continue;
-          }
-        }
-
-        const randomPos = getRandomCoordsAround(
-          centerCoords.lat,
-          centerCoords.lng,
-          5
-        );
-        addAthleteMarker(athlete, randomPos);
-        bounds.extend(randomPos);
-        hasMarkers = true;
-      }
-    }
-  } catch (err) {
-    console.warn("Fehler beim Laden der Athleten für die Karte:", err);
   }
 
   // Speichere für globalen Zugriff
@@ -2768,64 +2585,6 @@ function switchTab(tabName, eventTarget = null) {
   if (tabName === "messages" && myProfile?.type === "athlete") {
     loadChats();
   }
-}
-
-function addAthleteMarker(athlete, position) {
-  const marker = new google.maps.Marker({
-    position,
-    map: window.googleMap,
-    title: athlete.name,
-    icon: {
-      url:
-        "data:image/svg+xml;charset=UTF-8," +
-        encodeURIComponent(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
-          <circle cx="18" cy="18" r="16" fill="#4285F4" stroke="white" stroke-width="2.5"/>
-          <text x="18" y="24" font-size="18" text-anchor="middle" fill="white">🥋</text>
-        </svg>
-      `),
-      scaledSize: new google.maps.Size(36, 36),
-      anchor: new google.maps.Point(18, 18),
-    },
-    animation: google.maps.Animation.DROP,
-    zIndex: 400,
-  });
-
-  const infoWindow = new google.maps.InfoWindow({
-    content: `
-      <div style="padding:12px;font-family:system-ui;min-width:220px;">
-        <h3 style="margin:0 0 8px;font-size:1.1em;font-weight:600;">${escapeHTML(
-          athlete.name
-        )}</h3>
-        ${
-          athlete.belt_rank
-            ? `<span class="belt-badge belt-${
-                athlete.belt_rank
-              }">${athlete.belt_rank.toUpperCase()}</span>`
-            : ""
-        }
-        <p style="margin:4px 0;font-size:0.9em;color:#666;">📍 Ca. in <strong>${escapeHTML(
-          athlete.city
-        )}</strong></p>
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;">
-          <button onclick="calculateRoute('${position.lat}', '${
-      position.lng
-    }', '${escapeHTML(athlete.name).replace(/'/g, "\\'")}')"
-                  style="background:#4285F4;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:0.9em;width:100%;">
-            🧭 Route (ca.)
-          </button>
-        </div>
-      </div>
-    `,
-  });
-
-  marker.addListener("click", () => {
-    window.allMapMarkers.forEach((m) => m.infoWindow?.close());
-    infoWindow.open(window.googleMap, marker);
-  });
-
-  marker.infoWindow = infoWindow;
-  window.allMapMarkers.push(marker);
 }
 
 // ================================================
