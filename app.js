@@ -1576,248 +1576,6 @@ async function deleteOpenMat(id) {
 }
 
 // ================================================
-// ATHLETEN MIT ZUFÄLLIGER POSITION UM DIE STADT
-// ================================================
-async function addAthletesWithRandomPositions() {
-  const { data: athletes } = await supabase
-    .from("athletes")
-    .select("id, name, city, belt_rank, age, weight, bio, gyms(name)")
-    .neq("user_id", currentUser?.id)
-    .not("city", "is", null);
-
-  if (!athletes || athletes.length === 0) return;
-
-  const athleteCityCache = {};
-
-  for (const athlete of athletes) {
-    if (!athlete.city) continue;
-
-    let centerCoords = null;
-
-    // Cache: Stadt schon geocoded?
-    if (athleteCityCache[athlete.city]) {
-      centerCoords = athleteCityCache[athlete.city];
-    } else {
-      // Geocode Stadt (nur 1x pro Stadt)
-      const geo = await geocodeCity(athlete.city);
-      if (geo) {
-        centerCoords = { lat: geo.lat, lng: geo.lng };
-        athleteCityCache[athlete.city] = centerCoords;
-      } else {
-        continue;
-      }
-    }
-
-    // Zufällige Position ±5 km um Stadtzentrum
-    const randomPos = getRandomCoordsAround(
-      centerCoords.lat,
-      centerCoords.lng,
-      5
-    );
-
-    // Marker hinzufügen
-    addAthleteMarker(athlete, randomPos);
-    bounds.extend(randomPos);
-    hasMarkers = true;
-  }
-}
-
-// Hilfsfunktion: Geocode Stadt
-async function geocodeCity(city) {
-  const address = `${city}, Germany`;
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-    address
-  )}&limit=1`;
-
-  try {
-    const response = await fetch(url, {
-      headers: { "User-Agent": "BJJ-Community-Platform/1.0" },
-    });
-    const data = await response.json();
-    if (data && data[0]) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-    }
-  } catch (err) {
-    console.warn("Geocode fehlgeschlagen für:", city, err);
-  }
-  return null;
-}
-
-// Zufällige Koordinaten um Zentrum
-function getRandomCoordsAround(centerLat, centerLng, radiusKm = 5) {
-  const radiusInMeters = radiusKm * 1000;
-  const earthRadius = 6371000;
-
-  const distance = Math.random() * radiusInMeters;
-  const bearing = Math.random() * 2 * Math.PI;
-
-  const lat1 = (centerLat * Math.PI) / 180;
-  const lng1 = (centerLng * Math.PI) / 180;
-
-  const lat2 = Math.asin(
-    Math.sin(lat1) * Math.cos(distance / earthRadius) +
-      Math.cos(lat1) * Math.sin(distance / earthRadius) * Math.cos(bearing)
-  );
-
-  const lng2 =
-    lng1 +
-    Math.atan2(
-      Math.sin(bearing) * Math.sin(distance / earthRadius) * Math.cos(lat1),
-      Math.cos(distance / earthRadius) - Math.sin(lat1) * Math.sin(lat2)
-    );
-
-  return {
-    lat: (lat2 * 180) / Math.PI,
-    lng: (lng2 * 180) / Math.PI,
-  };
-}
-
-// Geocode-Hilfsfunktion (Nominatim)
-async function geocodeCity(city) {
-  const address = `${city}, Germany`;
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-    address
-  )}&limit=1`;
-
-  try {
-    const response = await fetch(url, {
-      headers: { "User-Agent": "BJJ-Community-Platform/1.0" },
-    });
-    const data = await response.json();
-    if (data && data[0]) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-    }
-  } catch (err) {
-    console.warn("Geocode fehlgeschlagen für:", city, err);
-  }
-  return null;
-}
-
-// Aufruf
-await addAthletesWithRandomPositions();
-
-function getRandomCoordsAround(centerLat, centerLng, radiusKm = 5) {
-  // Radius in Metern
-  const radiusInMeters = radiusKm * 1000;
-  const earthRadius = 6371000; // Erdradius in Metern
-
-  // Zufälliger Abstand (0 bis radius)
-  const distance = Math.random() * radiusInMeters;
-  const bearing = Math.random() * 2 * Math.PI; // Zufälliger Winkel
-
-  const lat1 = (centerLat * Math.PI) / 180;
-  const lng1 = (centerLng * Math.PI) / 180;
-
-  const lat2 = Math.asin(
-    Math.sin(lat1) * Math.cos(distance / earthRadius) +
-      Math.cos(lat1) * Math.sin(distance / earthRadius) * Math.cos(bearing)
-  );
-
-  const lng2 =
-    lng1 +
-    Math.atan2(
-      Math.sin(bearing) * Math.sin(distance / earthRadius) * Math.cos(lat1),
-      Math.cos(distance / earthRadius) - Math.sin(lat1) * Math.sin(lat2)
-    );
-
-  return {
-    lat: (lat2 * 180) / Math.PI,
-    lng: (lng2 * 180) / Math.PI,
-  };
-}
-
-function addAthleteMarker(athlete, position) {
-  const marker = new google.maps.Marker({
-    position,
-    map: window.googleMap,
-    title: athlete.name,
-    icon: {
-      url:
-        "data:image/svg+xml;charset=UTF-8," +
-        encodeURIComponent(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
-          <circle cx="18" cy="18" r="16" fill="#4285F4" stroke="white" stroke-width="2.5"/>
-          <text x="18" y="24" font-size="18" text-anchor="middle" fill="white">🥋</text>
-        </svg>
-      `),
-      scaledSize: new google.maps.Size(36, 36),
-      anchor: new google.maps.Point(18, 18),
-    },
-    animation: google.maps.Animation.DROP,
-    zIndex: 400,
-  });
-
-  const infoWindow = new google.maps.InfoWindow({
-    content: `
-      <div style="padding:12px;font-family:system-ui;min-width:220px;">
-        <h3 style="margin:0 0 8px;font-size:1.1em;font-weight:600;">${escapeHTML(
-          athlete.name
-        )}</h3>
-        ${
-          athlete.belt_rank
-            ? `<span class="belt-badge belt-${
-                athlete.belt_rank
-              }">${athlete.belt_rank.toUpperCase()}</span>`
-            : ""
-        }
-        ${
-          athlete.age
-            ? `<p style="margin:4px 0;font-size:0.9em;">📅 ${athlete.age} Jahre</p>`
-            : ""
-        }
-        ${
-          athlete.weight
-            ? `<p style="margin:4px 0;font-size:0.9em;">⚖️ ${athlete.weight} kg</p>`
-            : ""
-        }
-        ${
-          athlete.gyms?.name
-            ? `<p style="margin:4px 0;font-size:0.9em;">🏋️ <strong>${escapeHTML(
-                athlete.gyms.name
-              )}</strong></p>`
-            : ""
-        }
-        <p style="margin:4px 0;font-size:0.9em;color:#666;">📍 Ca. in <strong>${escapeHTML(
-          athlete.city
-        )}</strong></p>
-        ${
-          athlete.bio
-            ? `<p style="margin:8px 0;padding:8px;background:#f8f9fa;border-radius:4px;font-size:0.85em;color:#666;">${escapeHTML(
-                athlete.bio
-              )}</p>`
-            : ""
-        }
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;">
-          <button onclick="calculateRoute('${position.lat}', '${
-      position.lng
-    }', '${escapeHTML(athlete.name).replace(/'/g, "\\'")}')"
-                  style="background:#4285F4;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:0.9em;width:100%;">
-            🧭 Route (ca.)
-          </button>
-        </div>
-      </div>
-    `,
-  });
-
-  marker.addListener("click", () => {
-    window.allMapMarkers.forEach((m) => m.infoWindow?.close());
-    infoWindow.open(window.googleMap, marker);
-  });
-
-  marker.infoWindow = infoWindow;
-  window.allMapMarkers.push(marker);
-}
-
-function escapeHTML(str = "") {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-// ================================================
 // FREUNDSCHAFTEN
 // ================================================
 
@@ -2594,6 +2352,99 @@ async function initGoogleMap() {
     });
   }
 
+  // ================================================
+  // ATHLETEN MIT ZUFÄLLIGER POSITION UM DIE STADT
+  // ================================================
+  try {
+    const { data: athletes } = await supabase
+      .from("athletes")
+      .select("id, name, city, belt_rank, age, weight, bio, gyms(name)")
+      .neq("user_id", currentUser?.id)
+      .not("city", "is", null);
+
+    if (athletes && athletes.length > 0) {
+      const athleteCityCache = {};
+
+      for (const athlete of athletes) {
+        if (!athlete.city) continue;
+
+        let centerCoords = null;
+
+        // Cache: Stadt schon geocoded?
+        if (athleteCityCache[athlete.city]) {
+          centerCoords = athleteCityCache[athlete.city];
+        } else {
+          const geo = await geocodeCity(athlete.city);
+          if (geo) {
+            centerCoords = { lat: geo.lat, lng: geo.lng };
+            athleteCityCache[athlete.city] = centerCoords;
+          } else {
+            continue;
+          }
+        }
+
+        const randomPos = getRandomCoordsAround(
+          centerCoords.lat,
+          centerCoords.lng,
+          5
+        );
+        addAthleteMarker(athlete, randomPos);
+        bounds.extend(randomPos);
+        hasMarkers = true;
+      }
+    }
+  } catch (err) {
+    console.warn("Fehler beim Laden der Athleten für die Karte:", err);
+  }
+  // Geocode Stadt
+  async function geocodeCity(city) {
+    const address = `${city}, Germany`;
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      address
+    )}&limit=1`;
+
+    try {
+      const response = await fetch(url, {
+        headers: { "User-Agent": "BJJ-Community-Platform/1.0" },
+      });
+      const data = await response.json();
+      if (data && data[0]) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+    } catch (err) {
+      console.warn("Geocode fehlgeschlagen für:", city, err);
+    }
+    return null;
+  }
+
+  // Zufällige Koordinaten um Zentrum
+  function getRandomCoordsAround(centerLat, centerLng, radiusKm = 5) {
+    const radiusInMeters = radiusKm * 1000;
+    const earthRadius = 6371000;
+    const distance = Math.random() * radiusInMeters;
+    const bearing = Math.random() * 2 * Math.PI;
+
+    const lat1 = (centerLat * Math.PI) / 180;
+    const lng1 = (centerLng * Math.PI) / 180;
+
+    const lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(distance / earthRadius) +
+        Math.cos(lat1) * Math.sin(distance / earthRadius) * Math.cos(bearing)
+    );
+
+    const lng2 =
+      lng1 +
+      Math.atan2(
+        Math.sin(bearing) * Math.sin(distance / earthRadius) * Math.cos(lat1),
+        Math.cos(distance / earthRadius) - Math.sin(lat1) * Math.sin(lat2)
+      );
+
+    return {
+      lat: (lat2 * 180) / Math.PI,
+      lng: (lng2 * 180) / Math.PI,
+    };
+  }
+
   // Map an Marker anpassen
   if (hasMarkers) {
     googleMap.fitBounds(bounds);
@@ -2607,9 +2458,50 @@ async function initGoogleMap() {
     });
   }
 
-  // Nach Open Mats...
-  // === ATHLETEN AUF DER MAP ===
-  await addAthletesWithRandomPositions();
+  // ================================================
+  // ATHLETEN MIT ZUFÄLLIGER POSITION UM DIE STADT
+  // ================================================
+  try {
+    const { data: athletes } = await supabase
+      .from("athletes")
+      .select("id, name, city, belt_rank, age, weight, bio, gyms(name)")
+      .neq("user_id", currentUser?.id)
+      .not("city", "is", null);
+
+    if (athletes && athletes.length > 0) {
+      const athleteCityCache = {};
+
+      for (const athlete of athletes) {
+        if (!athlete.city) continue;
+
+        let centerCoords = null;
+
+        // Cache: Stadt schon geocoded?
+        if (athleteCityCache[athlete.city]) {
+          centerCoords = athleteCityCache[athlete.city];
+        } else {
+          const geo = await geocodeCity(athlete.city);
+          if (geo) {
+            centerCoords = { lat: geo.lat, lng: geo.lng };
+            athleteCityCache[athlete.city] = centerCoords;
+          } else {
+            continue;
+          }
+        }
+
+        const randomPos = getRandomCoordsAround(
+          centerCoords.lat,
+          centerCoords.lng,
+          5
+        );
+        addAthleteMarker(athlete, randomPos);
+        bounds.extend(randomPos);
+        hasMarkers = true;
+      }
+    }
+  } catch (err) {
+    console.warn("Fehler beim Laden der Athleten für die Karte:", err);
+  }
 
   // Speichere für globalen Zugriff
   window.googleMapInstance = googleMap;
@@ -2876,6 +2768,64 @@ function switchTab(tabName, eventTarget = null) {
   if (tabName === "messages" && myProfile?.type === "athlete") {
     loadChats();
   }
+}
+
+function addAthleteMarker(athlete, position) {
+  const marker = new google.maps.Marker({
+    position,
+    map: window.googleMap,
+    title: athlete.name,
+    icon: {
+      url:
+        "data:image/svg+xml;charset=UTF-8," +
+        encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+          <circle cx="18" cy="18" r="16" fill="#4285F4" stroke="white" stroke-width="2.5"/>
+          <text x="18" y="24" font-size="18" text-anchor="middle" fill="white">🥋</text>
+        </svg>
+      `),
+      scaledSize: new google.maps.Size(36, 36),
+      anchor: new google.maps.Point(18, 18),
+    },
+    animation: google.maps.Animation.DROP,
+    zIndex: 400,
+  });
+
+  const infoWindow = new google.maps.InfoWindow({
+    content: `
+      <div style="padding:12px;font-family:system-ui;min-width:220px;">
+        <h3 style="margin:0 0 8px;font-size:1.1em;font-weight:600;">${escapeHTML(
+          athlete.name
+        )}</h3>
+        ${
+          athlete.belt_rank
+            ? `<span class="belt-badge belt-${
+                athlete.belt_rank
+              }">${athlete.belt_rank.toUpperCase()}</span>`
+            : ""
+        }
+        <p style="margin:4px 0;font-size:0.9em;color:#666;">📍 Ca. in <strong>${escapeHTML(
+          athlete.city
+        )}</strong></p>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;">
+          <button onclick="calculateRoute('${position.lat}', '${
+      position.lng
+    }', '${escapeHTML(athlete.name).replace(/'/g, "\\'")}')"
+                  style="background:#4285F4;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:0.9em;width:100%;">
+            🧭 Route (ca.)
+          </button>
+        </div>
+      </div>
+    `,
+  });
+
+  marker.addListener("click", () => {
+    window.allMapMarkers.forEach((m) => m.infoWindow?.close());
+    infoWindow.open(window.googleMap, marker);
+  });
+
+  marker.infoWindow = infoWindow;
+  window.allMapMarkers.push(marker);
 }
 
 // ================================================
