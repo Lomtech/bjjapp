@@ -575,56 +575,89 @@ function displayMyProfile() {
 }
 
 function editMyProfile() {
-  if (myProfile.type === "athlete") {
-    const a = myProfile.data;
-    document.getElementById("athlete-id").value = a.id;
-    document.getElementById("athlete-name").value = a.name || "";
-    document.getElementById("athlete-bio").value = a.bio || "";
-    document.getElementById("athlete-age").value = a.age || "";
-    document.getElementById("athlete-weight").value = a.weight || "";
-    document.getElementById("athlete-belt").value = a.belt_rank || "";
-    document.getElementById("athlete-city").value = a.city || "";
-    document.getElementById("athlete-gym-select").value = a.gym_id || "";
+  if (!myProfile || !myProfile.data || !myProfile.type) {
+    console.error("Invalid myProfile object:", myProfile);
+    return;
+  }
 
-    if (a.image_url) {
-      document.getElementById("current-image-preview").innerHTML = `
-                <div style="margin-top: 10px;">
-                    <img src="${a.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
-                    <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
-                </div>
-            `;
-    }
+  const type = myProfile.type;
+  const data = myProfile.data;
 
-    document.getElementById("athlete-form-title").textContent =
-      "Profil bearbeiten";
-    document.getElementById("athlete-submit-btn").textContent =
-      "Änderungen speichern";
+  // First: Show the appropriate form to ensure elements exist in DOM
+  if (type === "athlete") {
     showProfileForm("athlete");
-  } else {
-    const g = myProfile.data;
-    document.getElementById("gym-id").value = g.id;
-    document.getElementById("gym-name").value = g.name || "";
-    document.getElementById("gym-description").value = g.description || "";
-    document.getElementById("gym-email").value = g.email || "";
-    document.getElementById("gym-phone").value = g.phone || "";
-    document.getElementById("gym-website").value = g.website || "";
-    document.getElementById("gym-street").value = g.street || "";
-    document.getElementById("gym-postal").value = g.postal_code || "";
-    document.getElementById("gym-city").value = g.city || "";
 
-    if (g.image_url) {
-      document.getElementById("gym-image-preview").innerHTML = `
-                <div style="margin-top: 10px;">
-                    <img src="${g.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
-                    <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
-                </div>
-            `;
+    // Now safely access elements after form is displayed
+    const setValue = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.value = value ?? "";
+    };
+
+    setValue("athlete-id", data.id);
+    setValue("athlete-name", data.name);
+    setValue("athlete-bio", data.bio);
+    setValue("athlete-age", data.age);
+    setValue("athlete-weight", data.weight);
+    setValue("athlete-belt", data.belt_rank);
+    setValue("athlete-city", data.city);
+    setValue("athlete-gym-select", data.gym_id);
+
+    // Update image preview
+    const previewContainer = document.getElementById("current-image-preview");
+    if (previewContainer && data.image_url) {
+      previewContainer.innerHTML = `
+        <div style="margin-top: 10px;">
+          <img src="${data.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
+          <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
+        </div>
+      `;
+    } else if (previewContainer) {
+      previewContainer.innerHTML = "";
     }
 
-    document.getElementById("gym-form-title").textContent = "Profil bearbeiten";
-    document.getElementById("gym-submit-btn").textContent =
-      "Änderungen speichern";
+    // Update form title and button
+    const titleEl = document.getElementById("athlete-form-title");
+    const btnEl = document.getElementById("athlete-submit-btn");
+    if (titleEl) titleEl.textContent = "Profil bearbeiten";
+    if (btnEl) btnEl.textContent = "Änderungen speichern";
+  } else if (type === "gym") {
     showProfileForm("gym");
+
+    const setValue = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.value = value ?? "";
+    };
+
+    setValue("gym-id", data.id);
+    setValue("gym-name", data.name);
+    setValue("gym-description", data.description);
+    setValue("gym-email", data.email);
+    setValue("gym-phone", data.phone);
+    setValue("gym-website", data.website);
+    setValue("gym-street", data.street);
+    setValue("gym-postal", data.postal_code);
+    setValue("gym-city", data.city);
+
+    // Update image preview
+    const previewContainer = document.getElementById("gym-image-preview");
+    if (previewContainer && data.image_url) {
+      previewContainer.innerHTML = `
+        <div style="margin-top: 10px;">
+          <img src="${data.image_url}" style="max-width: 200px; border-radius: 10px;" alt="Aktuelles Bild">
+          <p style="font-size: 0.9em; color: #666;">Neues Bild hochladen, um zu ersetzen</p>
+        </div>
+      `;
+    } else if (previewContainer) {
+      previewContainer.innerHTML = "";
+    }
+
+    // Update form title and button
+    const titleEl = document.getElementById("gym-form-title");
+    const btnEl = document.getElementById("gym-submit-btn");
+    if (titleEl) titleEl.textContent = "Profil bearbeiten";
+    if (btnEl) btnEl.textContent = "Änderungen speichern";
+  } else {
+    console.error("Unbekannter Profil-Typ:", type);
   }
 }
 
