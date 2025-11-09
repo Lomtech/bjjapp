@@ -1576,10 +1576,8 @@ async function deleteOpenMat(id) {
 }
 
 // ================================================
-// ATHLETEN MIT ZUFÄLLIGEN POSITIONEN UM IHRE STADT
+// ATHLETEN MIT ZUFÄLLIGER POSITION UM DIE STADT
 // ================================================
-const athleteCityCache = {}; // Vermeidet mehrfaches Geocoding
-
 async function addAthletesWithRandomPositions() {
   const { data: athletes } = await supabase
     .from("athletes")
@@ -1589,26 +1587,28 @@ async function addAthletesWithRandomPositions() {
 
   if (!athletes || athletes.length === 0) return;
 
+  const athleteCityCache = {};
+
   for (const athlete of athletes) {
     if (!athlete.city) continue;
 
     let centerCoords = null;
 
-    // Cache prüfen
+    // Cache: Stadt schon geocoded?
     if (athleteCityCache[athlete.city]) {
       centerCoords = athleteCityCache[athlete.city];
     } else {
-      // Geocode Stadt (einmalig)
+      // Geocode Stadt (nur 1x pro Stadt)
       const geo = await geocodeCity(athlete.city);
       if (geo) {
         centerCoords = { lat: geo.lat, lng: geo.lng };
         athleteCityCache[athlete.city] = centerCoords;
       } else {
-        continue; // Stadt nicht gefunden
+        continue;
       }
     }
 
-    // Zufällige Position ±5 km
+    // Zufällige Position ±5 km um Stadtzentrum
     const randomPos = getRandomCoordsAround(
       centerCoords.lat,
       centerCoords.lng,
@@ -1620,6 +1620,56 @@ async function addAthletesWithRandomPositions() {
     bounds.extend(randomPos);
     hasMarkers = true;
   }
+}
+
+// Hilfsfunktion: Geocode Stadt
+async function geocodeCity(city) {
+  const address = `${city}, Germany`;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+    address
+  )}&limit=1`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "BJJ-Community-Platform/1.0" },
+    });
+    const data = await response.json();
+    if (data && data[0]) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+  } catch (err) {
+    console.warn("Geocode fehlgeschlagen für:", city, err);
+  }
+  return null;
+}
+
+// Zufällige Koordinaten um Zentrum
+function getRandomCoordsAround(centerLat, centerLng, radiusKm = 5) {
+  const radiusInMeters = radiusKm * 1000;
+  const earthRadius = 6371000;
+
+  const distance = Math.random() * radiusInMeters;
+  const bearing = Math.random() * 2 * Math.PI;
+
+  const lat1 = (centerLat * Math.PI) / 180;
+  const lng1 = (centerLng * Math.PI) / 180;
+
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(distance / earthRadius) +
+      Math.cos(lat1) * Math.sin(distance / earthRadius) * Math.cos(bearing)
+  );
+
+  const lng2 =
+    lng1 +
+    Math.atan2(
+      Math.sin(bearing) * Math.sin(distance / earthRadius) * Math.cos(lat1),
+      Math.cos(distance / earthRadius) - Math.sin(lat1) * Math.sin(lat2)
+    );
+
+  return {
+    lat: (lat2 * 180) / Math.PI,
+    lng: (lng2 * 180) / Math.PI,
+  };
 }
 
 // Geocode-Hilfsfunktion (Nominatim)
@@ -2556,6 +2606,10 @@ async function initGoogleMap() {
       google.maps.event.removeListener(listener);
     });
   }
+
+  // Nach Open Mats...
+  // === ATHLETEN AUF DER MAP ===
+  await addAthletesWithRandomPositions();
 
   // Speichere für globalen Zugriff
   window.googleMapInstance = googleMap;
