@@ -52,15 +52,17 @@
 
       <!-- Chat Input -->
       <form class="chat-page-input" id="chat-page-form">
-        <input
-          type="text"
-          id="message-input"
-          name="message"
-          placeholder="Nachricht schreiben..."
-          required
-          autocomplete="off"
-        />
-        <button type="submit" class="send-btn">🥊</button>
+        <div class="chat-input-wrapper">
+          <textarea
+            id="message-input"
+            name="message"
+            placeholder="Nachricht schreiben..."
+            rows="1"
+            autocomplete="off"
+            required
+          ></textarea>
+          <button type="submit" class="send-btn">Oss!</button>
+        </div>
       </form>
     </div>
 

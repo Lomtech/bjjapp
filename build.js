@@ -153,7 +153,12 @@ const processJs = (filename) => {
 // Core Dateien (erforderlich)
 const coreJs = ["app.js", "chat.js"];
 
-
+// Places API Dateien (optional)
+const placesJs = [
+  "app-places-extended.js",
+  "app-places-helpers.js",
+  "app-places-advanced.js",
+];
 
 let jsCount = 0;
 
@@ -163,6 +168,11 @@ coreJs.forEach((file) => {
   if (processJs(file)) jsCount++;
 });
 
+// Verarbeite Places JS
+log.info("→ Places API JavaScript...");
+placesJs.forEach((file) => {
+  if (processJs(file)) jsCount++;
+});
 
 // === 7. Validierung ===
 log.info("Validiere Build...");
@@ -233,7 +243,11 @@ console.log(
     coreJs.filter((f) => fs.existsSync(`dist/${f}`)).length
   }/${coreJs.length}`
 );
-
+console.log(
+  `   JavaScript (Places): ${
+    placesJs.filter((f) => fs.existsSync(`dist/${f}`)).length
+  }/${placesJs.length}`
+);
 
 console.log("\n🔧 PWA:");
 console.log(
@@ -288,6 +302,7 @@ const buildInfo = {
     html: htmlCount,
     css: cssCount,
     js_core: coreJs.filter((f) => fs.existsSync(`dist/${f}`)).length,
+    js_places: placesJs.filter((f) => fs.existsSync(`dist/${f}`)).length,
   },
   env: {
     supabase_configured: !!env.supabaseUrl && !!env.supabaseKey,
